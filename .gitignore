@@ -1,0 +1,8 @@
+# ModusToolbox shared dependencies and build outputs
+mtb_shared/
+**/build/
+**/.mtbqueryapi
+
+# Local temp/scratch files
+*.swp
+*.tmp
