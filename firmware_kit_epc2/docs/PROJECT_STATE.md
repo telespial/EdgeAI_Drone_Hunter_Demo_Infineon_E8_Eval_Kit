@@ -18,6 +18,12 @@ PSOC Edge E84 Eval (EPC2), Drone Hunter splash baseline.
 - `APP_DRONE_HUNTER_MODE=1`
 
 ## Current State
-- Splash firmware initializes display/peripherals and renders `EdgeAI Drone Hunter`.
-- Build and flash verified on hardware on `2026-03-25`.
-- Program artifact: `build/app_combined.hex`.
+- Splash firmware now runs:
+  - `EdgeAI Drone Hunter` title for ~5s.
+  - Image-based 8-drone 3D carousel.
+  - `START ARENA` transition into gameplay.
+- Known issue history:
+  - Large zoom orbit initially clipped drone tops/bottoms.
+  - Mitigated by direct `lv_image` orbit objects and reduced base sprite dimensions.
+- Build and program/verify confirmed on hardware on `2026-03-25`.
+- Program artifact in active flow: `proj_cm55/build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.hex`.

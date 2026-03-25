@@ -4,11 +4,13 @@
 - Rolling tag: `golden-e8-drone-hunter`
 - Dated tag: `golden-e8-drone-hunter-20260325`
 - Date: `2026-03-25`
-- Baseline: Splash + POV arena scene (ALGO vs EdgeAI telemetry)
+- Baseline: 5s title splash + image-based 8-drone 3D carousel + arena entry flow
+- Notes: includes clipping mitigation for large zoom carousel rendering.
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
 - Dated tag: `failsafe-e8-drone-hunter-20260325`
+- Notes: intentionally not advanced in this milestone (remains prior baseline).
 
 ## Verified commands
 ```bash

@@ -1,62 +1,61 @@
 # EdgeAI Drone Hunter - Build Roadmap (ToDo)
 
-## Baseline (Done)
-- Keep startup identity splash: `EdgeAI Drone Hunter`.
-- Boot display and peripherals on E8 (`W4P3INCH_DISP`).
-- Launch animated POV arena scene after splash.
-- Show ALGO vs EdgeAI pursuit overlays and basic miss/hit telemetry.
-- Build + flash verified on hardware (`PSE846GPS2DBZC4A`).
+## Current Status Snapshot
+- Hardware target: Infineon E8 Eval Kit (`PSE846GPS2DBZC4A`).
+- Scope: this project only (`EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit`).
+- Latest visual update: title -> image-based 8-drone 3D carousel -> `START ARENA`.
+- Carousel issue tracked/fixed: clipping at large zoom mitigated via direct `lv_image` orbit objects and smaller base sprite dimensions.
 
-## Phase 1 - Playable Core Loop
-- Add game states: `Search`, `Lock`, `Intercept`, `Confirm`, `Wave End`, `Game Over`.
-- Add score, lives, mission timer, and wave counter.
-- Define objective: protect core asset from incoming killers.
-- Add fail conditions and clear victory conditions.
-- Add restart flow from Game Over/Victory.
+## Phase 0 - Platform Bring-Up and Identity [Done]
+- Boot firmware, initialize LCD/peripherals.
+- Preserve startup splash: `EdgeAI Drone Hunter`.
+- Verify build + flash flow on hardware.
+- Establish golden restore baseline for startup scene.
 
-## Phase 2 - Player-Controlled POV Hunter
-- Make player fly one hunter (FPV controls).
-- Add control model: pitch/yaw/throttle/boost/brake.
-- Keep two AI wingmen as support drones.
-- Add lock-on reticle and intercept cueing.
-- Add camera options: strict FPV and assisted chase-FPV.
+## Phase 1 - Core Arena Foundation [Done]
+- Build autonomous arena loop and spawn/update timers.
+- Add hunter/target entities and core asset objective.
+- Add HUD baseline and round timer/core health.
+- Add round reset/restart handling.
 
-## Phase 3 - Target Behaviors
-- Implement two target classes: `Killer FPV` and `Fixed-Wing`.
-- Give each class distinct speed, turn-rate, and escape logic.
-- Add threat intent (what target is attacking).
-- Add route variants and evasive maneuvers.
-- Add wave composition rules (mixed target types).
+## Phase 2 - Comparison Modes and Target Classes [Partially Done]
+### Done
+- Mode set implemented: `ALGO vs ALGO`, `EdgeAI vs EdgeAI`, `ALGO vs EdgeAI`.
+- Removed over-drone text labels for cleaner visuals.
+- Added fixed-wing class behavior and larger silhouette.
+- Added heading-locked orientation for fixed-wing targets.
+- Added triangular/delta wing styling pass.
+### Remaining
+- Increase visual distinction between hunter teams (shape/trail language).
+- Tighten spawn cadence so each mode difference is obvious in <10 seconds.
 
-## Phase 4 - ALGO vs EdgeAI Demonstration
-- Add mode selector: `ALGO`, `EdgeAI`, `Head-to-Head`.
-- Run deterministic scenario seeds for fair A/B comparisons.
-- Track metrics: time-to-intercept, miss distance, kill rate, energy cost.
-- Add confidence visualization for prediction quality.
-- Add summary screen with per-wave and aggregate stats.
+## Phase 3 - Behavior + Clarity Pass [Next]
+- Make role readability instant (hunters vs threats) without labels.
+- Tune ALGO behavior to show reactive chase and more overshoot.
+- Tune EdgeAI behavior to show predictive lead and smoother intercept arcs.
+- Add lightweight event FX: intercept pop, core-hit pulse, threat-spawn cue.
+- Add short demo-ready round pacing and clearer win conditions.
 
-## Phase 5 - Combat and Feedback Polish
-- Add lock, near-miss, hit, and kill-confirm audio cues.
-- Add visual effects: trail, hit flash, shock ring, debris hints.
-- Improve HUD readability and threat prioritization.
-- Add minimap/radar and wingman status panel.
-- Add accessibility options for HUD scale and contrast.
+## Phase 4 - Scoring, Metrics, and Explainability [Planned]
+- Track per-team intercept count, misses, core damage prevented.
+- Add time-to-intercept and miss-distance metrics.
+- Show per-round comparison summary screen.
+- Add deterministic scenario seeds for fair A/B runs.
 
-## Phase 6 - Arena and Mission Depth
-- Replace simple circle with sector-based map zones.
-- Add no-fly zones and risk-reward shortcuts.
-- Add defendable assets and dynamic objective updates.
-- Add difficulty scaling by player performance.
-- Add mission modifiers (weather/jamming/low visibility).
+## Phase 5 - Mission Structure and Difficulty [Planned]
+- Introduce wave compositions (FPV-heavy, fixed-wing-heavy, mixed).
+- Add escalating difficulty via speed/turn-rate/spawn pressure.
+- Add mission states: warmup, peak threat, end-of-round review.
 
-## Phase 7 - Benchmark and Demo Packaging
-- Add replay capture with scenario seed + results.
-- Add benchmark mode for public demos.
-- Add exportable run summary for ALGO vs EdgeAI comparisons.
-- Add operator quick-start guide and controls reference.
-- Freeze golden and failsafe restore tags for demo release.
+## Phase 6 - Demo UX and Packaging [Planned]
+- Add automated mode-cycle for unattended booth/demo runs.
+- Finalize docs for clone/build/flash self-contained workflow.
+- Cut golden restore tags for stable demo milestones (failsafe only on explicitly approved freeze).
 
-## Next Build Target (Immediate)
-- Implement Phase 1 fully and partial Phase 2.
-- Deliver a playable single-wave intercept mission with explicit win/lose flow.
-- Preserve current splash and arena visual language.
+## Documentation and Repo Hygiene [In Progress]
+- Keep docs self-contained in this repo for pull/build/flash reproducibility.
+- Keep `start_here.md` and project docs synchronized with actual build commands.
+- Capture final architecture notes for ALGO vs EdgeAI behavior differences.
+
+## Immediate Next Task
+- Execute Phase 3 (Behavior + Clarity Pass), then flash and tune on-device.

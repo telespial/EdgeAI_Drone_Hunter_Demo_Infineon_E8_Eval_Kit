@@ -9,10 +9,18 @@
 - Status File: `docs/STATUS.md`
 
 ## Current Status
-- Startup splash preserved: `EdgeAI Drone Hunter`.
-- Arena scene active after splash with moving target and ALGO vs EdgeAI pursuit overlays.
-- Verified build and flash on board `PSE846GPS2DBZC4A`.
+- Startup sequence implemented:
+  - `EdgeAI Drone Hunter` boot title shown for ~5s.
+  - Hunter drone carousel shown after title.
+  - Swipe left/right spins the 8-drone orbit.
+  - `START ARENA` enters gameplay scene.
+- Carousel implementation is image-based (`drone_hunter_images.c/.h`) and rendered as an invisible 3D ring.
+- Clipping issue tracked:
+  - Symptom: top/bottom truncation when using ~3x transform zoom.
+  - Cause: transform clipping with nested/object bounds in LVGL orbit view.
+  - Mitigation: orbit now uses direct `lv_image` objects and reduced base sprite dimensions to preserve full drone visibility at large zoom.
+- Verified program/write/verify on board `PSE846GPS2DBZC4A`.
 
 ## Next Actions
-- Add player controls and objective loop (wave/score/fail states).
-- Add replayable scenario seeds for fair ALGO vs EdgeAI comparisons.
+- Run final on-device visual acceptance for all 8 drones across full spin arc.
+- Continue arena behavior tuning (mode readability, scoring clarity, demo pacing).
