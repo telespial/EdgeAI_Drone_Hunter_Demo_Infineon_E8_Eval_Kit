@@ -13,9 +13,14 @@
 - Restored to the recovered baseline from `drone_hunter_arena.c.pre_recovery`.
 - Core implementation file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
+- Added gameplay Nightscape image asset:
+  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_nightscape.c`
+  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_nightscape.h`
 - Verified behavior in code:
   - Splash hunter lineup logic active with detailed drone assets.
   - Bagnet transparent source path used (`img_hunter_bagnet`) with featured-slot enlargement logic.
+  - Nightscape rendered only during gameplay (arena), not in splash flow.
+  - Gameplay black-box overlay removed by setting arena playfield background opacity to transparent.
   - Arena phase progression implemented and visible in HUD:
     - `PHASE 1: PATROL`
     - `PHASE 2: INTERCEPT`
@@ -26,8 +31,8 @@
 - Rebuild: complete for `proj_cm55` (environment still reports missing EdgeProtect combine-sign tools).
 - Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 1466368 bytes`
-  - `verified 1465272 bytes`
+  - `wrote 2236416 bytes`
+  - `verified 2233312 bytes`
 
 ## Source Manifest for This Build
 - Generated ordered source manifest and package:

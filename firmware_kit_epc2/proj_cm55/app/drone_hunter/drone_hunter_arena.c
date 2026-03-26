@@ -1,6 +1,7 @@
 #include "drone_hunter_arena.h"
 #include "drone_hunter_images.h"
 #include "drone_hunter_bagnet_detailed.h"
+#include "drone_hunter_nightscape.h"
 #include "drone_hunter_odin_detailed.h"
 #include "drone_hunter_skyfall_detailed.h"
 #include "drone_hunter_sting_detailed.h"
@@ -86,6 +87,7 @@ typedef struct
     lv_obj_t *screen;
     lv_obj_t *splash;
     lv_obj_t *arena;
+    lv_obj_t *arena_bg;
     lv_obj_t *lineup_cont;
     lv_obj_t *lineup_cards[HUNTER_TYPE_COUNT];
     lv_obj_t *lineup_desc;
@@ -1419,6 +1421,11 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_remove_style_all(s->arena);
     lv_obj_set_size(s->arena, sw, sh);
     lv_obj_add_flag(s->arena, LV_OBJ_FLAG_HIDDEN);
+    s->arena_bg = lv_image_create(s->arena);
+    lv_image_set_src(s->arena_bg, &img_hunter_nightscape_bg);
+    lv_obj_set_pos(s->arena_bg, 0, 0);
+    lv_obj_set_size(s->arena_bg, sw, sh);
+    lv_obj_move_background(s->arena_bg);
 
     {
         lv_obj_t *hud = lv_obj_create(s->arena);
@@ -1463,8 +1470,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_remove_style_all(field);
         lv_obj_set_pos(field, s->arena_x, s->arena_y);
         lv_obj_set_size(field, s->arena_w, s->arena_h);
-        lv_obj_set_style_bg_color(field, lv_color_hex(0x050914), 0);
-        lv_obj_set_style_bg_opa(field, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_opa(field, LV_OPA_0, 0);
         lv_obj_set_style_border_color(field, lv_color_hex(0x1F2937), 0);
         lv_obj_set_style_border_width(field, 2, 0);
     }

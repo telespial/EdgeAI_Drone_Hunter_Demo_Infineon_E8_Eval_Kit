@@ -4,13 +4,17 @@
 - Rolling tag: `golden-e8-drone-hunter`
 - Dated tag: `golden-e8-drone-hunter-20260326`
 - Date: `2026-03-26`
-- Build baseline: recovered `drone_hunter_arena.c.pre_recovery` state with:
+- Build baseline:
+  - recovered `drone_hunter_arena.c.pre_recovery` state with:
   - Bagnet transparent render path + featured-slot boost
   - Arena phase progression HUD (`PHASE 1: PATROL`, `PHASE 2: INTERCEPT`, `PHASE 3: SWARM`)
   - Continuous gameplay (no 10s auto-end)
+  - plus gameplay Nightscape integration and visibility fix:
+    - Nightscape active in arena only (not splash)
+    - Arena field background set transparent to prevent black overlay over Nightscape
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 1466368 bytes`
-  - `verified 1465272 bytes`
+  - `wrote 2236416 bytes`
+  - `verified 2233312 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`

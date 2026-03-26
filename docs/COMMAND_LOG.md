@@ -18,3 +18,7 @@
 - 2026-03-26 | Generated build-order source manifests from `proj_cm55.elf.rsp` + `proj_cm55.ninja` under `docs/build_manifests/`.
 - 2026-03-26 | Rebuild + flash re-confirmed via `proj_cm55 qprogram_proj`: wrote `1466368` bytes, verified `1465272` bytes.
 - 2026-03-26 | Promoted current state as both golden and failsafe restore points.
+- 2026-03-26 | Added generated Nightscape image asset (`drone_hunter_nightscape.c/.h`) and wired arena background rendering.
+- 2026-03-26 | Corrected Nightscape behavior: gameplay-only background (removed splash background usage).
+- 2026-03-26 | Removed arena black-box overlay by setting gameplay field background opacity to transparent.
+- 2026-03-26 | Rebuild + flash confirmed via `proj_cm55 qprogram_proj`: wrote `2236416` bytes, verified `2233312` bytes.

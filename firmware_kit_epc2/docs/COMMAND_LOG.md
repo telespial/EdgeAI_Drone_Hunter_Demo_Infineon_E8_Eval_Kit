@@ -1,11 +1,24 @@
 # COMMAND_LOG
 
-2026-03-25 | Imported firmware baseline into Drone Hunter repo.
-2026-03-25 | Added `APP_DRONE_HUNTER_MODE=1` and removed Smart Pong app directory.
-2026-03-25 | Added `app/drone_hunter/drone_hunter_arena.c` with splash + animated arena scene.
-2026-03-25 | Build and flash PASS on `PSE846GPS2DBZC4A` using `CONFIG_DISPLAY=W4P3INCH_DISP`.
-2026-03-25 | Marked as golden/failsafe restore point.
-2026-03-25 | Updated splash UX to title -> image-based 8-drone carousel -> `START ARENA`.
-2026-03-25 | Added `app/drone_hunter/drone_hunter_images.c/.h` with embedded drone sprites.
-2026-03-25 | Documented and mitigated carousel clipping observed at large transform zoom.
-2026-03-25 | Prepared new golden restore point only (failsafe not updated in this pass).
+- 2026-03-25 | Imported `firmware_kit_epc2` baseline into Drone Hunter repo.
+- 2026-03-25 | Added Drone Hunter runtime macro and removed Smart Pong app dependency.
+- 2026-03-25 | Implemented startup splash + animated POV intercept arena (`proj_cm55/app/drone_hunter/drone_hunter_arena.c`).
+- 2026-03-25 | Build+flash verified on `PSE846GPS2DBZC4A` with `W4P3INCH_DISP`.
+- 2026-03-25 | Promoted this baseline as golden/failsafe restore point.
+- 2026-03-25 | Reworked splash UX to title -> image-based 8-drone carousel -> `START ARENA`.
+- 2026-03-25 | Added `drone_hunter_images.c/.h` sprite pack sourced from user-provided drone sheets.
+- 2026-03-25 | Investigated LVGL transform clipping with large orbit zoom; shifted to direct `lv_image` orbit objects and reduced base sprite size for full-height rendering.
+- 2026-03-25 | Verified program/write/verify after carousel updates; prepared new golden restore point only (failsafe intentionally not updated).
+- 2026-03-26 | Replaced 8-drone splash orbit with 3-drone swipe row prototype (Sting/ODIN/Skyfall focus flow).
+- 2026-03-26 | Switched splash interaction from `LV_EVENT_GESTURE`-only handling to press/release drag delta logic for more reliable swipe detection on-device.
+- 2026-03-26 | Added center-magnified slot behavior with side slots scaled down; iterated spacing and Y-offset on hardware.
+- 2026-03-26 | Added positional clamps to keep splash drones within visible LCD bounds during scaling.
+- 2026-03-26 | Investigated right-side boxed artifact and alternated Skyfall source between detailed and base variants.
+- 2026-03-26 | Restored `drone_hunter_arena.c` to `drone_hunter_arena.c.pre_recovery` baseline.
+- 2026-03-26 | Generated build-order source manifests from `proj_cm55.elf.rsp` + `proj_cm55.ninja` under `docs/build_manifests/`.
+- 2026-03-26 | Rebuild + flash re-confirmed via `proj_cm55 qprogram_proj`: wrote `1466368` bytes, verified `1465272` bytes.
+- 2026-03-26 | Promoted current state as both golden and failsafe restore points.
+- 2026-03-26 | Added generated Nightscape image asset (`drone_hunter_nightscape.c/.h`) and wired arena background rendering.
+- 2026-03-26 | Corrected Nightscape behavior: gameplay-only background (removed splash background usage).
+- 2026-03-26 | Removed arena black-box overlay by setting gameplay field background opacity to transparent.
+- 2026-03-26 | Rebuild + flash confirmed via `proj_cm55 qprogram_proj`: wrote `2236416` bytes, verified `2233312` bytes.
