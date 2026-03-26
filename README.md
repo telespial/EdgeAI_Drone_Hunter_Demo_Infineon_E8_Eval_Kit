@@ -2,24 +2,29 @@
 
 Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch LCD.
 
-Current UX flow:
-- 5-second title splash: `EdgeAI Drone Hunter`
-- Image-based 8-drone swipe carousel (invisible 3D orbit)
-- `START ARENA` transitions into gameplay
+Current restored baseline (2026-03-26):
+- Splash/title and hunter lineup flow in `drone_hunter_arena.c`
+- Bagnet transparent source path + featured-slot scaling
+- `START ARENA` gameplay entry
+- In-game phase progression HUD:
+  - `PHASE 1: PATROL`
+  - `PHASE 2: INTERCEPT`
+  - `PHASE 3: SWARM`
+- Continuous gameplay enabled
 
-Recent issue tracked:
-- Large carousel zoom caused top/bottom clipping of drone images.
-- Mitigated by rendering direct `lv_image` orbit objects with reduced base sprite dimensions.
-
-## Build + Flash
+## Build + Flash (validated path)
 
 ```bash
 export CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7
-export CY_COMPILER_GCC_ARM_DIR=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/mtb-gcc-arm-eabi/14.2.1/gcc
-export CY_TOOL_edgeprotecttools_EXE_ABS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox-Edge-Protect-Security-Suite-1.6.1/tools/edgeprotecttools/bin/edgeprotecttools
+export CY_COMPILER_GCC_ARM_DIR=/home/user/.local/opt/xpack-arm-none-eabi-gcc-14.2.1-1.1
 
-cd firmware_kit_epc2
-make getlibs
-make build TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8
-make program TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP
+make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8
+make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP
 ```
+
+Recent flash confirmation:
+- `wrote 1466368 bytes`
+- `verified 1465272 bytes`
+
+## Restore points
+See `docs/RESTORE_POINTS.md` for the current golden and failsafe tags.

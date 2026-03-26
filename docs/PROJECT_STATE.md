@@ -1,26 +1,39 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-25
+- Last Updated: 2026-03-26
 - Repo Root: /home/user/projects/embedded/codemaster/projects/Infineon/PSOC_EDGE_E8_EVAL/projects/EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Build Command: `cd firmware_kit_epc2 && make build TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
-- Flash Command: `cd firmware_kit_epc2 && make program TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP`
-- Binary: `firmware_kit_epc2/build/app_combined.hex`
+- Build Target: `firmware_kit_epc2/proj_cm55`
+- Build Command: `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Flash Command: `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP`
+- Programmed Image: `firmware_kit_epc2/proj_cm55/build/last_config/proj_cm55.hex`
 - Status File: `docs/STATUS.md`
 
 ## Current Status
-- Startup sequence implemented:
-  - `EdgeAI Drone Hunter` boot title shown for ~5s.
-  - Hunter drone carousel shown after title.
-  - Swipe left/right spins the 8-drone orbit.
-  - `START ARENA` enters gameplay scene.
-- Carousel implementation is image-based (`drone_hunter_images.c/.h`) and rendered as an invisible 3D ring.
-- Clipping issue tracked:
-  - Symptom: top/bottom truncation when using ~3x transform zoom.
-  - Cause: transform clipping with nested/object bounds in LVGL orbit view.
-  - Mitigation: orbit now uses direct `lv_image` objects and reduced base sprite dimensions to preserve full drone visibility at large zoom.
-- Verified program/write/verify on board `PSE846GPS2DBZC4A`.
+- Restored to the recovered baseline from `drone_hunter_arena.c.pre_recovery`.
+- Core implementation file:
+  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
+- Verified behavior in code:
+  - Splash hunter lineup logic active with detailed drone assets.
+  - Bagnet transparent source path used (`img_hunter_bagnet`) with featured-slot enlargement logic.
+  - Arena phase progression implemented and visible in HUD:
+    - `PHASE 1: PATROL`
+    - `PHASE 2: INTERCEPT`
+    - `PHASE 3: SWARM`
+  - Continuous gameplay retained (`ROUND_TIME_SEC=36000`, no short auto-round end).
 
-## Next Actions
-- Run final on-device visual acceptance for all 8 drones across full spin arc.
-- Continue arena behavior tuning (mode readability, scoring clarity, demo pacing).
+## Build/Flash Confirmation (2026-03-26)
+- Rebuild: complete for `proj_cm55` (environment still reports missing EdgeProtect combine-sign tools).
+- Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 1466368 bytes`
+  - `verified 1465272 bytes`
+
+## Source Manifest for This Build
+- Generated ordered source manifest and package:
+  - `docs/build_manifests/proj_cm55_build_snapshot.txt`
+  - `docs/build_manifests/proj_cm55_obj_to_src.map`
+  - `docs/build_manifests/proj_cm55_source_order_full.txt`
+  - `docs/build_manifests/proj_cm55_source_order_unique.txt`
+  - `docs/build_manifests/proj_cm55_source_order_unique_existing.txt`
+  - `docs/build_manifests/proj_cm55_sources_ordered.tar.gz`

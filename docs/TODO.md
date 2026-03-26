@@ -1,5 +1,5 @@
 # TODO
 
-- Fill in build/flash commands in PROJECT_STATE.md.
-- Validate end-to-end build on E8 Eval Kit.
-- Record first validated run in COMMAND_LOG.md.
+- Validate full on-device UX acceptance for splash lineup visuals (size/placement/artifacts).
+- Extend gameplay objectives/phase-specific events beyond current baseline loop.
+- If EdgeProtect tools become available, validate full combined-image build/program path and document parity with `proj_cm55` path.
