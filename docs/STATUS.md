@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Golden + failsafe restore points promoted to latest sprite-cleanup + CIWS ballistic + 4-edge attack spawn baseline with Sting-II normalization and play-area nose-forward flight orientation
+- State: Golden + failsafe restore points promoted to latest sprite-cleanup + CIWS ballistic + 4-edge attack spawn baseline with Sting-II normalization, play-area nose-forward flight orientation, and updated CIWS range/tracer tuning
 
 ## Current validated baseline
 - `proj_cm55` rebuild path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2314240 bytes`
-  - `verified 2311448 bytes`
+  - `verified 2311832 bytes`
 
 ## UX/Gameplay baseline captured in this restore point
 - Dual CIWS layout active with transparent render assets.
@@ -17,6 +17,7 @@
 - CIWS tracer stream behaves as dense ballistic bullet fire:
   - High-rate burst-dot emission.
   - Stronger curvature near horizontal sweep angles due to gravity.
+  - Smaller tracer bullets with longer visible travel path.
 - Attack drones enter from all four edges (top/bottom/left/right).
 - Hunter visuals cleaned and normalized:
   - Sprite artifacts removed via normalized source conversion.

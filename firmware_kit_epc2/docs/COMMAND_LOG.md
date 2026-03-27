@@ -21,7 +21,11 @@
 - 2026-03-27 | Applied orientation scope fix:
   - reverted icon + carousel orientation changes
   - kept play-area drone flight orientation nose-forward only
+- 2026-03-27 | Retuned CIWS range/tracer presentation:
+  - restored CIWS range cap to 75% of screen width from each gun origin
+  - reduced tracer bullet dot size
+  - increased tracer visual travel distance and maintained dense stream flow
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2314240 bytes`
-  - `verified 2311448 bytes`
+  - `verified 2311832 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.

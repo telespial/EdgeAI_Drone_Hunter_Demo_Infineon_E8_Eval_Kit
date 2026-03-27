@@ -14,6 +14,7 @@
     - Burst pellet emission per fire event.
     - High-rate sustained fire cadence.
     - Angle-weighted gravity drop (more arc at flatter/horizontal fire angles).
+    - Smaller tracer bullet dots with longer visible travel distance.
   - Attack drone spawn logic supports 4-edge ingress:
     - Drones enter from top, bottom, left, and right edges.
     - Initial heading is aligned inward toward arena center from spawn edge.
@@ -30,7 +31,7 @@
   - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2311448 bytes`
+  - `verified 2311832 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`

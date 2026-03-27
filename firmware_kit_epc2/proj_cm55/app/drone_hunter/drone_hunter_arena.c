@@ -32,10 +32,10 @@
 #define FX_SPAWN_SEC              (0.36f)
 #define FX_CORE_HIT_SEC           (0.40f)
 #define CIWS_AMMO_UNLIMITED       (-1)
-#define CIWS_TRACER_COUNT         (88)
-#define CIWS_TRACER_LIFE_SEC      (0.20f)
-#define CIWS_FIRE_COOLDOWN_SEC    (0.012f)
-#define CIWS_BURST_PELLETS        (5)
+#define CIWS_TRACER_COUNT         (160)
+#define CIWS_TRACER_LIFE_SEC      (0.36f)
+#define CIWS_FIRE_COOLDOWN_SEC    (0.008f)
+#define CIWS_BURST_PELLETS        (9)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
 #define CIWS_SWEEP_HALF_CONE      (0.20f)
@@ -396,12 +396,13 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         int burst;
         float horizontal = fabsf(dir_x);
         float gravity = 520.0f + (horizontal * 2300.0f);
+        float half_span = ((float)CIWS_BURST_PELLETS - 1.0f) * 0.5f;
 
         for (burst = 0; burst < CIWS_BURST_PELLETS; ++burst)
         {
             int ti = s->ciws_tracer_head % CIWS_TRACER_COUNT;
-            float spread = (((float)burst - 2.0f) * 0.03f) + (((float)((s->ciws_shots + burst) % 3) - 1.0f) * 0.012f);
-            float speed = 780.0f + ((float)(burst * 28)) + ((float)(s->ciws_shots % 4) * 18.0f);
+            float spread = (((float)burst - half_span) * 0.016f) + (((float)((s->ciws_shots + burst) % 3) - 1.0f) * 0.006f);
+            float speed = 1680.0f + ((float)(burst * 22)) + ((float)(s->ciws_shots % 4) * 18.0f);
 
             s->ciws_tracer_head++;
             s->ciws_tracer_t[ti] = CIWS_TRACER_LIFE_SEC;
@@ -1117,6 +1118,7 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
         int in_use = (s->h_type[0] == (hunter_type_t)i) || (s->h_type[1] == (hunter_type_t)i);
         lv_obj_set_style_opa(s->deck_icon[i], (s->hunter_stock[i] > 0) ? LV_OPA_COVER : LV_OPA_30, 0);
         lv_obj_set_style_outline_width(s->deck_icon[i], in_use ? 2 : 0, 0);
+        lv_obj_set_style_outline_pad(s->deck_icon[i], in_use ? -5 : 1, 0);
         lv_obj_set_style_outline_color(s->deck_icon[i], lv_color_hex(0x22D3EE), 0);
         lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
         lv_obj_set_style_text_color(s->deck_count[i],
@@ -1658,7 +1660,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             float life_ratio = clampf(s->ciws_tracer_t[k] / CIWS_TRACER_LIFE_SEC, 0.0f, 1.0f);
             lv_opa_t opa = (lv_opa_t)(60 + (int32_t)(life_ratio * 195.0f));
-            int32_t dot = (life_ratio > 0.74f) ? 9 : ((life_ratio > 0.38f) ? 7 : 5);
+            int32_t dot = (life_ratio > 0.74f) ? 7 : ((life_ratio > 0.38f) ? 5 : 4);
 
             lv_obj_clear_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_size(s->ciws_tracer[k], dot, dot);

@@ -17,6 +17,10 @@ Current restored baseline (2026-03-27):
 - Orientation baseline stabilized:
   - Carousel and icon orientations reverted to prior visual baseline.
   - Play-area flight orientation now aligns nose-forward with movement heading.
+- CIWS baseline tuned:
+  - Engagement range kept at 75% screen-width from each gun origin.
+  - Tracer bullets reduced in size.
+  - Tracer flow density increased with longer visible travel.
 
 ## Build + Flash (validated path)
 
@@ -30,7 +34,7 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Recent flash confirmation:
 - `wrote 2314240 bytes`
-- `verified 2311448 bytes`
+- `verified 2311832 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for the current golden and failsafe tags.
