@@ -8,7 +8,11 @@
   - 90-degree sweep per side
   - 75% screen-range engagement cap
   - sweep-cone hit gating and sweep-directed tracer emission
+- 2026-03-27 | Upgraded CIWS projectile visuals/physics:
+  - dense high-rate burst-dot tracer stream (firehose effect)
+  - ballistic drop with stronger curvature at flatter firing angles
+- 2026-03-27 | Expanded attack ingress to all 4 screen edges (top/bottom/left/right).
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2314240 bytes`
-  - `verified 2310496 bytes`
+  - `verified 2311024 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.

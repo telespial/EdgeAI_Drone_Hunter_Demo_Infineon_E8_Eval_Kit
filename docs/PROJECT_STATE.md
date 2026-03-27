@@ -18,6 +18,8 @@
 - Verified behavior in code:
   - 90-degree CIWS sweep arcs per side.
   - 75% screen-range CIWS engagement cap.
+  - Firehose-style ballistic CIWS tracer stream with angle-weighted drop.
+  - Attack drone spawn ingress from all 4 arena edges.
   - Dual fixed CIWS placements retained with latest position tuning.
   - Arena phase HUD and continuous gameplay retained.
 
@@ -26,4 +28,4 @@
 - Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2314240 bytes`
-  - `verified 2310496 bytes`
+  - `verified 2311024 bytes`

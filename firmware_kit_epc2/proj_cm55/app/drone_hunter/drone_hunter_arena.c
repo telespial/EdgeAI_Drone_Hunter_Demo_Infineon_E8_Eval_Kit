@@ -31,7 +31,10 @@
 #define FX_SPAWN_SEC              (0.36f)
 #define FX_CORE_HIT_SEC           (0.40f)
 #define CIWS_AMMO_UNLIMITED       (-1)
-#define CIWS_TRACER_COUNT         (18)
+#define CIWS_TRACER_COUNT         (88)
+#define CIWS_TRACER_LIFE_SEC      (0.20f)
+#define CIWS_FIRE_COOLDOWN_SEC    (0.012f)
+#define CIWS_BURST_PELLETS        (5)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
 #define CIWS_SWEEP_HALF_CONE      (0.20f)
@@ -213,6 +216,7 @@ typedef struct
     float ciws_tracer_y0[CIWS_TRACER_COUNT];
     float ciws_tracer_x1[CIWS_TRACER_COUNT];
     float ciws_tracer_y1[CIWS_TRACER_COUNT];
+    float ciws_tracer_g[CIWS_TRACER_COUNT];
 
     int killer_spawn_tick;
     target_type_t ktype[KILLER_COUNT];
@@ -236,6 +240,7 @@ typedef struct
     int ciws_ammo;
     int ciws_shots;
     int ciws_kills;
+    int ciws_tracer_head;
     int hunter_loaded[HUNTER_COUNT];
     int core_hp;
     float round_time_sec;
@@ -380,24 +385,31 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     float p_ciws = (s->k_tier[k] == 0) ? 0.88f : ((s->k_tier[k] == 1) ? 0.74f : 0.58f);
     float roll = 0.5f + (0.5f * sinf((s->t * 3.7f) + (float)(k * 5 + s->wave_idx)));
 
-    *cooldown_sec = 0.03f;
+    *cooldown_sec = CIWS_FIRE_COOLDOWN_SEC;
     if (s->ciws_ammo > 0)
     {
         s->ciws_ammo--;
     }
     s->ciws_shots++;
     {
-        int ti = s->ciws_shots % CIWS_TRACER_COUNT;
-        float spread;
-        float speed;
-        spread = ((float)(ti % 7) - 3.0f) * 0.06f;
-        speed = 860.0f + ((float)(ti % 5) * 35.0f);
+        int burst;
+        float horizontal = fabsf(dir_x);
+        float gravity = 520.0f + (horizontal * 2300.0f);
 
-        s->ciws_tracer_t[ti] = 0.11f;
-        s->ciws_tracer_x0[ti] = gun_x + (dir_x * 22.0f);
-        s->ciws_tracer_y0[ti] = gun_y + (dir_y * 22.0f);
-        s->ciws_tracer_x1[ti] = (dir_x - (dir_y * spread)) * speed;
-        s->ciws_tracer_y1[ti] = (dir_y + (dir_x * spread)) * speed;
+        for (burst = 0; burst < CIWS_BURST_PELLETS; ++burst)
+        {
+            int ti = s->ciws_tracer_head % CIWS_TRACER_COUNT;
+            float spread = (((float)burst - 2.0f) * 0.03f) + (((float)((s->ciws_shots + burst) % 3) - 1.0f) * 0.012f);
+            float speed = 780.0f + ((float)(burst * 28)) + ((float)(s->ciws_shots % 4) * 18.0f);
+
+            s->ciws_tracer_head++;
+            s->ciws_tracer_t[ti] = CIWS_TRACER_LIFE_SEC;
+            s->ciws_tracer_x0[ti] = gun_x + (dir_x * 24.0f);
+            s->ciws_tracer_y0[ti] = gun_y + (dir_y * 24.0f);
+            s->ciws_tracer_x1[ti] = (dir_x - (dir_y * spread)) * speed;
+            s->ciws_tracer_y1[ti] = (dir_y + (dir_x * spread)) * speed;
+            s->ciws_tracer_g[ti] = gravity;
+        }
     }
     update_hunter_deck_ui(s);
 
@@ -406,7 +418,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         s->attack_destroyed++;
         s->defense_kills++;
         s->ciws_kills++;
-        respawn_killer(s, k, (k + s->killer_spawn_tick + 1) % 2);
+        respawn_killer(s, k, (k + s->killer_spawn_tick + 1) % 4);
         return 1;
     }
     return 0;
@@ -1121,9 +1133,18 @@ static void set_killer_visible(drone_hunter_scene_t *s, int k)
 
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
 {
-    float top_y = (float)s->arena_y + 34.0f + (10.0f * (float)k);
-    float left_x = (float)s->arena_x + 24.0f;
-    float right_x = (float)(s->arena_x + s->arena_w - 24);
+    float min_x = (float)s->arena_x + 20.0f;
+    float max_x = (float)(s->arena_x + s->arena_w - 20);
+    float min_y = (float)s->arena_y + 20.0f;
+    float max_y = (float)(s->arena_y + s->arena_h - 20);
+    float span_x = (max_x - min_x > 1.0f) ? (max_x - min_x) : 1.0f;
+    float span_y = (max_y - min_y > 1.0f) ? (max_y - min_y) : 1.0f;
+    float pos_x = min_x;
+    float pos_y = min_y;
+    float core_x = (float)(s->arena_x + (s->arena_w / 2));
+    float core_y = (float)(s->arena_y + (s->arena_h / 2));
+    float edge_phase = (float)((s->killer_spawn_tick * 47) + (k * 29));
+    int edge = side & 0x3;
     int phase = arena_phase(s);
 
     if (s->attack_remaining_to_spawn <= 0)
@@ -1177,11 +1198,31 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
                                   0);
     }
 
-    s->kx[k] = (side == 0) ? left_x : right_x;
-    s->ky[k] = top_y;
+    switch (edge)
+    {
+        case 0: /* left edge */
+            pos_x = (float)s->arena_x - 18.0f;
+            pos_y = min_y + fmodf(edge_phase * 1.13f, span_y);
+            break;
+        case 1: /* right edge */
+            pos_x = (float)(s->arena_x + s->arena_w) + 18.0f;
+            pos_y = min_y + fmodf(edge_phase * 0.97f, span_y);
+            break;
+        case 2: /* top edge */
+            pos_x = min_x + fmodf(edge_phase * 1.07f, span_x);
+            pos_y = (float)s->arena_y - 18.0f;
+            break;
+        default: /* bottom edge */
+            pos_x = min_x + fmodf(edge_phase * 0.91f, span_x);
+            pos_y = (float)(s->arena_y + s->arena_h) + 18.0f;
+            break;
+    }
+
+    s->kx[k] = pos_x;
+    s->ky[k] = pos_y;
     s->kvx[k] = 0.0f;
     s->kvy[k] = 0.0f;
-    s->k_heading[k] = (side == 0) ? 0.0f : PI_F;
+    s->k_heading[k] = atan2f(core_y - s->ky[k], core_x - s->kx[k]);
 
     s->fx_spawn_t[k] = FX_SPAWN_SEC;
     s->fx_spawn_x[k] = s->kx[k];
@@ -1260,9 +1301,11 @@ static void reset_round(drone_hunter_scene_t *s)
     s->ciws_ammo = CIWS_AMMO_UNLIMITED;
     s->ciws_shots = 0;
     s->ciws_kills = 0;
+    s->ciws_tracer_head = 0;
     for (i = 0; i < CIWS_TRACER_COUNT; ++i)
     {
         s->ciws_tracer_t[i] = 0.0f;
+        s->ciws_tracer_g[i] = 0.0f;
     }
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
@@ -1420,7 +1463,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->core_hp--;
             s->attack_leaked++;
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
-            respawn_killer(s, k, (k + s->killer_spawn_tick) % 2);
+            respawn_killer(s, k, (k + s->killer_spawn_tick) % 4);
         }
     }
 }
@@ -1551,7 +1594,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             s->fx_intercept_t[target] = FX_INTERCEPT_SEC;
             s->fx_intercept_x[target] = s->kx[target];
             s->fx_intercept_y[target] = s->ky[target];
-            respawn_killer(s, target, (target + h + s->killer_spawn_tick) % 2);
+            respawn_killer(s, target, (target + h + s->killer_spawn_tick) % 4);
         }
         else
         {
@@ -1583,11 +1626,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     {
         if (s->ciws_tracer_t[k] > 0.0f)
         {
-            lv_opa_t opa = (lv_opa_t)(80 + (int32_t)((s->ciws_tracer_t[k] / 0.11f) * 170.0f));
+            float life_ratio = clampf(s->ciws_tracer_t[k] / CIWS_TRACER_LIFE_SEC, 0.0f, 1.0f);
+            lv_opa_t opa = (lv_opa_t)(60 + (int32_t)(life_ratio * 195.0f));
+            int32_t dot = (life_ratio > 0.74f) ? 9 : ((life_ratio > 0.38f) ? 7 : 5);
 
             lv_obj_clear_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_size(s->ciws_tracer[k], 6, 6);
-            lv_obj_set_style_bg_color(s->ciws_tracer[k], lv_color_hex(0xFDE68A), 0);
+            lv_obj_set_size(s->ciws_tracer[k], dot, dot);
+            lv_obj_set_style_bg_color(s->ciws_tracer[k], lv_color_hex(0xFDBA74), 0);
             lv_obj_set_style_bg_opa(s->ciws_tracer[k], opa, 0);
             set_obj_center(s->ciws_tracer[k], s->ciws_tracer_x0[k], s->ciws_tracer_y0[k]);
         }
@@ -1747,8 +1792,9 @@ static void anim_cb(lv_timer_t *timer)
             {
                 s->ciws_tracer_x0[k] += s->ciws_tracer_x1[k] * DT_SEC;
                 s->ciws_tracer_y0[k] += s->ciws_tracer_y1[k] * DT_SEC;
+                s->ciws_tracer_y1[k] += s->ciws_tracer_g[k] * DT_SEC;
             }
-            s->ciws_tracer_t[k] = clampf(s->ciws_tracer_t[k] - DT_SEC, 0.0f, 0.11f);
+            s->ciws_tracer_t[k] = clampf(s->ciws_tracer_t[k] - DT_SEC, 0.0f, CIWS_TRACER_LIFE_SEC);
         }
 
         if ((s->attack_remaining_to_spawn <= 0) && !s->killer_active[0] && !s->killer_active[1])

@@ -10,11 +10,17 @@
     - Left CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
     - Right CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
   - CIWS effective engagement range capped to 75% of arena/screen width from each gun origin.
-  - CIWS tracers remain dotted bullet-style and enlarged for visibility.
+  - CIWS tracer model upgraded to dense firehose-style ballistic streams:
+    - Burst pellet emission per fire event.
+    - Faster cadence for high-rate sustained fire.
+    - Angle-weighted gravity drop (more arc at flatter/horizontal fire angles).
+  - Attack drone spawn logic upgraded to 4-edge ingress:
+    - Drones now enter from top, bottom, left, and right edges.
+    - Initial heading is aligned inward toward arena center from spawn edge.
   - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2310496 bytes`
+  - `verified 2311024 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
