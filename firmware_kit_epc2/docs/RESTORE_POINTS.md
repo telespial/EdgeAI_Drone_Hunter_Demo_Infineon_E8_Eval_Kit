@@ -10,17 +10,21 @@
     - Left CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
     - Right CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
   - CIWS effective engagement range capped to 75% of arena/screen width from each gun origin.
-  - CIWS tracer model upgraded to dense firehose-style ballistic streams:
+  - CIWS tracer model uses dense firehose-style ballistic streams:
     - Burst pellet emission per fire event.
-    - Faster cadence for high-rate sustained fire.
+    - High-rate sustained fire cadence.
     - Angle-weighted gravity drop (more arc at flatter/horizontal fire angles).
-  - Attack drone spawn logic upgraded to 4-edge ingress:
-    - Drones now enter from top, bottom, left, and right edges.
+  - Attack drone spawn logic supports 4-edge ingress:
+    - Drones enter from top, bottom, left, and right edges.
     - Initial heading is aligned inward toward arena center from spawn edge.
+  - Hunter visual pipeline normalized:
+    - Hunter sprite assets cleaned and normalized to a consistent icon/play-piece format.
+    - Extra fallback geometry overlays hidden so only rendered sprites are visible.
+    - Bottom deck icon labels/counts are centered under each icon slot (including CIWS).
   - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2311024 bytes`
+  - `verified 2311176 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`

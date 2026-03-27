@@ -12,7 +12,9 @@
   - dense high-rate burst-dot tracer stream (firehose effect)
   - ballistic drop with stronger curvature at flatter firing angles
 - 2026-03-27 | Expanded attack ingress to all 4 screen edges (top/bottom/left/right).
+- 2026-03-27 | Normalized hunter sprite pipeline and cleaned icon/play-piece artifacts.
+- 2026-03-27 | Center-aligned bottom deck labels/counts under each icon slot.
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2314240 bytes`
-  - `verified 2311024 bytes`
+  - `verified 2311176 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.

@@ -12,6 +12,8 @@
 ## Current Status
 - Core implementation file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
+- Hunter sprite descriptor file:
+  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_images.c`
 - CIWS image descriptors:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.c`
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.h`
@@ -19,8 +21,10 @@
   - 90-degree CIWS sweep arcs per side.
   - 75% screen-range CIWS engagement cap.
   - Firehose-style ballistic CIWS tracer stream with angle-weighted drop.
-  - Attack drone spawn ingress from all 4 arena edges.
-  - Dual fixed CIWS placements retained with latest position tuning.
+  - Attack drone ingress from all 4 arena edges.
+  - Hunter sprite cleanup and normalization applied.
+  - Hunter fallback geometry overlays hidden to prevent visual artifacts.
+  - Bottom icon labels/counts centered by slot.
   - Arena phase HUD and continuous gameplay retained.
 
 ## Build/Flash Confirmation (2026-03-27)
@@ -28,4 +32,4 @@
 - Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2314240 bytes`
-  - `verified 2311024 bytes`
+  - `verified 2311176 bytes`

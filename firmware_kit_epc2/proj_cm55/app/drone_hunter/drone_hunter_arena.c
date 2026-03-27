@@ -2021,10 +2021,11 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     {
         int32_t slot_w = (sw - 20) / (HUNTER_TYPE_COUNT + 1);
         int32_t x = 4 + (i * slot_w);
+        int32_t cx = x + (slot_w / 2);
         s->deck_icon[i] = lv_image_create(s->deck_bar);
         lv_image_set_src(s->deck_icon[i], hunter_image_src((hunter_type_t)i));
-        lv_obj_set_pos(s->deck_icon[i], x + 5, 2);
-        lv_obj_set_size(s->deck_icon[i], slot_w - 10, 62);
+        lv_obj_set_style_bg_opa(s->deck_icon[i], LV_OPA_0, 0);
+        set_obj_center(s->deck_icon[i], (float)cx, 34.0f);
         lv_obj_set_style_transform_zoom(s->deck_icon[i], 384, 0);
         lv_obj_set_style_transform_pivot_x(s->deck_icon[i], lv_obj_get_width(s->deck_icon[i]) / 2, 0);
         lv_obj_set_style_transform_pivot_y(s->deck_icon[i], lv_obj_get_height(s->deck_icon[i]) / 2, 0);
@@ -2033,37 +2034,45 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         s->deck_name[i] = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_name[i], &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(s->deck_name[i], lv_color_hex(0xE5E7EB), 0);
-        lv_obj_set_width(s->deck_name[i], slot_w - 6);
-        lv_obj_set_pos(s->deck_name[i], x + 3, 72);
+        lv_obj_set_style_text_align(s->deck_name[i], LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(s->deck_name[i], slot_w);
+        lv_obj_set_pos(s->deck_name[i], x, 72);
         lv_label_set_text(s->deck_name[i], hunter_type_name((hunter_type_t)i));
         lv_label_set_long_mode(s->deck_name[i], LV_LABEL_LONG_DOT);
 
         s->deck_count[i] = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_count[i], &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(s->deck_count[i], lv_color_hex(0xFDE68A), 0);
-        lv_obj_set_pos(s->deck_count[i], x + 3, 95);
+        lv_obj_set_style_text_align(s->deck_count[i], LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(s->deck_count[i], slot_w);
+        lv_obj_set_pos(s->deck_count[i], x, 95);
         lv_label_set_text(s->deck_count[i], "0");
     }
     {
         int32_t slot_w = (sw - 20) / (HUNTER_TYPE_COUNT + 1);
         int32_t x = 4 + (HUNTER_TYPE_COUNT * slot_w);
+        int32_t cx = x + (slot_w / 2);
         s->deck_ciws_icon = lv_image_create(s->deck_bar);
-        lv_obj_set_pos(s->deck_ciws_icon, x + 5, 2);
+        lv_obj_set_style_bg_opa(s->deck_ciws_icon, LV_OPA_0, 0);
         lv_image_set_src(s->deck_ciws_icon, &img_hunter_ciws);
+        set_obj_center(s->deck_ciws_icon, (float)cx, 34.0f);
         lv_obj_set_style_transform_zoom(s->deck_ciws_icon, 165, 0);
 
         s->deck_ciws_name = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_ciws_name, &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(s->deck_ciws_name, lv_color_hex(0xE5E7EB), 0);
-        lv_obj_set_width(s->deck_ciws_name, slot_w - 6);
-        lv_obj_set_pos(s->deck_ciws_name, x + 3, 72);
+        lv_obj_set_style_text_align(s->deck_ciws_name, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(s->deck_ciws_name, slot_w);
+        lv_obj_set_pos(s->deck_ciws_name, x, 72);
         lv_label_set_text(s->deck_ciws_name, "Phalanx");
         lv_label_set_long_mode(s->deck_ciws_name, LV_LABEL_LONG_DOT);
 
         s->deck_ciws_count = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_ciws_count, &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(s->deck_ciws_count, lv_color_hex(0x93C5FD), 0);
-        lv_obj_set_pos(s->deck_ciws_count, x + 3, 95);
+        lv_obj_set_style_text_align(s->deck_ciws_count, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(s->deck_ciws_count, slot_w);
+        lv_obj_set_pos(s->deck_ciws_count, x, 95);
         lv_label_set_text(s->deck_ciws_count, "x0");
     }
 
@@ -2148,9 +2157,6 @@ void drone_hunter_arena_start(lv_obj_t *screen)
 
         s->hunters[i] = lv_image_create(s->arena);
         lv_image_set_src(s->hunters[i], &img_hunter_sting_ii);
-        lv_obj_remove_style_all(s->hunters[i]);
-        lv_obj_set_style_bg_opa(s->hunters[i], LV_OPA_0, 0);
-        lv_obj_set_style_border_width(s->hunters[i], 0, 0);
 
         s->hunter_body[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_body[i]);
@@ -2159,6 +2165,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_radius(s->hunter_body[i], 3, 0);
         lv_obj_set_style_bg_color(s->hunter_body[i], team_main, 0);
         lv_obj_set_style_bg_opa(s->hunter_body[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_body[i], LV_OBJ_FLAG_HIDDEN);
 
         s->hunter_wing[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_wing[i]);
@@ -2167,6 +2174,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_radius(s->hunter_wing[i], 2, 0);
         lv_obj_set_style_bg_color(s->hunter_wing[i], team_light, 0);
         lv_obj_set_style_bg_opa(s->hunter_wing[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_wing[i], LV_OBJ_FLAG_HIDDEN);
 
         s->hunter_pod_upper[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_pod_upper[i]);
@@ -2175,6 +2183,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_radius(s->hunter_pod_upper[i], LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(s->hunter_pod_upper[i], team_light, 0);
         lv_obj_set_style_bg_opa(s->hunter_pod_upper[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_pod_upper[i], LV_OBJ_FLAG_HIDDEN);
 
         s->hunter_pod_lower[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_pod_lower[i]);
@@ -2183,6 +2192,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_radius(s->hunter_pod_lower[i], LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(s->hunter_pod_lower[i], team_light, 0);
         lv_obj_set_style_bg_opa(s->hunter_pod_lower[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_pod_lower[i], LV_OBJ_FLAG_HIDDEN);
 
         s->hunter_prop_upper[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_prop_upper[i]);
@@ -2190,6 +2200,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_pos(s->hunter_prop_upper[i], 4, 2);
         lv_obj_set_style_bg_color(s->hunter_prop_upper[i], lv_color_hex(0x111827), 0);
         lv_obj_set_style_bg_opa(s->hunter_prop_upper[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_prop_upper[i], LV_OBJ_FLAG_HIDDEN);
 
         s->hunter_prop_lower[i] = lv_obj_create(s->hunters[i]);
         lv_obj_remove_style_all(s->hunter_prop_lower[i]);
@@ -2197,6 +2208,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_pos(s->hunter_prop_lower[i], 4, 10);
         lv_obj_set_style_bg_color(s->hunter_prop_lower[i], lv_color_hex(0x111827), 0);
         lv_obj_set_style_bg_opa(s->hunter_prop_lower[i], LV_OPA_COVER, 0);
+        lv_obj_add_flag(s->hunter_prop_lower[i], LV_OBJ_FLAG_HIDDEN);
     }
 
     s->overlay = lv_obj_create(s->arena);
