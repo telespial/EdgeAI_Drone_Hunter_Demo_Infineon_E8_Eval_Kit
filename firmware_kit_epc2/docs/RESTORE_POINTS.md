@@ -2,26 +2,22 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260326`
-- Date: `2026-03-26`
-- Build baseline:
-  - recovered `drone_hunter_arena.c.pre_recovery` state with:
-  - Bagnet transparent render path + featured-slot boost
-  - Arena phase progression HUD (`PHASE 1: PATROL`, `PHASE 2: INTERCEPT`, `PHASE 3: SWARM`)
-  - Continuous gameplay (no 10s auto-end)
-  - plus gameplay Nightscape integration and visibility fix:
-    - Nightscape active in arena only (not splash)
-    - Arena field background set transparent to prevent black overlay over Nightscape
+- Dated tag: `golden-e8-drone-hunter-20260327`
+- Date: `2026-03-27`
+- Baseline summary:
+  - Dual fixed CIWS emplacements active in arena (`left` + `right`).
+  - CIWS base placement locked to `arena_h - 61` (raised placement baseline).
+  - Tracer rendering uses tiny bullet-style dots (not solid beam line).
+  - Existing arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2240512 bytes`
-  - `verified 2236224 bytes`
+  - `wrote 2277376 bytes`
+  - `verified 2273224 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260326`
-- Date: `2026-03-26`
+- Dated tag: `failsafe-e8-drone-hunter-20260327`
+- Date: `2026-03-27`
 - Policy for this milestone: failsafe intentionally aligned to current golden baseline.
-  - This restore point is the explicit rollback baseline requested after CIWS render experimentation.
 
 ## Restore commands
 ```bash
