@@ -14,7 +14,11 @@
 - 2026-03-27 | Expanded attack ingress to all 4 screen edges (top/bottom/left/right).
 - 2026-03-27 | Normalized hunter sprite pipeline and cleaned icon/play-piece artifacts.
 - 2026-03-27 | Center-aligned bottom deck labels/counts under each icon slot.
+- 2026-03-27 | Corrected Sting-II icon/source consistency:
+  - matched visual source intent between carousel and icon pipeline
+  - fixed Sting-II icon disappearance/oversize regressions
+  - finalized Sting-II icon at normalized deck scale
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2314240 bytes`
-  - `verified 2311176 bytes`
+  - `verified 2311384 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.

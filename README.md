@@ -2,7 +2,7 @@
 
 Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch LCD.
 
-Current restored baseline (2026-03-26):
+Current restored baseline (2026-03-27):
 - Splash/title and hunter lineup flow in `drone_hunter_arena.c`
 - Bagnet transparent source path + featured-slot scaling
 - `START ARENA` gameplay entry
@@ -11,6 +11,9 @@ Current restored baseline (2026-03-26):
   - `PHASE 2: INTERCEPT`
   - `PHASE 3: SWARM`
 - Continuous gameplay enabled
+- Sting-II visual baseline stabilized:
+  - Opening carousel Sting-II reduced to match lineup scale.
+  - Bottom Sting-II icon restored and normalized to same-size icon class.
 
 ## Build + Flash (validated path)
 
@@ -23,8 +26,8 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 Recent flash confirmation:
-- `wrote 1466368 bytes`
-- `verified 1465272 bytes`
+- `wrote 2314240 bytes`
+- `verified 2311384 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for the current golden and failsafe tags.

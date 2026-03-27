@@ -21,10 +21,13 @@
     - Hunter sprite assets cleaned and normalized to a consistent icon/play-piece format.
     - Extra fallback geometry overlays hidden so only rendered sprites are visible.
     - Bottom deck icon labels/counts are centered under each icon slot (including CIWS).
+  - Sting-II visual parity fix:
+    - Opening carousel Sting-II scaled to lineup-consistent size.
+    - Bottom Sting-II icon restored to normalized icon path and standard deck scale.
   - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2311176 bytes`
+  - `verified 2311384 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
