@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #define PI_F                      (3.14159265359f)
+#define SPRITE_NOSE_FWD_TENTH     (900)
 #define TICK_MS                   (33)
 #define SPLASH_TITLE_SEC          (5.0f)
 #define DT_SEC                    (0.033f)
@@ -334,7 +335,7 @@ static void create_ciws_model(lv_obj_t *parent, lv_obj_t **turret_out)
 
 static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
 {
-    int16_t angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F));
+    int16_t angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
     int32_t w = lv_obj_get_width(s->killers[k]);
     int32_t h = lv_obj_get_height(s->killers[k]);
 
@@ -1094,7 +1095,7 @@ static void style_target(drone_hunter_scene_t *s, int k)
     }
     else
     {
-        lv_obj_set_style_transform_angle(s->killers[k], 0, 0);
+        lv_obj_set_style_transform_angle(s->killers[k], SPRITE_NOSE_FWD_TENTH, 0);
     }
 }
 
@@ -1683,7 +1684,7 @@ static void update_positions(drone_hunter_scene_t *s)
 
     for (h = 0; h < HUNTER_COUNT; ++h)
     {
-        int16_t angle_tenth = (int16_t)(s->h_heading[h] * (1800.0f / PI_F));
+        int16_t angle_tenth = (int16_t)(s->h_heading[h] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
 
         int32_t hw = lv_obj_get_width(s->hunters[h]);
         int32_t hh = lv_obj_get_height(s->hunters[h]);
@@ -1705,6 +1706,11 @@ static void update_positions(drone_hunter_scene_t *s)
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
             update_fixed_wing_orientation(s, k);
+        }
+        else
+        {
+            int16_t k_angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
+            lv_obj_set_style_transform_angle(s->killers[k], k_angle_tenth, 0);
         }
         lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
         set_obj_center(s->killers[k], s->kx[k], s->ky[k]);

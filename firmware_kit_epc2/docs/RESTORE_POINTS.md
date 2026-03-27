@@ -24,10 +24,13 @@
   - Sting-II visual parity fix:
     - Opening carousel Sting-II scaled to lineup-consistent size.
     - Bottom Sting-II icon restored to normalized icon path and standard deck scale.
+  - Orientation scope fix:
+    - Icon + carousel orientations reverted to prior baseline behavior.
+    - Play-area drone flight orientation enforces nose-forward heading.
   - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2311384 bytes`
+  - `verified 2311448 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`

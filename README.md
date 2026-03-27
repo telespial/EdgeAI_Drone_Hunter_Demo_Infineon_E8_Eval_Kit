@@ -14,6 +14,9 @@ Current restored baseline (2026-03-27):
 - Sting-II visual baseline stabilized:
   - Opening carousel Sting-II reduced to match lineup scale.
   - Bottom Sting-II icon restored and normalized to same-size icon class.
+- Orientation baseline stabilized:
+  - Carousel and icon orientations reverted to prior visual baseline.
+  - Play-area flight orientation now aligns nose-forward with movement heading.
 
 ## Build + Flash (validated path)
 
@@ -27,7 +30,7 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Recent flash confirmation:
 - `wrote 2314240 bytes`
-- `verified 2311384 bytes`
+- `verified 2311448 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for the current golden and failsafe tags.

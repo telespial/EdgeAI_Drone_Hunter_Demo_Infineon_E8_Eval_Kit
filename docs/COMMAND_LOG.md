@@ -18,7 +18,10 @@
   - matched visual source intent between carousel and icon pipeline
   - fixed Sting-II icon disappearance/oversize regressions
   - finalized Sting-II icon at normalized deck scale
+- 2026-03-27 | Applied orientation scope fix:
+  - reverted icon + carousel orientation changes
+  - kept play-area drone flight orientation nose-forward only
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2314240 bytes`
-  - `verified 2311384 bytes`
+  - `verified 2311448 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.
