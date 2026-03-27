@@ -2,24 +2,24 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-rules`
+- Dated tag: `golden-e8-drone-hunter-20260327-fire-ciws-envelope`
 - Date: `2026-03-27`
 - Baseline summary:
-  - Rules-driven Hunter vs Attacker gameplay baseline captured in `rules.md`.
-  - Attack goal distribution fixed to city play area.
-  - Leak impact + persistent fire accumulation active.
-  - Fire pressure scales up as defender falls behind.
-  - CIWS now modeled as last-ditch with short effective range and hard cutoff.
-  - CIWS misuse/overuse pressure enabled (ammo waste + cooldown/heat pressure).
-  - Color-distinct rendered attack drone classes integrated.
-  - Continuous phase-driven gameplay and existing deck/HUD systems retained.
+  - Persistent leak-fire system active with larger flame-like fire patches.
+  - Fires persist until round/game reset.
+  - Fire pressure scales with attacker lead.
+  - CIWS now cannot reach top/far city grids:
+    - short effective range + hard cutoff,
+    - explicit top-grid/vertical envelope gating,
+    - tracers shortened to match envelope.
+  - Hunter vs Attacker score model, distributed city targets, and continuous phase flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2367488 bytes`
   - `verified 2362856 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-rules`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-fire-ciws-envelope`
 - Date: `2026-03-27`
 - Policy for this milestone: failsafe is aligned to the current golden baseline.
 

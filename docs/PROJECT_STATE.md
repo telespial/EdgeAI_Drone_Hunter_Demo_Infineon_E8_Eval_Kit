@@ -18,13 +18,14 @@
 - `rules.md`
 
 ## Current behavior in code
-- Two-player scoring (`Hunter` vs `Attacker`) reflected in HUD.
-- Attack goal points distributed over city play region (not collapsed at bottom edge).
-- Successful intercepts remove both hunter + attacker entities.
-- Missed/leaked attacks impact city and score for attacker.
-- Persistent city fire objects accumulate at leak impact sites.
-- Additional fires appear as attacker lead increases.
-- CIWS behavior includes finite ammo, sweep arcs, short-range doctrine, and misuse/overheat pressure.
+- Hunter vs Attacker point model in HUD.
+- Attack goals distributed through city play region.
+- Leak impacts create persistent fire patches (flame clusters) that remain until round reset.
+- Additional fire pressure appears as attacker lead increases.
+- CIWS constrained to short-range/near-front envelope:
+  - effective/hard cutoff range model,
+  - top-grid and vertical reach limits,
+  - tracer travel tuned to prevent far-grid visual reach mismatch.
 - Existing phase HUD and continuous-play loop retained.
 
 ## Build/Flash confirmation (2026-03-27)

@@ -1,7 +1,7 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Golden + failsafe restore points updated to rules-driven Hunter vs Attacker baseline with distributed city targets, persistent leak fires, and last-ditch CIWS behavior.
+- State: Golden + failsafe restore points updated to persistent-fire + near-front CIWS envelope baseline.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
@@ -12,23 +12,16 @@
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
-- Arena now uses explicit score model:
-  - `Hunter` points increase on successful intercepts.
-  - `Attacker` points increase on leaked impacts.
-- Attack target destinations are spread across playable city area.
-- Leak impacts now:
-  - trigger visible city-target explosions,
-  - decrement `CORE`,
-  - leave persistent city fires.
-- Persistent fires scale upward as defender falls behind.
-- CIWS baseline:
-  - dual left/right guns,
-  - per-gun finite ammo,
-  - sweep-cone targeting,
-  - effective/hard-cutoff engagement behavior,
-  - overuse/heat penalty pressure.
-- Attack classes remain image-based and color-distinct (yellow/red/orange).
-- Continuous phase-driven gameplay remains enabled.
+- Attack targets are distributed across playable city area.
+- Leak impacts now create persistent city fire patches.
+- Fire clusters are larger and flame-like (flicker + glow), and persist for the round.
+- Fire pressure scales with attacker advantage.
+- CIWS behavior:
+  - dual guns with per-gun finite ammo,
+  - short-range doctrine (effective/hard-cutoff),
+  - restricted vertical/top-grid engagement envelope,
+  - reduced tracer lifetime/speed so visuals match limited reach.
+- Score model remains explicit: `Hunter` vs `Attacker`.
 
 ## Environment notes
 - EdgeProtect combine-sign step remains unavailable in this environment.

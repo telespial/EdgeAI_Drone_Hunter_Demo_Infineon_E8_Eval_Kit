@@ -37,12 +37,14 @@
 #define PHALANX_HARD_CUTOFF_KM    (3.5f)
 #define CIWS_AMMO_PER_GUN         (950)
 #define CIWS_TRACER_COUNT         (160)
-#define CIWS_TRACER_LIFE_SEC      (0.36f)
+#define CIWS_TRACER_LIFE_SEC      (0.16f)
 #define CIWS_FIRE_COOLDOWN_SEC    (0.008f)
 #define CIWS_BURST_PELLETS        (9)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
 #define CIWS_SWEEP_HALF_CONE      (0.20f)
+#define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
+#define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
 #define HUD_H                     (72)
 #define DECK_H                    (100)
@@ -528,7 +530,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         {
             int ti = s->ciws_tracer_head % CIWS_TRACER_COUNT;
             float spread = (((float)burst - half_span) * 0.016f) + (((float)((s->ciws_shots + burst) % 3) - 1.0f) * 0.006f);
-            float speed = 1680.0f + ((float)(burst * 22)) + ((float)(s->ciws_shots % 4) * 18.0f);
+            float speed = 760.0f + ((float)(burst * 18)) + ((float)(s->ciws_shots % 4) * 16.0f);
 
             s->ciws_tracer_head++;
             s->ciws_tracer_t[ti] = CIWS_TRACER_LIFE_SEC;
@@ -1583,6 +1585,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     float ciws_left_y = (float)(s->arena_y + s->arena_h - 49);
     float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
     float ciws_range = PHALANX_HARD_CUTOFF_KM / km_per_px;
+    float ciws_block_top_y = (float)s->arena_y + ((float)s->arena_h * (1.0f - CIWS_TOP_GRID_BLOCK_FRAC));
+    float ciws_max_vertical = (float)s->arena_h * CIWS_MAX_VERTICAL_FRAC;
     float sweep_step = CIWS_SWEEP_SPEED_RAD * DT_SEC;
 
     s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec - DT_SEC, 0.0f, 2.0f);
@@ -1669,6 +1673,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 
         if ((s->ciws_ammo_right > 0) &&
             (s->ciws_cooldown_sec <= 0.0f) &&
+            (s->ky[k] >= ciws_block_top_y) &&
+            ((ciws_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, s->kx[k], s->ky[k]))
         {
             if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, &s->ciws_cooldown_sec, &s->ciws_ammo_right))
@@ -1680,6 +1686,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         if ((s->ciws_ammo_left > 0) &&
             (s->ciws_cooldown_left_sec <= 0.0f) &&
+            (s->ky[k] >= ciws_block_top_y) &&
+            ((ciws_left_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, s->kx[k], s->ky[k]))
         {
             if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, &s->ciws_cooldown_left_sec, &s->ciws_ammo_left))
@@ -1700,6 +1708,9 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->fx_intercept_x[k] = s->k_goal_x[k];
             s->fx_intercept_y[k] = s->k_goal_y[k];
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k]);
+            add_city_fire(s, s->k_goal_x[k] - 8.0f, s->k_goal_y[k] + 6.0f);
+            add_city_fire(s, s->k_goal_x[k] + 9.0f, s->k_goal_y[k] + 5.0f);
+            add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k] - 7.0f);
             respawn_killer(s, k, -1);
         }
     }
@@ -1946,18 +1957,25 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             if (k < s->city_fire_count)
             {
-                float flicker = 0.5f + (0.5f * sinf((s->t * 8.5f) + (float)(k * 17)));
-                int32_t size = 6 + (int32_t)(flicker * 10.0f);
-                lv_opa_t opa = (lv_opa_t)(90 + (int32_t)(flicker * 130.0f));
+                float flicker = 0.5f + (0.5f * sinf((s->t * 9.4f) + (float)(k * 17)));
+                float lick = 0.5f + (0.5f * cosf((s->t * 7.1f) + (float)(k * 11)));
+                int32_t size = 14 + (int32_t)(flicker * 16.0f);
+                lv_opa_t opa = (lv_opa_t)(120 + (int32_t)(flicker * 120.0f));
+                lv_color_t flame_color = (flicker > 0.70f)
+                    ? lv_color_hex(0xFDE047)
+                    : ((flicker > 0.38f) ? lv_color_hex(0xFB923C) : lv_color_hex(0xEF4444));
+                int32_t dx = (int32_t)((lick - 0.5f) * 4.0f);
+                int32_t dy = (int32_t)(((1.0f - flicker) * 6.0f) - 3.0f);
                 lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
                 lv_obj_set_size(s->city_fire[k], size, size);
                 lv_obj_set_style_radius(s->city_fire[k], LV_RADIUS_CIRCLE, 0);
-                lv_obj_set_style_bg_color(s->city_fire[k], lv_color_hex(0xFB923C), 0);
+                lv_obj_set_style_bg_color(s->city_fire[k], flame_color, 0);
                 lv_obj_set_style_bg_opa(s->city_fire[k], opa, 0);
-                lv_obj_set_style_border_width(s->city_fire[k], 1, 0);
-                lv_obj_set_style_border_color(s->city_fire[k], lv_color_hex(0xFDE047), 0);
-                lv_obj_set_style_border_opa(s->city_fire[k], (lv_opa_t)(opa - 20), 0);
-                set_obj_center(s->city_fire[k], s->city_fire_x[k], s->city_fire_y[k]);
+                lv_obj_set_style_border_width(s->city_fire[k], 0, 0);
+                lv_obj_set_style_shadow_width(s->city_fire[k], 16 + (int32_t)(flicker * 10.0f), 0);
+                lv_obj_set_style_shadow_color(s->city_fire[k], lv_color_hex(0xF97316), 0);
+                lv_obj_set_style_shadow_opa(s->city_fire[k], (lv_opa_t)(90 + (int32_t)(flicker * 120.0f)), 0);
+                set_obj_center(s->city_fire[k], s->city_fire_x[k] + (float)dx, s->city_fire_y[k] + (float)dy);
             }
             else
             {
