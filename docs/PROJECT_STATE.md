@@ -9,27 +9,26 @@
 - Programmed Image: `firmware_kit_epc2/proj_cm55/build/last_config/proj_cm55.hex`
 - Status File: `docs/STATUS.md`
 
-## Current Status
-- Core implementation file:
-  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
-- Hunter sprite descriptor file:
-  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_images.c`
-- CIWS image descriptors:
-  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.c`
-  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.h`
-- Verified behavior in code:
-  - 90-degree CIWS sweep arcs per side.
-  - 75% screen-range CIWS engagement cap.
-  - Firehose-style ballistic CIWS tracer stream with angle-weighted drop.
-  - Attack drone ingress from all 4 arena edges.
-  - Hunter sprite cleanup and normalization applied.
-  - Hunter fallback geometry overlays hidden to prevent visual artifacts.
-  - Bottom icon labels/counts centered by slot.
-  - Arena phase HUD and continuous gameplay retained.
+## Core implementation files
+- `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
+- `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_attack_images.h`
+- `firmware_kit_epc2/proj_cm55/app/drone_hunter/attack_shahed_yellow.c`
+- `firmware_kit_epc2/proj_cm55/app/drone_hunter/attack_vb140_like_red.c`
+- `firmware_kit_epc2/proj_cm55/app/drone_hunter/attack_dji_x_orange.c`
+- `rules.md`
 
-## Build/Flash Confirmation (2026-03-27)
-- Rebuild complete for `proj_cm55` (known EdgeProtect sign-combine warning in environment).
-- Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
+## Current behavior in code
+- Two-player scoring (`Hunter` vs `Attacker`) reflected in HUD.
+- Attack goal points distributed over city play region (not collapsed at bottom edge).
+- Successful intercepts remove both hunter + attacker entities.
+- Missed/leaked attacks impact city and score for attacker.
+- Persistent city fire objects accumulate at leak impact sites.
+- Additional fires appear as attacker lead increases.
+- CIWS behavior includes finite ammo, sweep arcs, short-range doctrine, and misuse/overheat pressure.
+- Existing phase HUD and continuous-play loop retained.
+
+## Build/Flash confirmation (2026-03-27)
+- Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2314240 bytes`
-  - `verified 2311176 bytes`
+  - `wrote 2367488 bytes`
+  - `verified 2362856 bytes`

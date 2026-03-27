@@ -2,42 +2,26 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327`
+- Dated tag: `golden-e8-drone-hunter-20260327-rules`
 - Date: `2026-03-27`
 - Baseline summary:
-  - Dual CIWS emplacements active with transparent CIWS sprites.
-  - CIWS sweep-arc behavior implemented:
-    - Left CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
-    - Right CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
-  - CIWS effective engagement range capped to 75% of arena/screen width from each gun origin.
-  - CIWS tracer model uses dense firehose-style ballistic streams:
-    - Burst pellet emission per fire event.
-    - High-rate sustained fire cadence.
-    - Angle-weighted gravity drop (more arc at flatter/horizontal fire angles).
-    - Smaller tracer bullet dots with longer visible travel distance.
-  - Attack drone spawn logic supports 4-edge ingress:
-    - Drones enter from top, bottom, left, and right edges.
-    - Initial heading is aligned inward toward arena center from spawn edge.
-  - Hunter visual pipeline normalized:
-    - Hunter sprite assets cleaned and normalized to a consistent icon/play-piece format.
-    - Extra fallback geometry overlays hidden so only rendered sprites are visible.
-    - Bottom deck icon labels/counts are centered under each icon slot (including CIWS).
-  - Sting-II visual parity fix:
-    - Opening carousel Sting-II scaled to lineup-consistent size.
-    - Bottom Sting-II icon restored to normalized icon path and standard deck scale.
-  - Orientation scope fix:
-    - Icon + carousel orientations reverted to prior baseline behavior.
-    - Play-area drone flight orientation enforces nose-forward heading.
-  - Arena phase HUD and continuous-play flow retained.
+  - Rules-driven Hunter vs Attacker gameplay baseline captured in `rules.md`.
+  - Attack goal distribution fixed to city play area.
+  - Leak impact + persistent fire accumulation active.
+  - Fire pressure scales up as defender falls behind.
+  - CIWS now modeled as last-ditch with short effective range and hard cutoff.
+  - CIWS misuse/overuse pressure enabled (ammo waste + cooldown/heat pressure).
+  - Color-distinct rendered attack drone classes integrated.
+  - Continuous phase-driven gameplay and existing deck/HUD systems retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2314240 bytes`
-  - `verified 2311832 bytes`
+  - `wrote 2367488 bytes`
+  - `verified 2362856 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-rules`
 - Date: `2026-03-27`
-- Policy for this milestone: failsafe is aligned to current golden baseline.
+- Policy for this milestone: failsafe is aligned to the current golden baseline.
 
 ## Restore commands
 ```bash

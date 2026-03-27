@@ -1,9 +1,9 @@
 # OPS_RUNBOOK
 
 ## Preflight
-- Confirm E8 board connected by KitProg3.
-- Export ModusToolbox toolchain vars.
-- Work from repo root.
+- Confirm E8 board connected via KitProg3.
+- Export ModusToolbox toolchain variables.
+- Run commands from repo root.
 
 ## Build + flash (validated path)
 ```bash
@@ -11,18 +11,20 @@ export CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tool
 export CY_COMPILER_GCC_ARM_DIR=/home/user/.local/opt/xpack-arm-none-eabi-gcc-14.2.1-1.1
 
 make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8
-make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP
+make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1
 ```
 
 ## Expected flash confirmation (current baseline)
-- `wrote 1466368 bytes`
-- `verified 1465272 bytes`
+- `wrote 2367488 bytes`
+- `verified 2362856 bytes`
 
-## Post-run checks
-- Confirm splash and hunter lineup render.
-- Confirm `START ARENA` transitions into gameplay.
-- Confirm HUD phase progression text appears in-game.
+## Post-flash checks
+- Confirm splash and lineup flow appears.
+- Confirm `START ARENA` enters gameplay.
+- Confirm attack goals are spread in city play region (not bottom-edge clustered).
+- Confirm leaked attacks create persistent fire markers.
+- Confirm `Hunter`/`Attacker` score line updates.
+- Confirm CIWS per-gun ammo display updates and depletion behavior.
 
 ## Notes
-- Environment may emit EdgeProtect combine-sign warning/error on broader app build targets.
-- `proj_cm55` build + `qprogram_proj` is the current reliable programming route.
+- EdgeProtect combine-sign step may fail in this environment; use the validated `qprogram_proj` path above.

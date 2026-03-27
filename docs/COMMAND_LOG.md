@@ -3,29 +3,17 @@
 - 2026-03-25 | Imported firmware baseline and established Drone Hunter app flow.
 - 2026-03-25..2026-03-26 | Iterated splash/carousel and gameplay baseline.
 - 2026-03-27 | Stabilized dual-CIWS layout, transparent CIWS assets, and position tuning.
-- 2026-03-27 | Increased tracer visibility and tuned deck CIWS icon scale.
-- 2026-03-27 | Implemented CIWS sweep-arc gameplay model:
-  - 90-degree sweep per side
-  - 75% screen-range engagement cap
-  - sweep-cone hit gating and sweep-directed tracer emission
-- 2026-03-27 | Upgraded CIWS projectile visuals/physics:
-  - dense high-rate burst-dot tracer stream (firehose effect)
-  - ballistic drop with stronger curvature at flatter firing angles
-- 2026-03-27 | Expanded attack ingress to all 4 screen edges (top/bottom/left/right).
-- 2026-03-27 | Normalized hunter sprite pipeline and cleaned icon/play-piece artifacts.
-- 2026-03-27 | Center-aligned bottom deck labels/counts under each icon slot.
-- 2026-03-27 | Corrected Sting-II icon/source consistency:
-  - matched visual source intent between carousel and icon pipeline
-  - fixed Sting-II icon disappearance/oversize regressions
-  - finalized Sting-II icon at normalized deck scale
-- 2026-03-27 | Applied orientation scope fix:
-  - reverted icon + carousel orientation changes
-  - kept play-area drone flight orientation nose-forward only
-- 2026-03-27 | Retuned CIWS range/tracer presentation:
-  - restored CIWS range cap to 75% of screen width from each gun origin
-  - reduced tracer bullet dot size
-  - increased tracer visual travel distance and maintained dense stream flow
+- 2026-03-27 | Implemented CIWS sweep-arc gameplay model and ballistic tracer stream.
+- 2026-03-27 | Expanded attack ingress to 4 edges and normalized hunter/icon visuals.
+- 2026-03-27 | Stabilized Sting-II sizing/icon parity and in-play nose-forward flight orientation.
+- 2026-03-27 | Added per-gun CIWS ammo model (no INF) and updated deck ammo display.
+- 2026-03-27 | Added strategic 16-site attack spawn model (4 edges x 4 lanes).
+- 2026-03-27 | Updated hunter ranking/threat mapping with revised interceptor and attacker speed envelopes.
+- 2026-03-27 | Added Hunter vs Attacker score model and leak-driven city impact scoring.
+- 2026-03-27 | Fixed target destination distribution so goals are in city play region (not bottom-clustered).
+- 2026-03-27 | Added persistent city-fire markers and loss-pressure fire escalation behavior.
+- 2026-03-27 | Added canonical gameplay rules spec in `rules.md`.
 - 2026-03-27 | Rebuild + flash validated:
-  - `wrote 2314240 bytes`
-  - `verified 2311832 bytes`
+  - `wrote 2367488 bytes`
+  - `verified 2362856 bytes`
 - 2026-03-27 | Promoted this exact state as both golden and failsafe restore points.

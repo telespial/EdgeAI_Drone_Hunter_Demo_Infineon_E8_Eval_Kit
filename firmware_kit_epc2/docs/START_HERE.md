@@ -1,16 +1,15 @@
 # START_HERE
 
-## Goal
-Boot PSOC Edge E84 (EPC2), initialize LCD/peripherals, and display `EdgeAI Drone Hunter`.
+## Required read order
+1. PROJECT_STATE.md
+2. STATUS.md
+3. RESTORE_POINTS.md
+4. OPS_RUNBOOK.md
+5. COMMAND_LOG.md
+6. TODO.md
+7. ../rules.md
 
-## Current baseline
-- Active mode macro: `APP_DRONE_HUNTER_MODE=1`
-- Display profile: `CONFIG_DISPLAY=W4P3INCH_DISP`
-- Target: `KIT_PSE84_EVAL_EPC2`
-
-## Read order
-1. `PROJECT_STATE.md`
-2. `OPS_RUNBOOK.md`
-3. `HARDWARE_SETUP.md`
-4. `COMMAND_LOG.md`
-5. `TODO.md`
+## Required updates
+- Keep build/flash commands and current binary confirmation in PROJECT_STATE.md.
+- Record all meaningful build/flash/code actions in COMMAND_LOG.md.
+- Update RESTORE_POINTS.md whenever golden/failsafe baselines move.
