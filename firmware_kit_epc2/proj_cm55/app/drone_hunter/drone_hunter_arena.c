@@ -1273,10 +1273,10 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     int k;
     int phase = arena_phase(s);
     float phase_speed_gain = (phase == 0) ? 0.92f : ((phase == 1) ? 1.08f : 1.24f);
-    float ciws_x = (float)(s->arena_x + s->arena_w - 28);
-    float ciws_y = (float)(s->arena_y + s->arena_h - 61);
-    float ciws_left_x = (float)(s->arena_x + 28);
-    float ciws_left_y = (float)(s->arena_y + s->arena_h - 61);
+    float ciws_x = (float)(s->arena_x + s->arena_w - 8);
+    float ciws_y = (float)(s->arena_y + s->arena_h - 49);
+    float ciws_left_x = (float)(s->arena_x + 18);
+    float ciws_left_y = (float)(s->arena_y + s->arena_h - 49);
 
     s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec - DT_SEC, 0.0f, 2.0f);
     s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec - DT_SEC, 0.0f, 2.0f);
@@ -1540,10 +1540,10 @@ static void update_positions(drone_hunter_scene_t *s)
 {
     int h;
     int k;
-    float ciws_x = (float)(s->arena_x + s->arena_w - 28);
-    float ciws_y = (float)(s->arena_y + s->arena_h - 61);
-    float ciws_left_x = (float)(s->arena_x + 28);
-    float ciws_left_y = (float)(s->arena_y + s->arena_h - 61);
+    float ciws_x = (float)(s->arena_x + s->arena_w - 8);
+    float ciws_y = (float)(s->arena_y + s->arena_h - 49);
+    float ciws_left_x = (float)(s->arena_x + 18);
+    float ciws_left_y = (float)(s->arena_y + s->arena_h - 49);
 
     for (h = 0; h < HUNTER_COUNT; ++h)
     {
@@ -1973,14 +1973,14 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_transform_pivot_x(s->ciws, 22, 0);
     lv_obj_set_style_transform_pivot_y(s->ciws, 70, 0);
     s->ciws_turret = s->ciws;
-    set_obj_center(s->ciws, (float)(s->arena_x + s->arena_w - 28), (float)(s->arena_y + s->arena_h - 61));
-    lv_obj_set_style_transform_angle(s->ciws, 1800, 0);
+    set_obj_center(s->ciws, (float)(s->arena_x + s->arena_w - 8), (float)(s->arena_y + s->arena_h - 49));
+    lv_obj_set_style_transform_angle(s->ciws, 0, 0);
     s->ciws_left = lv_image_create(s->arena);
-    lv_image_set_src(s->ciws_left, &img_hunter_ciws);
+    lv_image_set_src(s->ciws_left, &img_hunter_ciws_flipped);
     lv_obj_set_style_transform_zoom(s->ciws_left, 190, 0);
     lv_obj_set_style_transform_pivot_x(s->ciws_left, 22, 0);
     lv_obj_set_style_transform_pivot_y(s->ciws_left, 70, 0);
-    set_obj_center(s->ciws_left, (float)(s->arena_x + 28), (float)(s->arena_y + s->arena_h - 61));
+    set_obj_center(s->ciws_left, (float)(s->arena_x + 18), (float)(s->arena_y + s->arena_h - 49));
     lv_obj_set_style_transform_angle(s->ciws_left, 0, 0);
     for (i = 0; i < CIWS_TRACER_COUNT; ++i)
     {
