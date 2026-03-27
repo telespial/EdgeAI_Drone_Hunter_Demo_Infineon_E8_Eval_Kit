@@ -2,16 +2,20 @@
 
 - 2026-03-25 | Imported firmware baseline and established Drone Hunter app flow.
 - 2026-03-25..2026-03-26 | Iterated splash/carousel and gameplay baseline.
-- 2026-03-27 | Stabilized dual-CIWS layout, transparency, and baseline sweep/tracer behavior.
+- 2026-03-27 | Stabilized dual-CIWS layout, transparency, and sweep/tracer behavior.
 - 2026-03-27 | Added attack classes, Hunter vs Attacker score model, and strategic spawn/site logic.
 - 2026-03-27 | Added canonical gameplay rules spec in `rules.md`.
-- 2026-03-27 | Fixed attack goal distribution into city play area (not bottom-collapsed).
-- 2026-03-27 | Added persistent city-fire markers and scaling pressure with attacker lead.
-- 2026-03-27 | Upgraded leak-fire visuals to larger, flame-like, persistent patches.
-- 2026-03-27 | Constrained CIWS envelope to short-range near-front coverage:
-  - blocked far/top city-grid engagements,
-  - added vertical reach gating,
-  - shortened tracer travel to match engagement limits.
+- 2026-03-27 | Added persistent leak-fire system and scaled flame pressure behavior.
+- 2026-03-27 | Constrained CIWS envelope to near-front/short-range with top-grid blocking.
+- 2026-03-27 | Added rules-engine threat model pass:
+  - detect/classify/commit confidence,
+  - dynamic threat score,
+  - commit gate,
+  - recommended counter path.
+- 2026-03-27 | Implemented Phase-1 target data model completion fields:
+  - speed/altitude/range/ETA/priority/recommended-counter runtime metrics.
+- 2026-03-27 | HUD upgraded with full active-target telemetry:
+  - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2367488 bytes`
   - `verified 2362856 bytes`

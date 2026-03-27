@@ -248,6 +248,12 @@ typedef struct
     float k_threat_score[KILLER_COUNT];
     float k_payload_score[KILLER_COUNT];
     float k_survivability[KILLER_COUNT];
+    float k_speed_est[KILLER_COUNT];
+    float k_altitude_norm[KILLER_COUNT];
+    float k_range_to_core[KILLER_COUNT];
+    float k_eta_to_goal[KILLER_COUNT];
+    int k_priority_rank[KILLER_COUNT];
+    hunter_type_t k_recommended_counter[KILLER_COUNT];
 
     match_mode_t mode;
     controller_t team_ctrl[HUNTER_COUNT];
@@ -778,6 +784,60 @@ static hunter_type_t recommended_hunter_for_target(const drone_hunter_scene_t *s
         return (s->threat_faction == THREAT_FACTION_RUSSIA) ? HUNTER_SKYFALL_P1 : HUNTER_MEROPS;
     }
     return HUNTER_STING_II;
+}
+
+static float attack_speed_kmh_est(const drone_hunter_scene_t *s, int k)
+{
+    float base;
+    if (s->ktype[k] == TARGET_FIXED_WING)
+    {
+        base = (s->threat_faction == THREAT_FACTION_RUSSIA) ? 175.0f : 130.0f;
+    }
+    else
+    {
+        base = 95.0f;
+    }
+    return base + ((float)s->k_tier[k] * 18.0f);
+}
+
+static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float core_y)
+{
+    int k;
+    for (k = 0; k < KILLER_COUNT; ++k)
+    {
+        if (!s->killer_active[k])
+        {
+            s->k_speed_est[k] = 0.0f;
+            s->k_altitude_norm[k] = 0.0f;
+            s->k_range_to_core[k] = 0.0f;
+            s->k_eta_to_goal[k] = 0.0f;
+            s->k_priority_rank[k] = 0;
+            s->k_recommended_counter[k] = HUNTER_STING_II;
+            continue;
+        }
+
+        s->k_speed_est[k] = attack_speed_kmh_est(s, k);
+        s->k_altitude_norm[k] = 1.0f - clampf((s->ky[k] - (float)s->arena_y) / clampf((float)s->arena_h, 1.0f, 4000.0f), 0.0f, 1.0f);
+        s->k_range_to_core[k] = sqrtf(dist2(s->kx[k], s->ky[k], core_x, core_y));
+        s->k_eta_to_goal[k] = sqrtf(dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k])) /
+                              clampf(attack_speed_score(s, k), 0.3f, 4.0f);
+        s->k_recommended_counter[k] = recommended_hunter_for_target(s, k);
+        s->k_priority_rank[k] = 1;
+    }
+
+    if (s->killer_active[0] && s->killer_active[1])
+    {
+        if (s->k_threat_score[0] >= s->k_threat_score[1])
+        {
+            s->k_priority_rank[0] = 1;
+            s->k_priority_rank[1] = 2;
+        }
+        else
+        {
+            s->k_priority_rank[0] = 2;
+            s->k_priority_rank[1] = 1;
+        }
+    }
 }
 
 static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int target)
@@ -1432,6 +1492,12 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     s->k_detect_conf[k] = 0.62f;
     s->k_class_conf[k] = 0.58f;
     s->k_threat_score[k] = 1.0f;
+    s->k_speed_est[k] = attack_speed_kmh_est(s, k);
+    s->k_altitude_norm[k] = 0.50f;
+    s->k_range_to_core[k] = 0.0f;
+    s->k_eta_to_goal[k] = 0.0f;
+    s->k_priority_rank[k] = 1;
+    s->k_recommended_counter[k] = recommended_hunter_for_target(s, k);
 
     style_target(s, k);
 
@@ -1590,6 +1656,12 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_threat_score[i] = 0.0f;
         s->k_payload_score[i] = 0.0f;
         s->k_survivability[i] = 0.0f;
+        s->k_speed_est[i] = 0.0f;
+        s->k_altitude_norm[i] = 0.0f;
+        s->k_range_to_core[i] = 0.0f;
+        s->k_eta_to_goal[i] = 0.0f;
+        s->k_priority_rank[i] = 0;
+        s->k_recommended_counter[i] = HUNTER_STING_II;
     }
 
     reset_hunters(s);
@@ -1778,6 +1850,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             respawn_killer(s, k, -1);
         }
     }
+
+    refresh_target_metrics(s, core_x, core_y);
 }
 
 static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float core_y)
@@ -2168,17 +2242,61 @@ static void update_hud(drone_hunter_scene_t *s)
                           s->core_hp, elapsed);
     if (lead_k >= 0)
     {
-        float eta = sqrtf(dist2(s->kx[lead_k], s->ky[lead_k], s->k_goal_x[lead_k], s->k_goal_y[lead_k])) /
-                    clampf(attack_speed_score(s, lead_k), 0.3f, 4.0f);
-        hunter_type_t rec = recommended_hunter_for_target(s, lead_k);
-        lv_label_set_text_fmt(s->hud_info,
-                              "THREAT %s S%.2f C%.0f%% ETA%.1fs REC:%s  |  REM %d",
-                              target_type_name(s, lead_k),
-                              s->k_threat_score[lead_k],
-                              clampf((s->k_detect_conf[lead_k] + s->k_class_conf[lead_k]) * 50.0f, 0.0f, 99.0f),
-                              eta,
-                              hunter_type_short_name(rec),
-                              s->attack_remaining_to_spawn);
+        char tline0[128];
+        char tline1[128];
+        char info[256];
+        int active_idx[2] = {-1, -1};
+        int n = 0;
+        int i;
+        float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
+        for (i = 0; i < KILLER_COUNT; ++i)
+        {
+            if (s->killer_active[i])
+            {
+                active_idx[n++] = i;
+            }
+        }
+
+        if (n > 0)
+        {
+            int k0 = active_idx[0];
+            (void)snprintf(tline0, sizeof(tline0),
+                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s",
+                           s->k_priority_rank[k0],
+                           target_type_name(s, k0),
+                           s->k_speed_est[k0],
+                           clampf(s->k_altitude_norm[k0] * 6.0f, 0.0f, 6.0f),
+                           s->k_range_to_core[k0] * km_per_px,
+                           s->k_eta_to_goal[k0],
+                           s->k_threat_score[k0],
+                           hunter_type_short_name(s->k_recommended_counter[k0]));
+        }
+        else
+        {
+            (void)snprintf(tline0, sizeof(tline0), "No active threats");
+        }
+
+        if (n > 1)
+        {
+            int k1 = active_idx[1];
+            (void)snprintf(tline1, sizeof(tline1),
+                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s",
+                           s->k_priority_rank[k1],
+                           target_type_name(s, k1),
+                           s->k_speed_est[k1],
+                           clampf(s->k_altitude_norm[k1] * 6.0f, 0.0f, 6.0f),
+                           s->k_range_to_core[k1] * km_per_px,
+                           s->k_eta_to_goal[k1],
+                           s->k_threat_score[k1],
+                           hunter_type_short_name(s->k_recommended_counter[k1]));
+        }
+        else
+        {
+            tline1[0] = '\0';
+        }
+
+        (void)snprintf(info, sizeof(info), "%s%s  |  REM %d", tline0, tline1, s->attack_remaining_to_spawn);
+        lv_label_set_text(s->hud_info, info);
     }
     else
     {

@@ -1,7 +1,7 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Golden + failsafe restore points updated to persistent-fire + near-front CIWS envelope baseline.
+- State: Golden + failsafe restore points updated to full target-telemetry HUD baseline.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
@@ -12,16 +12,17 @@
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
-- Attack targets are distributed across playable city area.
-- Leak impacts now create persistent city fire patches.
-- Fire clusters are larger and flame-like (flicker + glow), and persist for the round.
-- Fire pressure scales with attacker advantage.
-- CIWS behavior:
-  - dual guns with per-gun finite ammo,
-  - short-range doctrine (effective/hard-cutoff),
-  - restricted vertical/top-grid engagement envelope,
-  - reduced tracer lifetime/speed so visuals match limited reach.
-- Score model remains explicit: `Hunter` vs `Attacker`.
+- Attack targets distributed across playable city area.
+- Leak impacts produce persistent, flame-like fire patches.
+- CIWS constrained to near-front, short-range envelope (cannot effectively reach far/top grids).
+- Hunter vs Attacker scoring active.
+- Rules-engine progression active:
+  - detect/classify/commit confidence,
+  - dynamic threat score,
+  - launch commit gating,
+  - recommended counter logic.
+- HUD now includes full live threat telemetry for active tracks:
+  - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
 
 ## Environment notes
 - EdgeProtect combine-sign step remains unavailable in this environment.

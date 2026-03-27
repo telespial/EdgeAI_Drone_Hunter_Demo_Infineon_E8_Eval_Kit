@@ -18,15 +18,14 @@
 - `rules.md`
 
 ## Current behavior in code
-- Hunter vs Attacker point model in HUD.
-- Attack goals distributed through city play region.
-- Leak impacts create persistent fire patches (flame clusters) that remain until round reset.
-- Additional fire pressure appears as attacker lead increases.
-- CIWS constrained to short-range/near-front envelope:
-  - effective/hard cutoff range model,
-  - top-grid and vertical reach limits,
-  - tracer travel tuned to prevent far-grid visual reach mismatch.
-- Existing phase HUD and continuous-play loop retained.
+- Persistent city-fire model from leak impacts, with scaling pressure.
+- CIWS near-front short-range gating + tracer visual range alignment.
+- Per-target runtime model fields implemented:
+  - speed estimate, altitude norm, range-to-core, ETA-to-goal,
+  - detect/classify confidence, threat score,
+  - priority rank and recommended counter.
+- HUD telemetry now surfaces these threat metrics live for active tracks.
+- Continuous phase-driven gameplay retained.
 
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
