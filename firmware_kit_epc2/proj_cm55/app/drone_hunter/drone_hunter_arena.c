@@ -243,6 +243,11 @@ typedef struct
     int k_serial[KILLER_COUNT];
     float k_goal_x[KILLER_COUNT];
     float k_goal_y[KILLER_COUNT];
+    float k_detect_conf[KILLER_COUNT];
+    float k_class_conf[KILLER_COUNT];
+    float k_threat_score[KILLER_COUNT];
+    float k_payload_score[KILLER_COUNT];
+    float k_survivability[KILLER_COUNT];
 
     match_mode_t mode;
     controller_t team_ctrl[HUNTER_COUNT];
@@ -743,6 +748,7 @@ static float attack_speed_score(const drone_hunter_scene_t *s, int k)
 static float threat_required_score(const drone_hunter_scene_t *s, int k)
 {
     float base = 1.40f + (attack_speed_score(s, k) * 0.90f) + ((float)s->k_tier[k] * 0.28f);
+    float conf_penalty = 1.0f - clampf((s->k_detect_conf[k] + s->k_class_conf[k]) * 0.5f, 0.0f, 1.0f);
     if (s->ktype[k] == TARGET_FIXED_WING)
     {
         base += (s->threat_faction == THREAT_FACTION_RUSSIA) ? 0.24f : 0.12f;
@@ -751,7 +757,27 @@ static float threat_required_score(const drone_hunter_scene_t *s, int k)
     {
         base += 0.26f; /* Evasion burden for Strike-X swarms. */
     }
+    base += (s->k_threat_score[k] * 0.22f);
+    base += (conf_penalty * 0.35f);
     return base;
+}
+
+static const char *target_type_name(const drone_hunter_scene_t *s, int k)
+{
+    if (s->ktype[k] == TARGET_FIXED_WING)
+    {
+        return (s->threat_faction == THREAT_FACTION_RUSSIA) ? "Shahed" : "Strike-Prop";
+    }
+    return "Strike-X";
+}
+
+static hunter_type_t recommended_hunter_for_target(const drone_hunter_scene_t *s, int k)
+{
+    if (s->ktype[k] == TARGET_FIXED_WING)
+    {
+        return (s->threat_faction == THREAT_FACTION_RUSSIA) ? HUNTER_SKYFALL_P1 : HUNTER_MEROPS;
+    }
+    return HUNTER_STING_II;
 }
 
 static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int target)
@@ -1393,6 +1419,19 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     {
         s->k_tier[k] = (s->killer_spawn_tick % 2 == 0) ? 2 : 1;
     }
+    if (s->ktype[k] == TARGET_FIXED_WING)
+    {
+        s->k_payload_score[k] = (s->threat_faction == THREAT_FACTION_RUSSIA) ? 1.80f : 1.35f;
+        s->k_survivability[k] = 1.10f + ((float)s->k_tier[k] * 0.10f);
+    }
+    else
+    {
+        s->k_payload_score[k] = 1.05f;
+        s->k_survivability[k] = 1.20f + ((float)s->k_tier[k] * 0.14f);
+    }
+    s->k_detect_conf[k] = 0.62f;
+    s->k_class_conf[k] = 0.58f;
+    s->k_threat_score[k] = 1.0f;
 
     style_target(s, k);
 
@@ -1546,6 +1585,11 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_serial[i] = 0;
         s->k_goal_x[i] = 0.0f;
         s->k_goal_y[i] = 0.0f;
+        s->k_detect_conf[i] = 0.0f;
+        s->k_class_conf[i] = 0.0f;
+        s->k_threat_score[i] = 0.0f;
+        s->k_payload_score[i] = 0.0f;
+        s->k_survivability[i] = 0.0f;
     }
 
     reset_hunters(s);
@@ -1671,6 +1715,26 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         s->kx[k] = clampf(s->kx[k], 6.0f, (float)lv_obj_get_width(s->screen) - 6.0f);
         s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, (float)lv_obj_get_height(s->screen) - 6.0f);
 
+        {
+            /* Detect -> classify -> commit confidence model feeding threat score. */
+            float max_range = sqrtf(dist2((float)s->arena_x, (float)s->arena_y,
+                                          (float)(s->arena_x + s->arena_w), (float)(s->arena_y + s->arena_h)));
+            float range_now = sqrtf(dist2(s->kx[k], s->ky[k], core_x, core_y));
+            float proximity = 1.0f + (2.0f * (1.0f - clampf(range_now / clampf(max_range, 1.0f, 5000.0f), 0.0f, 1.0f)));
+            float altitude_norm = clampf((s->ky[k] - (float)s->arena_y) / clampf((float)s->arena_h, 1.0f, 4000.0f), 0.0f, 1.0f);
+            float clutter = (s->ktype[k] == TARGET_FPV) ? (1.0f - altitude_norm) * 0.26f : altitude_norm * 0.12f;
+            float detect = clampf(0.72f + (proximity * 0.11f) - clutter, 0.10f, 0.98f);
+            float classify = clampf(detect - ((s->ktype[k] == TARGET_FPV) ? 0.15f : 0.08f), 0.08f, 0.95f);
+
+            s->k_detect_conf[k] = (s->k_detect_conf[k] * 0.78f) + (detect * 0.22f);
+            s->k_class_conf[k] = (s->k_class_conf[k] * 0.76f) + (classify * 0.24f);
+            s->k_threat_score[k] = s->k_payload_score[k] *
+                                   proximity *
+                                   s->k_survivability[k] *
+                                   clampf((s->k_detect_conf[k] + s->k_class_conf[k]) * 0.5f, 0.1f, 1.0f) *
+                                   ((s->ktype[k] == TARGET_FIXED_WING) ? 1.15f : 1.00f);
+        }
+
         if ((s->ciws_ammo_right > 0) &&
             (s->ciws_cooldown_sec <= 0.0f) &&
             (s->ky[k] >= ciws_block_top_y) &&
@@ -1762,6 +1826,18 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             s->hy[h] = clampf(s->hy[h] + (s->hvy[h] * 1.2f), (float)s->arena_y + 10.0f, ground_y);
         }
         return;
+    }
+
+    /* Commit gate: avoid low-confidence launches unless the target is close to impact. */
+    if (!s->hunter_loaded[h])
+    {
+        float dist_to_goal = sqrtf(dist2(s->kx[target], s->ky[target], s->k_goal_x[target], s->k_goal_y[target]));
+        int emergency = (dist_to_goal < 90.0f);
+        float commit_conf = clampf((s->k_detect_conf[target] + s->k_class_conf[target]) * 0.5f, 0.0f, 1.0f);
+        if (!emergency && (commit_conf < 0.34f))
+        {
+            return;
+        }
     }
 
     if (!s->hunter_loaded[h])
@@ -2064,6 +2140,18 @@ static void update_hud(drone_hunter_scene_t *s)
 {
     int phase = arena_phase(s);
     int elapsed = (int)s->t;
+    int lead_k = -1;
+    float lead_score = -1.0f;
+    int k;
+
+    for (k = 0; k < KILLER_COUNT; ++k)
+    {
+        if (s->killer_active[k] && (s->k_threat_score[k] > lead_score))
+        {
+            lead_score = s->k_threat_score[k];
+            lead_k = k;
+        }
+    }
 
     lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  %s", mode_name(s->mode), arena_phase_name(phase));
     lv_label_set_text_fmt(s->hud_score,
@@ -2078,11 +2166,28 @@ static void update_hud(drone_hunter_scene_t *s)
     lv_label_set_text_fmt(s->hud_elapsed,
                           "CORE %d  |  ELAPSED %03ds",
                           s->core_hp, elapsed);
-    lv_label_set_text_fmt(s->hud_info,
-                          "Active launchers: %s / %s  |  WAVE REM %d",
-                          hunter_type_name(s->h_type[0]),
-                          hunter_type_name(s->h_type[1]),
-                          s->attack_remaining_to_spawn);
+    if (lead_k >= 0)
+    {
+        float eta = sqrtf(dist2(s->kx[lead_k], s->ky[lead_k], s->k_goal_x[lead_k], s->k_goal_y[lead_k])) /
+                    clampf(attack_speed_score(s, lead_k), 0.3f, 4.0f);
+        hunter_type_t rec = recommended_hunter_for_target(s, lead_k);
+        lv_label_set_text_fmt(s->hud_info,
+                              "THREAT %s S%.2f C%.0f%% ETA%.1fs REC:%s  |  REM %d",
+                              target_type_name(s, lead_k),
+                              s->k_threat_score[lead_k],
+                              clampf((s->k_detect_conf[lead_k] + s->k_class_conf[lead_k]) * 50.0f, 0.0f, 99.0f),
+                              eta,
+                              hunter_type_short_name(rec),
+                              s->attack_remaining_to_spawn);
+    }
+    else
+    {
+        lv_label_set_text_fmt(s->hud_info,
+                              "Active launchers: %s / %s  |  WAVE REM %d",
+                              hunter_type_name(s->h_type[0]),
+                              hunter_type_name(s->h_type[1]),
+                              s->attack_remaining_to_spawn);
+    }
 }
 
 static void maybe_end_round(drone_hunter_scene_t *s)
