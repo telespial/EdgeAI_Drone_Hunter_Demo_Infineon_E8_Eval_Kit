@@ -25,10 +25,15 @@
   - detect/classify confidence, threat score,
   - priority rank and recommended counter.
 - HUD telemetry now surfaces these threat metrics live for active tracks.
+- Detect/classify/commit pipeline is now fully gated with:
+  - corridor checks,
+  - LOS checks,
+  - track history + noise influence,
+  - explicit commit-reason accounting for hold/launch paths.
 - Continuous phase-driven gameplay retained.
 
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2367488 bytes`
-  - `verified 2362856 bytes`
+  - `wrote 2371584 bytes`
+  - `verified 2369544 bytes`

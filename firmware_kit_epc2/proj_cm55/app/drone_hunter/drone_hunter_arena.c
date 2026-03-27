@@ -50,6 +50,14 @@
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
 
+#define COMMIT_REASON_READY       (0)
+#define COMMIT_REASON_DETECT_LOW  (1)
+#define COMMIT_REASON_CLASS_LOW   (2)
+#define COMMIT_REASON_COMMIT_LOW  (3)
+#define COMMIT_REASON_NO_TARGET   (4)
+#define COMMIT_REASON_CORRIDOR    (5)
+#define COMMIT_REASON_LOS_BLOCK   (6)
+
 typedef enum
 {
     TARGET_FPV = 0,
@@ -245,6 +253,9 @@ typedef struct
     float k_goal_y[KILLER_COUNT];
     float k_detect_conf[KILLER_COUNT];
     float k_class_conf[KILLER_COUNT];
+    float k_commit_conf[KILLER_COUNT];
+    float k_track_history[KILLER_COUNT];
+    float k_noise[KILLER_COUNT];
     float k_threat_score[KILLER_COUNT];
     float k_payload_score[KILLER_COUNT];
     float k_survivability[KILLER_COUNT];
@@ -254,6 +265,20 @@ typedef struct
     float k_eta_to_goal[KILLER_COUNT];
     int k_priority_rank[KILLER_COUNT];
     hunter_type_t k_recommended_counter[KILLER_COUNT];
+    int k_detect_ok[KILLER_COUNT];
+    int k_class_ok[KILLER_COUNT];
+    int k_commit_ok[KILLER_COUNT];
+    int k_corridor_ok[KILLER_COUNT];
+    int k_los_ok[KILLER_COUNT];
+    int k_commit_reason[KILLER_COUNT];
+
+    int commit_attempts;
+    int commit_launched;
+    int commit_hold_detect;
+    int commit_hold_class;
+    int commit_hold_conf;
+    int commit_hold_corridor;
+    int commit_hold_los;
 
     match_mode_t mode;
     controller_t team_ctrl[HUNTER_COUNT];
@@ -552,7 +577,11 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
             s->ciws_tracer_g[ti] = gravity;
         }
     }
-    update_hunter_deck_ui(s);
+    /* Avoid deck-bar flicker by throttling ammo UI refresh under high ROF CIWS fire. */
+    if (((s->ciws_shots % 18) == 0) || (*ammo <= 0))
+    {
+        update_hunter_deck_ui(s);
+    }
 
     if (roll <= p_ciws)
     {
@@ -800,6 +829,20 @@ static float attack_speed_kmh_est(const drone_hunter_scene_t *s, int k)
     return base + ((float)s->k_tier[k] * 18.0f);
 }
 
+static const char *commit_reason_name(int reason)
+{
+    switch (reason)
+    {
+        case COMMIT_REASON_READY: return "READY";
+        case COMMIT_REASON_DETECT_LOW: return "D_LOW";
+        case COMMIT_REASON_CLASS_LOW: return "C_LOW";
+        case COMMIT_REASON_COMMIT_LOW: return "HOLD";
+        case COMMIT_REASON_CORRIDOR: return "LANE";
+        case COMMIT_REASON_LOS_BLOCK: return "LOS";
+        default: return "NO_TGT";
+    }
+}
+
 static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float core_y)
 {
     int k;
@@ -813,6 +856,15 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
             s->k_eta_to_goal[k] = 0.0f;
             s->k_priority_rank[k] = 0;
             s->k_recommended_counter[k] = HUNTER_STING_II;
+            s->k_detect_ok[k] = 0;
+            s->k_class_ok[k] = 0;
+            s->k_commit_ok[k] = 0;
+            s->k_corridor_ok[k] = 0;
+            s->k_los_ok[k] = 0;
+            s->k_commit_conf[k] = 0.0f;
+            s->k_track_history[k] = 0.0f;
+            s->k_noise[k] = 0.0f;
+            s->k_commit_reason[k] = COMMIT_REASON_NO_TARGET;
             continue;
         }
 
@@ -823,6 +875,57 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
                               clampf(attack_speed_score(s, k), 0.3f, 4.0f);
         s->k_recommended_counter[k] = recommended_hunter_for_target(s, k);
         s->k_priority_rank[k] = 1;
+        {
+            float far_grid = 1.0f - clampf((s->ky[k] - (float)s->arena_y) / clampf((float)s->arena_h, 1.0f, 4000.0f), 0.0f, 1.0f);
+            float low_alt = 1.0f - s->k_altitude_norm[k];
+            float clutter = (s->ktype[k] == TARGET_FPV) ? (low_alt * 0.28f) : (far_grid * 0.14f);
+            float noise = clampf(0.22f + (0.16f * fabsf(sinf((s->t * 0.73f) + (float)(k * 1.7f) + ((float)s->wave_idx * 0.21f)))) + clutter, 0.0f, 0.95f);
+            float los_score = clampf(0.92f - (far_grid * low_alt * 0.80f) - (noise * 0.35f), 0.0f, 1.0f);
+            float detect_target = clampf(0.76f + ((1.0f - clutter) * 0.16f) - (noise * 0.22f) + (s->k_track_history[k] * 0.12f), 0.05f, 0.98f);
+            float class_target = clampf(detect_target - ((s->ktype[k] == TARGET_FPV) ? 0.16f : 0.08f) - (noise * 0.12f) + (s->k_track_history[k] * 0.10f), 0.05f, 0.95f);
+
+            s->k_noise[k] = (s->k_noise[k] * 0.76f) + (noise * 0.24f);
+            s->k_detect_conf[k] = (s->k_detect_conf[k] * 0.78f) + (detect_target * 0.22f);
+            s->k_class_conf[k] = (s->k_class_conf[k] * 0.76f) + (class_target * 0.24f);
+            s->k_track_history[k] = clampf((s->k_track_history[k] * 0.84f) +
+                                           (((s->k_detect_conf[k] + s->k_class_conf[k]) * 0.5f - s->k_noise[k] * 0.20f) * 0.16f),
+                                           0.0f, 1.0f);
+            s->k_los_ok[k] = (los_score >= 0.42f) ? 1 : 0;
+        }
+        s->k_detect_ok[k] = (s->k_detect_conf[k] >= 0.35f) ? 1 : 0;
+        s->k_class_ok[k] = (s->k_class_conf[k] >= 0.32f) ? 1 : 0;
+        s->k_corridor_ok[k] = 1;
+        {
+            int emergency = (s->k_eta_to_goal[k] <= 1.2f);
+            float urgency = clampf((2.8f - s->k_eta_to_goal[k]) / 2.8f, 0.0f, 1.0f);
+            s->k_commit_conf[k] = clampf((s->k_detect_conf[k] * 0.40f) +
+                                         (s->k_class_conf[k] * 0.35f) +
+                                         (s->k_track_history[k] * 0.15f) +
+                                         (urgency * 0.10f) -
+                                         (s->k_noise[k] * 0.14f),
+                                         0.0f, 1.0f);
+            s->k_commit_ok[k] = ((s->k_detect_ok[k] && s->k_class_ok[k] && s->k_corridor_ok[k] && s->k_los_ok[k] && (s->k_commit_conf[k] >= 0.42f)) || emergency) ? 1 : 0;
+            if (!s->k_detect_ok[k])
+            {
+                s->k_commit_reason[k] = COMMIT_REASON_DETECT_LOW;
+            }
+            else if (!s->k_class_ok[k])
+            {
+                s->k_commit_reason[k] = COMMIT_REASON_CLASS_LOW;
+            }
+            else if (!s->k_los_ok[k])
+            {
+                s->k_commit_reason[k] = COMMIT_REASON_LOS_BLOCK;
+            }
+            else if (!s->k_commit_ok[k])
+            {
+                s->k_commit_reason[k] = COMMIT_REASON_COMMIT_LOW;
+            }
+            else
+            {
+                s->k_commit_reason[k] = COMMIT_REASON_READY;
+            }
+        }
     }
 
     if (s->killer_active[0] && s->killer_active[1])
@@ -836,6 +939,24 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
         {
             s->k_priority_rank[0] = 2;
             s->k_priority_rank[1] = 1;
+        }
+
+        /* Corridor/deconfliction: if both threats are nearly co-linear from core, hold lower-priority lane. */
+        {
+            int keep = (s->k_priority_rank[0] <= s->k_priority_rank[1]) ? 0 : 1;
+            int hold = (keep == 0) ? 1 : 0;
+            float a0 = atan2f(s->ky[0] - core_y, s->kx[0] - core_x);
+            float a1 = atan2f(s->ky[1] - core_y, s->kx[1] - core_x);
+            float da = wrap_angle_pi(a0 - a1);
+            float r0 = sqrtf(dist2(s->kx[0], s->ky[0], core_x, core_y));
+            float r1 = sqrtf(dist2(s->kx[1], s->ky[1], core_x, core_y));
+
+            if ((fabsf(da) < 0.24f) && (fabsf(r0 - r1) < 52.0f))
+            {
+                s->k_corridor_ok[hold] = 0;
+                s->k_commit_ok[hold] = 0;
+                s->k_commit_reason[hold] = COMMIT_REASON_CORRIDOR;
+            }
         }
     }
 }
@@ -1498,6 +1619,15 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     s->k_eta_to_goal[k] = 0.0f;
     s->k_priority_rank[k] = 1;
     s->k_recommended_counter[k] = recommended_hunter_for_target(s, k);
+    s->k_detect_ok[k] = 1;
+    s->k_class_ok[k] = 1;
+    s->k_commit_ok[k] = 1;
+    s->k_corridor_ok[k] = 1;
+    s->k_los_ok[k] = 1;
+    s->k_track_history[k] = 0.52f;
+    s->k_noise[k] = 0.08f;
+    s->k_commit_conf[k] = 0.55f;
+    s->k_commit_reason[k] = COMMIT_REASON_READY;
 
     style_target(s, k);
 
@@ -1622,6 +1752,13 @@ static void reset_round(drone_hunter_scene_t *s)
     s->ciws_ammo_left = CIWS_AMMO_PER_GUN;
     s->ciws_shots = 0;
     s->ciws_kills = 0;
+    s->commit_attempts = 0;
+    s->commit_launched = 0;
+    s->commit_hold_detect = 0;
+    s->commit_hold_class = 0;
+    s->commit_hold_conf = 0;
+    s->commit_hold_corridor = 0;
+    s->commit_hold_los = 0;
     s->ciws_tracer_head = 0;
     for (i = 0; i < CIWS_TRACER_COUNT; ++i)
     {
@@ -1662,6 +1799,15 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_eta_to_goal[i] = 0.0f;
         s->k_priority_rank[i] = 0;
         s->k_recommended_counter[i] = HUNTER_STING_II;
+        s->k_detect_ok[i] = 0;
+        s->k_class_ok[i] = 0;
+        s->k_commit_ok[i] = 0;
+        s->k_corridor_ok[i] = 0;
+        s->k_los_ok[i] = 0;
+        s->k_track_history[i] = 0.0f;
+        s->k_noise[i] = 0.0f;
+        s->k_commit_conf[i] = 0.0f;
+        s->k_commit_reason[i] = COMMIT_REASON_NO_TARGET;
     }
 
     reset_hunters(s);
@@ -1902,16 +2048,34 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         return;
     }
 
-    /* Commit gate: avoid low-confidence launches unless the target is close to impact. */
+    /* Commit gate: launch only when staged pipeline marks target as committable. */
     if (!s->hunter_loaded[h])
     {
-        float dist_to_goal = sqrtf(dist2(s->kx[target], s->ky[target], s->k_goal_x[target], s->k_goal_y[target]));
-        int emergency = (dist_to_goal < 90.0f);
-        float commit_conf = clampf((s->k_detect_conf[target] + s->k_class_conf[target]) * 0.5f, 0.0f, 1.0f);
-        if (!emergency && (commit_conf < 0.34f))
+        s->commit_attempts++;
+        if (!s->k_commit_ok[target])
         {
+            switch (s->k_commit_reason[target])
+            {
+                case COMMIT_REASON_DETECT_LOW:
+                    s->commit_hold_detect++;
+                    break;
+                case COMMIT_REASON_CLASS_LOW:
+                    s->commit_hold_class++;
+                    break;
+                case COMMIT_REASON_CORRIDOR:
+                    s->commit_hold_corridor++;
+                    break;
+                case COMMIT_REASON_LOS_BLOCK:
+                    s->commit_hold_los++;
+                    break;
+                case COMMIT_REASON_COMMIT_LOW:
+                default:
+                    s->commit_hold_conf++;
+                    break;
+            }
             return;
         }
+        s->commit_launched++;
     }
 
     if (!s->hunter_loaded[h])
@@ -2261,7 +2425,7 @@ static void update_hud(drone_hunter_scene_t *s)
         {
             int k0 = active_idx[0];
             (void)snprintf(tline0, sizeof(tline0),
-                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s",
+                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s D%.0f C%.0f M%.0f %s",
                            s->k_priority_rank[k0],
                            target_type_name(s, k0),
                            s->k_speed_est[k0],
@@ -2269,7 +2433,11 @@ static void update_hud(drone_hunter_scene_t *s)
                            s->k_range_to_core[k0] * km_per_px,
                            s->k_eta_to_goal[k0],
                            s->k_threat_score[k0],
-                           hunter_type_short_name(s->k_recommended_counter[k0]));
+                           hunter_type_short_name(s->k_recommended_counter[k0]),
+                           s->k_detect_conf[k0] * 100.0f,
+                           s->k_class_conf[k0] * 100.0f,
+                           s->k_commit_conf[k0] * 100.0f,
+                           commit_reason_name(s->k_commit_reason[k0]));
         }
         else
         {
@@ -2280,7 +2448,7 @@ static void update_hud(drone_hunter_scene_t *s)
         {
             int k1 = active_idx[1];
             (void)snprintf(tline1, sizeof(tline1),
-                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s",
+                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s D%.0f C%.0f M%.0f %s",
                            s->k_priority_rank[k1],
                            target_type_name(s, k1),
                            s->k_speed_est[k1],
@@ -2288,7 +2456,11 @@ static void update_hud(drone_hunter_scene_t *s)
                            s->k_range_to_core[k1] * km_per_px,
                            s->k_eta_to_goal[k1],
                            s->k_threat_score[k1],
-                           hunter_type_short_name(s->k_recommended_counter[k1]));
+                           hunter_type_short_name(s->k_recommended_counter[k1]),
+                           s->k_detect_conf[k1] * 100.0f,
+                           s->k_class_conf[k1] * 100.0f,
+                           s->k_commit_conf[k1] * 100.0f,
+                           commit_reason_name(s->k_commit_reason[k1]));
         }
         else
         {

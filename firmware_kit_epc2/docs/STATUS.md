@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Golden + failsafe restore points updated to full target-telemetry HUD baseline.
+- State: Phase 2 complete baseline validated; golden + failsafe updated.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2367488 bytes`
-  - `verified 2362856 bytes`
+  - `wrote 2371584 bytes`
+  - `verified 2369544 bytes`
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -21,6 +21,12 @@
   - dynamic threat score,
   - launch commit gating,
   - recommended counter logic.
+- Phase 2 completion details:
+  - Added LOS masking into commit gate.
+  - Added track-history and noise shaping into detect/classify/commit confidence.
+  - Added commit hold reason telemetry counters:
+    - detect/class/confidence/corridor/LOS.
+  - Reduced icon-bar flashing by throttling deck UI updates during CIWS firing.
 - HUD now includes full live threat telemetry for active tracks:
   - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
 

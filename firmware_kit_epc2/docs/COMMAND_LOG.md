@@ -16,7 +16,12 @@
   - speed/altitude/range/ETA/priority/recommended-counter runtime metrics.
 - 2026-03-27 | HUD upgraded with full active-target telemetry:
   - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
+- 2026-03-27 | Phase 2 pipeline completed:
+  - LOS commit gating added.
+  - Track-history and noise shaping added to confidence flow.
+  - Commit hold-reason counters added (detect/class/confidence/corridor/LOS).
+- 2026-03-27 | Reduced icon bar flashing by throttling deck UI refresh from CIWS fire loop.
 - 2026-03-27 | Rebuild + flash validated:
-  - `wrote 2367488 bytes`
-  - `verified 2362856 bytes`
-- 2026-03-27 | Promoted this exact state as golden + failsafe restore point.
+  - `wrote 2371584 bytes`
+  - `verified 2369544 bytes`
+- 2026-03-27 | Promoted this exact state as golden + failsafe restore point (phase2-complete).

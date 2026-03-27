@@ -2,22 +2,27 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-target-telemetry`
+- Dated tag: `golden-e8-drone-hunter-20260327-phase2-complete`
 - Date: `2026-03-27`
 - Baseline summary:
   - Full active-target HUD telemetry integrated:
     - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
-  - Rules-engine data model phase progressed with explicit per-target runtime metrics.
+  - Rules-engine Phase 2 completed:
+    - detect/classify/commit pipeline fully wired,
+    - LOS + corridor gating in commit stage,
+    - track-history + noise shaping,
+    - commit hold reason accounting.
+  - Icon deck flashing reduced by throttled hunter deck UI updates during CIWS fire.
   - Persistent leak-fire model remains active.
   - CIWS remains constrained to short-range near-front envelope.
   - Hunter vs Attacker score model + continuous phase flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2367488 bytes`
-  - `verified 2362856 bytes`
+  - `wrote 2371584 bytes`
+  - `verified 2369544 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-target-telemetry`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-phase2-complete`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 
