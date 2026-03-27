@@ -31,8 +31,10 @@
 - Rebuild: complete for `proj_cm55` (environment still reports missing EdgeProtect combine-sign tools).
 - Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2236416 bytes`
-  - `verified 2233312 bytes`
+  - `wrote 2240512 bytes`
+  - `verified 2236224 bytes`
+- Rollback note:
+  - Reverted to last working flashed state by removing temporary HQ CIWS render source files and reflashing.
 
 ## Source Manifest for This Build
 - Generated ordered source manifest and package:

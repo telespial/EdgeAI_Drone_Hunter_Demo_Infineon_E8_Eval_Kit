@@ -13,14 +13,15 @@
     - Nightscape active in arena only (not splash)
     - Arena field background set transparent to prevent black overlay over Nightscape
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2236416 bytes`
-  - `verified 2233312 bytes`
+  - `wrote 2240512 bytes`
+  - `verified 2236224 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
 - Dated tag: `failsafe-e8-drone-hunter-20260326`
 - Date: `2026-03-26`
 - Policy for this milestone: failsafe intentionally aligned to current golden baseline.
+  - This restore point is the explicit rollback baseline requested after CIWS render experimentation.
 
 ## Restore commands
 ```bash

@@ -22,3 +22,5 @@
 - 2026-03-26 | Corrected Nightscape behavior: gameplay-only background (removed splash background usage).
 - 2026-03-26 | Removed arena black-box overlay by setting gameplay field background opacity to transparent.
 - 2026-03-26 | Rebuild + flash confirmed via `proj_cm55 qprogram_proj`: wrote `2236416` bytes, verified `2233312` bytes.
+- 2026-03-26 | Rollback to last known-good build state after CIWS render experiment; removed temporary HQ CIWS render sources and reflashed.
+- 2026-03-26 | Rebuild + flash confirmed via `proj_cm55 qprogram_proj`: wrote `2240512` bytes, verified `2236224` bytes.
