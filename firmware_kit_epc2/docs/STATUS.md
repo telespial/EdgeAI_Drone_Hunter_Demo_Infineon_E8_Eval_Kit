@@ -1,20 +1,20 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Golden restore point promoted to latest CIWS-positioned baseline
+- State: Golden + failsafe restore points promoted to latest CIWS sweep-arc baseline
 
 ## Current validated baseline
 - `proj_cm55` rebuild path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2314240 bytes`
-  - `verified 2310160 bytes`
+  - `verified 2310496 bytes`
 
 ## UX/Gameplay baseline captured in this restore point
-- Dual CIWS layout active with transparent CIWS render assets.
-- Left CIWS correctly inward-facing and positioned lower-left.
-- Right CIWS rotated/positioned per latest alignment request (right/down adjustment).
-- CIWS tracer stream uses dotted bullet-style fire effect.
+- Dual CIWS layout active with transparent render assets.
+- Left and right CIWS now use 90-degree sweep arcs instead of pure target-lock behavior.
+- CIWS engagement range is capped to 75% of screen width from each CIWS origin.
+- CIWS dotted tracer stream remains visible and enlarged.
 - Arena phase progression HUD remains active:
   - `PHASE 1: PATROL`
   - `PHASE 2: INTERCEPT`

@@ -5,25 +5,29 @@
 - Dated tag: `golden-e8-drone-hunter-20260327`
 - Date: `2026-03-27`
 - Baseline summary:
-  - Dual CIWS emplacements active in arena with transparent-render CIWS sprites.
-  - Left CIWS: horizontally flipped, positioned lower-left (`x + 18`, `y = arena_h - 49`).
-  - Right CIWS: rotated 180 from prior baseline and moved farther right/down (`x = arena_w - 8`, `y = arena_h - 49`).
-  - CIWS tracer stream remains dotted bullet-style (not solid laser line).
-  - Arena phase HUD + continuous-play flow retained.
+  - Dual CIWS emplacements active with transparent CIWS sprites.
+  - CIWS sweep-arc behavior implemented:
+    - Left CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
+    - Right CIWS sweeps a 90-degree arc from horizontal to vertical on its side.
+  - CIWS effective engagement range capped to 75% of arena/screen width from each gun origin.
+  - CIWS tracers remain dotted bullet-style and enlarged for visibility.
+  - Arena phase HUD and continuous-play flow retained.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2314240 bytes`
-  - `verified 2310160 bytes`
+  - `verified 2310496 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
 - Dated tag: `failsafe-e8-drone-hunter-20260327`
 - Date: `2026-03-27`
-- Note: failsafe tag may intentionally remain pinned to previous fallback unless explicitly promoted.
+- Policy for this milestone: failsafe is aligned to current golden baseline.
 
 ## Restore commands
 ```bash
 git fetch --tags
 git checkout golden-e8-drone-hunter
+# or
+# git checkout failsafe-e8-drone-hunter
 ```
 
 ## Build/flash commands for this baseline

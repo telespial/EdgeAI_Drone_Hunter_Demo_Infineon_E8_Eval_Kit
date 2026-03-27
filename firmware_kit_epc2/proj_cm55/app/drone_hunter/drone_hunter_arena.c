@@ -32,6 +32,9 @@
 #define FX_CORE_HIT_SEC           (0.40f)
 #define CIWS_AMMO_UNLIMITED       (-1)
 #define CIWS_TRACER_COUNT         (18)
+#define CIWS_RANGE_FRAC           (0.75f)
+#define CIWS_SWEEP_SPEED_RAD      (1.9f)
+#define CIWS_SWEEP_HALF_CONE      (0.20f)
 #define HUD_H                     (72)
 #define DECK_H                    (122)
 #define ARENA_MARGIN_X            (24)
@@ -201,6 +204,10 @@ typedef struct
     float fx_core_hit_t;
     float ciws_cooldown_sec;
     float ciws_cooldown_left_sec;
+    float ciws_sweep_right_rad;
+    float ciws_sweep_left_rad;
+    float ciws_sweep_right_dir;
+    float ciws_sweep_left_dir;
     float ciws_tracer_t[CIWS_TRACER_COUNT];
     float ciws_tracer_x0[CIWS_TRACER_COUNT];
     float ciws_tracer_y0[CIWS_TRACER_COUNT];
@@ -331,8 +338,45 @@ static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
     lv_obj_set_style_transform_angle(s->killers[k], angle_tenth, 0);
 }
 
-static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y, float *cooldown_sec)
+static float wrap_angle_pi(float a)
 {
+    while (a > PI_F)
+    {
+        a -= 2.0f * PI_F;
+    }
+    while (a < -PI_F)
+    {
+        a += 2.0f * PI_F;
+    }
+    return a;
+}
+
+static int ciws_target_in_sweep(float gun_x, float gun_y,
+                                float sweep_rad, float range_px,
+                                float target_x, float target_y)
+{
+    float dx = target_x - gun_x;
+    float dy = target_y - gun_y;
+    float d2 = (dx * dx) + (dy * dy);
+    float range2 = range_px * range_px;
+    float target_ang;
+    float d_ang;
+
+    if (d2 < 1.0f || d2 > range2)
+    {
+        return 0;
+    }
+
+    target_ang = atan2f(dy, dx);
+    d_ang = wrap_angle_pi(target_ang - sweep_rad);
+    return (fabsf(d_ang) <= CIWS_SWEEP_HALF_CONE);
+}
+
+static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y,
+                        float sweep_rad, float *cooldown_sec)
+{
+    float dir_x = cosf(sweep_rad);
+    float dir_y = sinf(sweep_rad);
     float p_ciws = (s->k_tier[k] == 0) ? 0.88f : ((s->k_tier[k] == 1) ? 0.74f : 0.58f);
     float roll = 0.5f + (0.5f * sinf((s->t * 3.7f) + (float)(k * 5 + s->wave_idx)));
 
@@ -344,20 +388,8 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     s->ciws_shots++;
     {
         int ti = s->ciws_shots % CIWS_TRACER_COUNT;
-        float aim_x = s->kx[k] - gun_x;
-        float aim_y = s->ky[k] - gun_y;
-        float aim_len = sqrtf((aim_x * aim_x) + (aim_y * aim_y));
-        float dir_x;
-        float dir_y;
         float spread;
         float speed;
-
-        if (aim_len < 0.001f)
-        {
-            aim_len = 1.0f;
-        }
-        dir_x = aim_x / aim_len;
-        dir_y = aim_y / aim_len;
         spread = ((float)(ti % 7) - 3.0f) * 0.06f;
         speed = 860.0f + ((float)(ti % 5) * 35.0f);
 
@@ -1219,6 +1251,10 @@ static void reset_round(drone_hunter_scene_t *s)
     s->fx_core_hit_t = 0.0f;
     s->ciws_cooldown_sec = 0.0f;
     s->ciws_cooldown_left_sec = 0.0f;
+    s->ciws_sweep_right_rad = -PI_F;
+    s->ciws_sweep_left_rad = -PI_F * 0.5f;
+    s->ciws_sweep_right_dir = 1.0f;
+    s->ciws_sweep_left_dir = 1.0f;
     s->defense_kills = 0;
     s->defense_misses = 0;
     s->ciws_ammo = CIWS_AMMO_UNLIMITED;
@@ -1277,9 +1313,35 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     float ciws_y = (float)(s->arena_y + s->arena_h - 49);
     float ciws_left_x = (float)(s->arena_x + 18);
     float ciws_left_y = (float)(s->arena_y + s->arena_h - 49);
+    float ciws_range = (float)s->arena_w * CIWS_RANGE_FRAC;
+    float sweep_step = CIWS_SWEEP_SPEED_RAD * DT_SEC;
 
     s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec - DT_SEC, 0.0f, 2.0f);
     s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec - DT_SEC, 0.0f, 2.0f);
+    s->ciws_sweep_right_rad += s->ciws_sweep_right_dir * sweep_step;
+    s->ciws_sweep_left_rad += s->ciws_sweep_left_dir * sweep_step;
+
+    if (s->ciws_sweep_right_rad > -PI_F * 0.5f)
+    {
+        s->ciws_sweep_right_rad = -PI_F * 0.5f;
+        s->ciws_sweep_right_dir = -1.0f;
+    }
+    else if (s->ciws_sweep_right_rad < -PI_F)
+    {
+        s->ciws_sweep_right_rad = -PI_F;
+        s->ciws_sweep_right_dir = 1.0f;
+    }
+
+    if (s->ciws_sweep_left_rad > 0.0f)
+    {
+        s->ciws_sweep_left_rad = 0.0f;
+        s->ciws_sweep_left_dir = -1.0f;
+    }
+    else if (s->ciws_sweep_left_rad < -PI_F * 0.5f)
+    {
+        s->ciws_sweep_left_rad = -PI_F * 0.5f;
+        s->ciws_sweep_left_dir = 1.0f;
+    }
 
     for (k = 0; k < KILLER_COUNT; ++k)
     {
@@ -1336,18 +1398,18 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 
         if ((s->ciws_ammo != 0) &&
             (s->ciws_cooldown_sec <= 0.0f) &&
-            (dist2(s->kx[k], s->ky[k], ciws_x, ciws_y) < (230.0f * 230.0f)))
+            ciws_target_in_sweep(ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_x, ciws_y, &s->ciws_cooldown_sec))
+            if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, &s->ciws_cooldown_sec))
             {
                 continue;
             }
         }
         if ((s->ciws_ammo != 0) &&
             (s->ciws_cooldown_left_sec <= 0.0f) &&
-            (dist2(s->kx[k], s->ky[k], ciws_left_x, ciws_left_y) < (230.0f * 230.0f)))
+            ciws_target_in_sweep(ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, &s->ciws_cooldown_left_sec))
+            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, &s->ciws_cooldown_left_sec))
             {
                 continue;
             }
@@ -1524,7 +1586,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             lv_opa_t opa = (lv_opa_t)(80 + (int32_t)((s->ciws_tracer_t[k] / 0.11f) * 170.0f));
 
             lv_obj_clear_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_size(s->ciws_tracer[k], 2, 2);
+            lv_obj_set_size(s->ciws_tracer[k], 6, 6);
             lv_obj_set_style_bg_color(s->ciws_tracer[k], lv_color_hex(0xFDE68A), 0);
             lv_obj_set_style_bg_opa(s->ciws_tracer[k], opa, 0);
             set_obj_center(s->ciws_tracer[k], s->ciws_tracer_x0[k], s->ciws_tracer_y0[k]);
@@ -1942,7 +2004,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         s->deck_ciws_icon = lv_image_create(s->deck_bar);
         lv_obj_set_pos(s->deck_ciws_icon, x + 5, 2);
         lv_image_set_src(s->deck_ciws_icon, &img_hunter_ciws);
-        lv_obj_set_style_transform_zoom(s->deck_ciws_icon, 110, 0);
+        lv_obj_set_style_transform_zoom(s->deck_ciws_icon, 165, 0);
 
         s->deck_ciws_name = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_ciws_name, &lv_font_montserrat_12, 0);
@@ -1986,7 +2048,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     {
         s->ciws_tracer[i] = lv_obj_create(s->arena);
         lv_obj_remove_style_all(s->ciws_tracer[i]);
-        lv_obj_set_size(s->ciws_tracer[i], 2, 2);
+        lv_obj_set_size(s->ciws_tracer[i], 6, 6);
         lv_obj_set_style_radius(s->ciws_tracer[i], LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(s->ciws_tracer[i], lv_color_hex(0xFDE68A), 0);
         lv_obj_set_style_bg_opa(s->ciws_tracer[i], LV_OPA_0, 0);

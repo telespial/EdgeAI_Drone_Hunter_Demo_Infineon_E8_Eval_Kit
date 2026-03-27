@@ -16,9 +16,9 @@
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.c`
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_ciws.h`
 - Verified behavior in code:
-  - Left CIWS uses flipped transparent sprite and lower-left placement.
-  - Right CIWS placement updated to farther right/down per latest UX tuning.
-  - Dotted CIWS tracer stream retained.
+  - 90-degree CIWS sweep arcs per side.
+  - 75% screen-range CIWS engagement cap.
+  - Dual fixed CIWS placements retained with latest position tuning.
   - Arena phase HUD and continuous gameplay retained.
 
 ## Build/Flash Confirmation (2026-03-27)
@@ -26,4 +26,4 @@
 - Flash (`qprogram_proj`) succeeded on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2314240 bytes`
-  - `verified 2310160 bytes`
+  - `verified 2310496 bytes`
