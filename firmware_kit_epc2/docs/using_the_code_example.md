@@ -1,4 +1,9 @@
-[Click here](../README.md) to view the README.
+[Click here](../README.md) to view the active firmware README.
+
+> **Project scope note (Drone Hunter):**
+> This document is an upstream generic workflow reference.
+> For this repo's active Drone Hunter framework, follow:
+> `../../start_here.md`, `../../rules.md`, and `./OPS_RUNBOOK.md`.
 
 ## Using the code example
 

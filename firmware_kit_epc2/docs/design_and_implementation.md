@@ -1,4 +1,9 @@
-[Click here](../README.md) to view the README.
+[Click here](../README.md) to view the active firmware README.
+
+> **Project scope note (Drone Hunter):**
+> This file contains upstream/reference architecture notes from the base graphics example.
+> For active Drone Hunter behavior, use:
+> `../../rules.md`, `./PROJECT_STATE.md`, `./STATUS.md`, and `./RESTORE_POINTS.md`.
 
 ## Design and implementation
 
