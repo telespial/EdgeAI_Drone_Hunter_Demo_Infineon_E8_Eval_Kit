@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-phase13-start-guidance-swept-hit`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase13-start-guidance-plus-flicker-hotfix`
 - Date: `2026-03-28`
 - Baseline summary:
   - Phase 13 start baseline:
@@ -10,6 +10,8 @@
     - swept-hit collision checks are active,
     - target-loss reacquire path is active,
     - HUD telemetry counters added (`SH`, `RQ`, `OS`).
+  - Display stability baseline:
+    - HUD redraw is rate-limited to reduce occasional flicker.
   - Phase 10 wave pacing baseline retained:
     - rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
     - composition-driven scaling,
@@ -34,14 +36,14 @@
     - kill/intercept/spawn FX size scales with depth (larger near bottom, smaller near top).
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2408448 bytes`
-  - `verified 2404672 bytes`
+  - `verified 2404608 bytes`
 - Memory snapshot:
-  - external SMIF usage: `2,404,672 / 134,217,728` bytes (`1.79%` used),
-  - remaining external SMIF: `131,813,056` bytes (`98.21%` free).
+  - external SMIF usage: `2,404,608 / 134,217,728` bytes (`1.79%` used),
+  - remaining external SMIF: `131,813,120` bytes (`98.21%` free).
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-start-guidance-swept-hit`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-start-guidance-plus-flicker-hotfix`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 

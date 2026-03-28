@@ -70,6 +70,9 @@
   - swept-hit geometry checks are active to reduce one-frame fly-through misses,
   - target-loss handling now attempts bounded reacquire before forced miss/fall,
   - telemetry counters added for swept-hit (`SH`), reacquire (`RQ`), and overshoot (`OS`) events.
+- Display stability hotfix:
+  - HUD text refresh is now rate-limited to reduce occasional panel flicker,
+  - `hud_elapsed` line now uses single-write composition per refresh pass.
 - Strategy refinement:
   - CIWS accidental hunter-kill rule now includes explicit penalty semantics:
     - hunter inventory can be consumed by fratricide,
@@ -253,13 +256,13 @@
   - `build_proj` in current shell still reports GCC package resolution issue.
 
 ## Memory snapshot (2026-03-28)
-- Programmed image (`verified`): `2,404,672` bytes.
+- Programmed image (`verified`): `2,404,608` bytes.
 - External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
 - Usage:
   - used: `1.79%`
-  - free: `98.21%` (`131,813,056` bytes).
+  - free: `98.21%` (`131,813,120` bytes).
 - Internal-only fit check (512 KB RRAM):
-  - image exceeds capacity by `1,880,384` bytes (`~4.59x` larger than internal capacity).
+  - image exceeds capacity by `1,880,320` bytes (`~4.59x` larger than internal capacity).
 
 ## Build + Flash confirmation (2026-03-28, Phase 12 closure pass)
 - Build command completed through compile/link/hex generation:
@@ -282,3 +285,11 @@
 - OpenOCD results:
   - `wrote 2408448 bytes`
   - `verified 2404672 bytes`
+
+## Build + Flash confirmation (2026-03-28, flicker mitigation hotfix)
+- Rebuild completed for `proj_cm55` after HUD redraw-throttle update.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2408448 bytes`
+  - `verified 2404608 bytes`

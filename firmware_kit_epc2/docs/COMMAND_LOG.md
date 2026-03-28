@@ -1,5 +1,18 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Documentation + restore-point refresh after flicker hotfix:
+  - aligned latest verified flash metrics to flicker-hotfix image (`verified 2404608`),
+  - updated memory accounting in `README.md`, `docs/STATUS.md`, and `docs/PROJECT_STATE.md`,
+  - prepared new dated golden/failsafe identifiers for phase13-start + flicker baseline.
+- 2026-03-28 | Flicker mitigation hotfix in `drone_hunter_arena.c`:
+  - added HUD refresh rate limiting (`HUD_REFRESH_SEC`) to avoid full text redraw every 33 ms tick,
+  - refactored `hud_elapsed` updates to a single write per HUD refresh pass (removed multi-write per frame behavior).
+- 2026-03-28 | Flicker hotfix build + flash pass:
+  - build command completed through compile/link/hex generation; expected combine-sign warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2408448 bytes`
+    - `verified 2404608 bytes`
 - 2026-03-28 | Phase 13 start implementation in `drone_hunter_arena.c`:
   - added continuous hunter guidance re-steer while committed (turn-rate limited),
   - added swept-hit segment collision checks to reduce one-frame overshoot misses,

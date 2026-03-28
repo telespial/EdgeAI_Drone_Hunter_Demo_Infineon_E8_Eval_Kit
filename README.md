@@ -58,6 +58,8 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
   - hunters continuously re-steer while committed,
   - swept-hit collision checks reduce fly-past misses,
   - reacquire path and telemetry counters (`SH`, `RQ`, `OS`) are active.
+- Display flicker mitigation applied:
+  - HUD text updates are rate-limited to reduce occasional redraw shimmer.
 - CIWS strategy refinement:
   - constrained accidental CIWS-on-hunter risk window is defined in rules,
   - fratricide event consumes hunter supply while attacker kill outcome remains uncertain.
@@ -76,11 +78,11 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Latest flash confirmation:
 - `wrote 2408448 bytes`
-- `verified 2404672 bytes`
+- `verified 2404608 bytes`
 
 Memory snapshot from latest programmed image:
-- External SMIF flash usage: `2,404,672 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
-- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,384 bytes` (`~4.59x` too large).
+- External SMIF flash usage: `2,404,608 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
+- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,320 bytes` (`~4.59x` too large).
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

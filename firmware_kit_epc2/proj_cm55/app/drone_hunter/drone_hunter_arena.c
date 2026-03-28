@@ -57,6 +57,7 @@
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
 #define ATTACK_SPRITE_STABLE_ONLY (0)
+#define HUD_REFRESH_SEC           (0.10f)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_WHITE  (1)
@@ -397,6 +398,7 @@ typedef struct
     float round_time_sec;
     int round_over;
     uint32_t round_start_tick_ms;
+    float hud_refresh_t;
 
     float t;
 } drone_hunter_scene_t;
@@ -2693,6 +2695,7 @@ static void reset_round(drone_hunter_scene_t *s)
     s->round_time_sec = ROUND_TIME_SEC;
     s->round_over = 0;
     s->round_start_tick_ms = lv_tick_get();
+    s->hud_refresh_t = HUD_REFRESH_SEC;
     s->t = 0.0f;
     s->killer_spawn_tick = 0;
     s->fx_core_hit_t = 0.0f;
@@ -4061,6 +4064,7 @@ static void update_hud(drone_hunter_scene_t *s)
     int def_endurance = 0;
     const char *env_fit = "N/A";
     const char *availability = "HOLD";
+    char elapsed_line[192];
     int h;
     int k;
     const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
@@ -4118,13 +4122,6 @@ static void update_hud(drone_hunter_scene_t *s)
                           s->attack_destroyed, s->wave_target_total,
                           s->attack_leaked,
                           s->attack_remaining_to_spawn);
-    lv_label_set_text_fmt(s->hud_elapsed,
-                          "ELAPSED %02d:%02d  |  CIWS L%d/R%d  |  MAN H:%s T:%d",
-                          elapsed_mm, elapsed_ss,
-                          s->ciws_ammo_left,
-                          s->ciws_ammo_right,
-                          (s->manual_selected_hunter >= 0) ? hunter_type_short_name((hunter_type_t)s->manual_selected_hunter) : "AUTO",
-                          (s->manual_selected_target >= 0) ? (s->manual_selected_target + 1) : 0);
     if (lead_k >= 0)
     {
         char info[256];
@@ -4166,27 +4163,28 @@ static void update_hud(drone_hunter_scene_t *s)
                               s->h_reacquire_events,
                               s->h_overshoot_events);
     }
-    lv_label_set_text_fmt(s->hud_elapsed,
-                          "EL %02d:%02d | DEF END:%d STK:%d AIR:%d AVL:%s | ENV:%s LOCK:%.2f CD %.2f/%.2f | FF:%s",
-                          elapsed_mm, elapsed_ss,
-                          def_endurance,
-                          total_stock, hunters_air, availability,
-                          env_fit,
-                          lock_q,
-                          s->ciws_cooldown_left_sec, s->ciws_cooldown_sec,
-                          s->iff_advanced_mode ? "ADV" : "LOCK");
+    (void)snprintf(elapsed_line, sizeof(elapsed_line),
+                   "EL %02d:%02d | DEF END:%d STK:%d AIR:%d AVL:%s | ENV:%s LOCK:%.2f CD %.2f/%.2f | FF:%s",
+                   elapsed_mm, elapsed_ss,
+                   def_endurance,
+                   total_stock, hunters_air, availability,
+                   env_fit,
+                   lock_q,
+                   s->ciws_cooldown_left_sec, s->ciws_cooldown_sec,
+                   s->iff_advanced_mode ? "ADV" : "LOCK");
     if (s->fail_reason_ttl > 0.0f)
     {
-        lv_label_set_text_fmt(s->hud_elapsed,
-                              "ELAPSED %02d:%02d  |  WHY: %s",
-                              elapsed_mm, elapsed_ss, s->fail_reason_text);
+        (void)snprintf(elapsed_line, sizeof(elapsed_line),
+                       "ELAPSED %02d:%02d  |  WHY: %s",
+                       elapsed_mm, elapsed_ss, s->fail_reason_text);
     }
     else if (s->iff_recovery_ttl > 0.0f)
     {
-        lv_label_set_text_fmt(s->hud_elapsed,
-                              "ELAPSED %02d:%02d  |  IFF RECOVERY %.1fs",
-                              elapsed_mm, elapsed_ss, s->iff_recovery_ttl);
+        (void)snprintf(elapsed_line, sizeof(elapsed_line),
+                       "ELAPSED %02d:%02d  |  IFF RECOVERY %.1fs",
+                       elapsed_mm, elapsed_ss, s->iff_recovery_ttl);
     }
+    lv_label_set_text(s->hud_elapsed, elapsed_line);
 }
 
 static void maybe_end_round(drone_hunter_scene_t *s)
@@ -4325,7 +4323,12 @@ static void anim_cb(lv_timer_t *timer)
 
     update_positions(s);
     update_effects(s, core_x, core_y);
-    update_hud(s);
+    s->hud_refresh_t += DT_SEC;
+    if (s->hud_refresh_t >= HUD_REFRESH_SEC)
+    {
+        s->hud_refresh_t = 0.0f;
+        update_hud(s);
+    }
 }
 
 void drone_hunter_arena_start(lv_obj_t *screen)

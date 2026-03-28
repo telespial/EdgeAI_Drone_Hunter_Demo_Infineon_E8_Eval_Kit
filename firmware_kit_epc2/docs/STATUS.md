@@ -8,7 +8,7 @@
 - `qprogram_proj` flash confirmed on hardware.
 - Latest confirmed flash result:
   - `wrote 2408448 bytes`
-  - `verified 2404672 bytes`
+  - `verified 2404608 bytes`
 - Build quality confirmation:
   - using correct SDK path works for build + flashing:
     - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
@@ -19,10 +19,10 @@
 
 ## Memory footprint
 - External SMIF programmed image (`verified`):
-  - `2,404,672 / 134,217,728` bytes used (`1.79%`),
-  - `131,813,056` bytes remaining (`98.21%`).
+  - `2,404,608 / 134,217,728` bytes used (`1.79%`),
+  - `131,813,120` bytes remaining (`98.21%`).
 - Internal RRAM fit check (512 KB):
-  - current image would exceed internal-only capacity by `1,880,384` bytes (`~4.59x` too large).
+  - current image would exceed internal-only capacity by `1,880,320` bytes (`~4.59x` too large).
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -48,6 +48,8 @@
 - Strategy update:
   - CIWS friendly-fire doctrine now includes constrained hunter-fratricide risk windows.
   - Penalty model: hunter supply can be consumed while attacker kill outcome remains uncertain.
+- Display stability update:
+  - HUD refresh is now throttled to reduce occasional screen flicker from high-frequency text redraw.
 
 ## Phase 13 status (2026-03-28)
 - In progress in runtime code:
@@ -56,6 +58,9 @@
   - target-loss reacquire path before forced miss/fall behavior,
   - telemetry counters added for swept-hit, reacquire, and overshoot events.
 - Hardware flash baseline updated with this implementation.
+- Latest hotfix flash result:
+  - `wrote 2408448 bytes`
+  - `verified 2404608 bytes`
 
 ## Explosion/FX baseline (2026-03-28)
 - Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.
