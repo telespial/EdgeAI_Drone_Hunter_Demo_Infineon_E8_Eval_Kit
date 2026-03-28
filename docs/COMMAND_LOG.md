@@ -1,5 +1,13 @@
 # COMMAND_LOG
 
+- 2026-03-28 | CIWS strategy penalty refinement:
+  - clarified that CIWS hunter-fratricide event consumes hunter supply,
+  - clarified attacker outcome uncertainty in same event (attack drone may survive or be destroyed).
+- 2026-03-28 | Restore-point doc refresh:
+  - moved dated golden/failsafe identifiers to phase12+CIWS-fratricide-rule baseline naming in `docs/RESTORE_POINTS.md`.
+- 2026-03-28 | Strategy expansion: CIWS can accidentally destroy hunter drones under constrained failure conditions:
+  - added canonical rule in `rules.md` (degraded IFF + poor lock/track merge + firing-lane overlap gate),
+  - mirrored scope in Phase 6/9 roadmap tasks (`docs/TODO.md` and `ToDo.md`).
 - 2026-03-28 | Completed Phase 12 (verification/calibration/restore governance):
   - updated roadmap status to mark Phase 12 complete in both `docs/TODO.md` and `ToDo.md`,
   - refreshed status/state/restore docs with latest flashed image metrics and memory accounting,

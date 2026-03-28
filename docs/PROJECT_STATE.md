@@ -65,6 +65,10 @@
 - Phase 14 doctrine semantics are now explicit in rules/docs:
   - `ALGO` is baseline attacker+defender function logic,
   - `EDGEAI` is adaptive embedded intelligence that improves ALGO using trained/adaptive reasoning.
+- Strategy refinement:
+  - CIWS accidental hunter-kill rule now includes explicit penalty semantics:
+    - hunter inventory can be consumed by fratricide,
+    - attacking drone may still survive the same burst event.
 - Phase 9 IFF advanced mode is implemented:
   - optional advanced toggle via long-press on Phalanx deck item,
   - blue-on-blue path only opens under strict combined gate:

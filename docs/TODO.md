@@ -154,6 +154,8 @@ Status: Complete
   - ammo L/R,
   - heat L/R,
   - lock quality.
+- Include constrained CIWS fratricide strategy rule in advanced/failure windows:
+  - hunter crossing + degraded IFF + poor lock/track merge can produce accidental hunter kill.
 
 ### Exit criteria
 - Player can clearly see why CIWS succeeds/fails and when to avoid firing.
@@ -212,6 +214,11 @@ Status: Complete
 - Add advanced mode toggle.
 - Enable friendly-fire only if multi-condition gate is met:
   - IFF degraded + merged tracks + manual override + low confidence.
+- Extend friendly-fire model to include CIWS-on-hunter accidental kills:
+  - only when hunter crosses active CIWS fire lane under degraded/merged low-lock conditions.
+  - penalty model:
+    - hunter supply is decremented (wasted friendly interceptor),
+    - attacking drone may or may not be destroyed in the same burst event.
 - Add collateral outcomes and recovery messaging.
 
 ### Exit criteria

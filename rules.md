@@ -130,6 +130,7 @@ Firing with poor conditions (too far, wrong arc, bad lead, masked LOS) should:
 - increase heat,
 - increase reaction/cooldown delay,
 - reduce future engagement efficiency.
+- increase fratricide risk window when hunters cross the CIWS firing corridor under degraded confidence.
 
 ## 7. Detection, classification, and commit pipeline
 Each engagement should conceptually pass:
@@ -166,10 +167,21 @@ Friendly fire can occur only when several failure conditions overlap:
 - low classification confidence,
 - spoofing/debris confusion.
 
+Additional CIWS fratricide rule:
+- CIWS can accidentally destroy a friendly hunter drone only during a constrained failure gate:
+  - hunter crosses active CIWS firing lane,
+  - lock quality is poor or track merge is active,
+  - IFF is degraded (or advanced mode is forcing permissive fire),
+  - burst is released inside this overlap window.
+- Outside this gate, CIWS must remain hard-locked against friendly hunter hits.
+
 Consequences:
 - blue-on-blue intercept,
 - collateral damage,
 - chain reaction near critical assets.
+- hunter stock depletion from friendly loss (wasted interceptor from defender supply),
+- attack drone kill outcome becomes uncertain in that event (may be destroyed or may survive through the burst),
+- temporary confidence/lock penalties.
 
 ## 9. Intercept decision logic
 For every potential launch, compute:

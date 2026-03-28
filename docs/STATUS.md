@@ -43,6 +43,9 @@
 - Phase 11 win/loss and collateral rules are complete:
   - strategic defender win/loss evaluation is active,
   - round-end overlay now reports causal summary metrics (wave/core/leaks/kills/stock/CIWS).
+- Strategy update:
+  - CIWS friendly-fire doctrine now includes constrained hunter-fratricide risk windows.
+  - Penalty model: hunter supply can be consumed while attacker kill outcome remains uncertain.
 
 ## Explosion/FX baseline (2026-03-28)
 - Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.

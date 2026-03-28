@@ -54,6 +54,9 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Phase 14 specification added (planned):
   - `ALGO` is baseline attacker+defender function logic,
   - `EDGEAI` is an embedded intelligence layer that improves ALGO via trained/adaptive reasoning.
+- CIWS strategy refinement:
+  - constrained accidental CIWS-on-hunter risk window is defined in rules,
+  - fratricide event consumes hunter supply while attacker kill outcome remains uncertain.
 
 ## Rules spec
 - Canonical rules are documented in `rules.md`.

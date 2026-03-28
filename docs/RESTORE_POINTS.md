@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-phase12-complete-flash`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase12-plus-ciws-hunter-fratricide-rule`
 - Date: `2026-03-28`
 - Baseline summary:
   - Phase 10 wave pacing baseline retained:
@@ -16,6 +16,9 @@
   - Phase 14 specification retained:
     - `ALGO` defined as baseline attacker+defender logic,
     - `EDGEAI` defined as adaptive intelligence layer over ALGO.
+  - CIWS strategy refinement retained:
+    - constrained CIWS-on-hunter fratricide window is defined,
+    - hunter supply penalty applies while attacker kill outcome remains uncertain.
   - Explosion anchor correctness baseline:
     - both hunter-kill and CIWS-kill FX are anchored to rendered target center.
   - Per-class kill FX profile mapping:
@@ -33,7 +36,7 @@
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase12-complete-flash`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase12-plus-ciws-hunter-fratricide-rule`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 
