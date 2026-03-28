@@ -420,6 +420,7 @@ typedef struct
 
 static drone_hunter_scene_t g_scene;
 static float clampf(float v, float lo, float hi);
+static float combat_floor_y(const drone_hunter_scene_t *s);
 static float dist2(float ax, float ay, float bx, float by);
 static float threat_required_score(const drone_hunter_scene_t *s, int k);
 static void update_hunter_deck_ui(drone_hunter_scene_t *s);
@@ -746,6 +747,22 @@ static float clampf(float v, float lo, float hi)
         return hi;
     }
     return v;
+}
+
+static float combat_floor_y(const drone_hunter_scene_t *s)
+{
+    float floor_y = (float)(s->arena_y + s->arena_h) - 20.0f;
+
+    if (s->deck_bar != NULL)
+    {
+        /* Keep all flight objects above the icon/deck strip. */
+        float deck_top = (float)lv_obj_get_y(s->deck_bar) - 8.0f;
+        if (deck_top < floor_y)
+        {
+            floor_y = deck_top;
+        }
+    }
+    return floor_y;
 }
 
 static float dist2(float ax, float ay, float bx, float by)
@@ -2563,7 +2580,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     float min_x = (float)s->arena_x + 20.0f;
     float max_x = (float)(s->arena_x + s->arena_w - 20);
     float min_y = (float)s->arena_y + 20.0f;
-    float max_y = (float)(s->arena_y + s->arena_h - 20);
+    float max_y = combat_floor_y(s);
     float span_x = (max_x - min_x > 1.0f) ? (max_x - min_x) : 1.0f;
     float span_y = (max_y - min_y > 1.0f) ? (max_y - min_y) : 1.0f;
     float pos_x = min_x;
@@ -3118,6 +3135,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     float ciws_range = (float)s->arena_w * CIWS_RANGE_FRAC;
     float ciws_block_top_y = (float)s->arena_y + ((float)s->arena_h * (1.0f - CIWS_TOP_GRID_BLOCK_FRAC));
     float ciws_max_vertical = (float)s->arena_h * CIWS_MAX_VERTICAL_FRAC;
+    float floor_y = combat_floor_y(s);
     float sweep_step = CIWS_SWEEP_SPEED_RAD * DT_SEC;
 
     s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec - DT_SEC, 0.0f, 2.0f);
@@ -3317,7 +3335,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         s->ky[k] += s->kvy[k];
 
         s->kx[k] = clampf(s->kx[k], 6.0f, (float)lv_obj_get_width(s->screen) - 6.0f);
-        s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, (float)lv_obj_get_height(s->screen) - 6.0f);
+        s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, floor_y);
 
         {
             /* Detect -> classify -> commit confidence model feeding threat score. */
@@ -3431,7 +3449,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float core_y)
 {
     int target = -1;
-    float ground_y = (float)(s->arena_y + s->arena_h) - 20.0f;
+    float ground_y = combat_floor_y(s);
     float horizon_y = (float)s->arena_y + 4.0f;
     float offscreen_bottom_y = (float)lv_obj_get_height(s->screen) + 20.0f;
     const hunter_profile_t *p;
@@ -4257,6 +4275,7 @@ static void update_positions(drone_hunter_scene_t *s)
 {
     int h;
     int k;
+    float floor_y = combat_floor_y(s);
     float ciws_x = (float)(s->arena_x + s->arena_w - 8);
     float ciws_y = (float)(s->arena_y + s->arena_h - 49);
     float ciws_left_x = (float)(s->arena_x + 18);
@@ -4289,11 +4308,11 @@ static void update_positions(drone_hunter_scene_t *s)
         if (s->h_falling[h] == 2)
         {
             float retreat = clampf((s->hy[h] - ((float)s->arena_y - 10.0f)) /
-                                   (((float)(s->arena_y + s->arena_h - 20)) - ((float)s->arena_y - 10.0f)),
+                                   ((floor_y) - ((float)s->arena_y - 10.0f)),
                                    0.0f, 1.0f);
             zoom = (uint16_t)clampf((float)zoom * (0.52f + (retreat * 0.48f)), 80.0f, 310.0f);
             hunter_opa = (lv_opa_t)(50 + (int32_t)(retreat * 205.0f));
-            s->hy[h] = clampf(s->hy[h], (float)s->arena_y - 24.0f, (float)(s->arena_y + s->arena_h - 20));
+            s->hy[h] = clampf(s->hy[h], (float)s->arena_y - 24.0f, floor_y);
         }
         else if (s->h_falling[h] == 1)
         {
@@ -4302,7 +4321,7 @@ static void update_positions(drone_hunter_scene_t *s)
         }
         else
         {
-            s->hy[h] = clampf(s->hy[h], (float)s->arena_y + 6.0f, (float)(s->arena_y + s->arena_h - 20));
+            s->hy[h] = clampf(s->hy[h], (float)s->arena_y + 6.0f, floor_y);
         }
         s->hx[h] = clampf(s->hx[h], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
 
@@ -4362,7 +4381,7 @@ static void update_positions(drone_hunter_scene_t *s)
             lv_obj_set_style_opa(s->killers[k], killer_opa, 0);
             lv_obj_set_style_image_opa(s->killers[k], killer_opa, 0);
         }
-        s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, (float)(s->arena_y + s->arena_h - 6));
+        s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, floor_y);
         s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
         lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
         set_obj_center(s->killers[k], s->kx[k], s->ky[k]);

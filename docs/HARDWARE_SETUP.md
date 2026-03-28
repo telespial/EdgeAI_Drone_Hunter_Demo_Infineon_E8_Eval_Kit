@@ -18,8 +18,8 @@ PSOC Edge E84 Evaluation Kit (EPC2)
 - Confirm debugger enumerates as KitProg3 CMSIS-DAP
 
 ## Quick Triage For Black Screen
-1. Re-check `BOOT SW`, `J20`, `J21`
-2. Confirm `CONFIG_DISPLAY=W4P3INCH_DISP` in `common.mk`
-3. Reflash using validated path:
-   - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
-4. Check serial output at 115200 8N1
+1. Re-check `BOOT SW`, `J20`, `J21`.
+2. Confirm `CONFIG_DISPLAY=W4P3INCH_DISP` in `common.mk`.
+3. Run full validated recovery flash sequence:
+   - `bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
+4. Check serial output at `115200 8N1`.

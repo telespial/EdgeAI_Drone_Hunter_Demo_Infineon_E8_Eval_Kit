@@ -6,7 +6,8 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 
 ## Program Status Snapshot
 - Completed in code: Phases `1` to `14`
-- Planned: Phase `15`
+- In progress: Phase `15`
+- Planned next: Phase `16`
 - Hardware baseline: restored and validated with full 3-image programming sequence (`cm33_s_signed`, `cm33_ns_shifted`, `cm55`).
 
 ## Phase Matrix
@@ -26,7 +27,7 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 | 12 | Verification + Calibration + Restore Governance | Complete |
 | 13 | Hunter Guidance + Intercept Geometry Hardening | Complete |
 | 14 | 360 Movement Doctrine + Dynamic Intercept Decisions | Complete (built and flashed on board) |
-| 15 | Cleanup + Settings + HUD Simplification + Flash Safety | Planned |
+| 15 | Cleanup + Settings + HUD Simplification + Flash Safety | In Progress |
 
 ---
 
@@ -89,6 +90,23 @@ Finish UX/settings cleanup and repository hygiene, while preserving reliable fla
 - Safety:
   - enforce latest-artifact flashing path,
   - keep hunter lower-boundary bounce fix hardened.
+
+### First Steps Started (2026-03-28)
+- Completed:
+  - Repository inventory scan to identify cleanup/leak-risk docs and mirrors.
+  - TODO single-source check confirmed:
+    - canonical roadmap remains `ToDo.md`,
+    - `docs/TODO.md` and `firmware_kit_epc2/docs/TODO.md` are pointer-only mirrors.
+  - Initial leak-risk file inventory captured in `docs/PHASE15_KICKOFF.md`.
+  - Lower icon/HUD deck bounce hardening completed:
+    - added shared combat floor boundary,
+    - applied floor clamp to attacker/hunter update + render paths,
+    - validated with fresh full 3-image flash pass.
+- Next queued:
+  - Remove or quarantine non-gameplay-facing `start_here`/framework guidance from gameplay docs.
+  - Implement simplified top HUD scoreboard (`ATTACKER` left, `DEFENDER` right) replacing dense telemetry text.
+  - Add settings popup touch controls for attacker mode, defender mode, NPU, difficulty, and speed++.
+  - Begin first pass on improved fire rendering variants/sizing.
 
 ---
 

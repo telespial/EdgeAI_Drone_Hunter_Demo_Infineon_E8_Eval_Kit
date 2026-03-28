@@ -6,8 +6,8 @@
 
 ## Current Baseline Summary
 - Phases 1-14 complete.
-- Phase 14 has been built and flashed on board.
-- Phase 15 and Phase 16 remain planned.
+- Phase 15 started.
+- Latest runtime includes lower-deck bounce fix (no drone rebound on icon/HUD strip).
 
 ## Verified Board + Device
 - Kit: `KIT_PSE84_EVAL`
@@ -22,12 +22,13 @@
 Observed successful signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2408448 bytes` / `verified 2407264 bytes`
+- `wrote 2408448 bytes` / `verified 2407304 bytes`
 - `** Resetting Target **`
 
 ## Known-Good Restore Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Workfront
-- Execute Phase 15 settings/HUD/cleanup scope.
-- Then begin Phase 16 audio layer.
+- Continue Phase 15 settings popup controls + HUD simplification.
+- Continue Phase 15 repo cleanup/hygiene pass.
+- Start Phase 16 audio layer after Phase 15 closure.

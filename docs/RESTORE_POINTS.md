@@ -1,19 +1,20 @@
 # RESTORE_POINTS
 
-## Golden restore point (new)
-- Tag: `golden-2026-03-28-phase14-validated`
+## Golden restore point (current)
+- Rolling tag: `golden-e8-drone-hunter`
+- Dated tag: `golden-2026-03-28-phase15-kickoff-bounce-floor-fix`
 - Date: `2026-03-28`
 - Purpose:
-  - capture Phase 14 completion,
-  - capture the validated board flash signatures,
-  - publish updated docs/README and roadmap status.
+  - capture Phase 15 kickoff documentation baseline,
+  - capture lower-deck bounce/floor hardening,
+  - capture latest validated full-recovery flash signatures.
 
-## Failsafe restore point (new)
+## Failsafe restore point (current)
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase14-validated`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase15-kickoff-bounce-floor-fix`
 - Policy:
-  - pinned to the latest known-good runtime baseline that can be restored directly,
-  - moved together with this Phase 14 validated release.
+  - pinned to latest known-good directly recoverable runtime,
+  - moved with current validated flash pass.
 
 ## Verified recovery programming sequence
 Program in this order:
@@ -24,12 +25,12 @@ Program in this order:
 Successful verification signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2408448 bytes` / `verified 2407264 bytes`
+- `wrote 2408448 bytes` / `verified 2407304 bytes`
 
 ## Restore commands
 ```bash
 git fetch --tags
-git checkout golden-2026-03-28-phase14-validated
+git checkout golden-2026-03-28-phase15-kickoff-bounce-floor-fix
 # or failsafe baseline
 # git checkout failsafe-e8-drone-hunter
 ```

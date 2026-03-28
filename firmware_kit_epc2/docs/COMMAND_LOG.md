@@ -1,5 +1,24 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 15 first-steps implementation and lower-deck bounce hardening:
+  - added shared `combat_floor_y()` boundary in `drone_hunter_arena.c`,
+  - applied floor clamp to attacker movement, hunter ground contact, respawn bounds, and render-time clamps,
+  - removed bottom icon/HUD strip rebound behavior for drones.
+- 2026-03-28 | Build + flash validation after bounce-floor hardening:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` and `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2408448 bytes` / `verified 2407304 bytes`
+    - `** Resetting Target **`
+- 2026-03-28 | Documentation refresh and restore-point promotion prep:
+  - rewrote root `README.md` with detailed GitHub-facing project overview,
+  - updated status/state/runbook/hardware/start-here docs,
+  - synchronized mirrored docs under `firmware_kit_epc2/docs`.
+
+
 - 2026-03-28 | Phase 14 completion build path repaired and validated:
   - used `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55`,
   - rebuilt `drone_hunter_arena.c` with Phase 14 movement doctrine changes,
