@@ -16,7 +16,7 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 ## Expected flash confirmation (current baseline)
 - `wrote 2404352 bytes`
-- `verified 2400360 bytes`
+- `verified 2403032 bytes`
 
 ## Post-flash checks
 - Confirm splash and lineup flow appears.

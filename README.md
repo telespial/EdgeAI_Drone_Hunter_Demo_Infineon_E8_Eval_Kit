@@ -69,11 +69,11 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Latest flash confirmation:
 - `wrote 2404352 bytes`
-- `verified 2400360 bytes`
+- `verified 2403032 bytes`
 
 Memory snapshot from latest programmed image:
-- External SMIF flash usage: `2,400,360 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
-- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,876,072 bytes` (`~4.58x` too large).
+- External SMIF flash usage: `2,403,032 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
+- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,878,744 bytes` (`~4.58x` too large).
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

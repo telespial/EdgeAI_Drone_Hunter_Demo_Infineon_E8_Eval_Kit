@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-phase7-11-and-phase14-spec`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase12-complete-flash`
 - Date: `2026-03-28`
 - Baseline summary:
   - Phase 10 wave pacing baseline retained:
@@ -26,14 +26,14 @@
     - kill/intercept/spawn FX size scales with depth (larger near bottom, smaller near top).
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2404352 bytes`
-  - `verified 2400360 bytes`
+  - `verified 2403032 bytes`
 - Memory snapshot:
-  - external SMIF usage: `2,400,360 / 134,217,728` bytes (`1.79%` used),
-  - remaining external SMIF: `131,817,368` bytes (`98.21%` free).
+  - external SMIF usage: `2,403,032 / 134,217,728` bytes (`1.79%` used),
+  - remaining external SMIF: `131,814,696` bytes (`98.21%` free).
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase7-11-and-phase14-spec`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase12-complete-flash`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 

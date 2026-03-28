@@ -326,3 +326,15 @@ If no: hold or choose a different defender.
   - attacker evade-maneuver count,
   - target-reached detonations vs in-flight intercept kills.
 - `WHY` text and HUD rows should make switch/hold decisions interpretable to the player.
+
+### 19.6 Control-core + NPU execution contract
+- `ALGO` is the mandatory baseline control path and must run every tick on the control core.
+- `EDGEAI` must run on the same control core as ALGO and refine ALGO decisions.
+- `EDGEAI` may invoke U55/NPU acceleration for heavy inference kernels.
+- Per-tick contract:
+  - ALGO computes default action first,
+  - EDGEAI receives feature vector and returns proposed refinement,
+  - arbiter applies EDGEAI result only if it is on-time and passes safety constraints.
+- Safety/fallback:
+  - timeout, invalid output, or NPU unavailability must fall back to ALGO-only for that tick,
+  - no frame stall and no undefined control state is allowed.

@@ -1,5 +1,19 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Completed Phase 12 (verification/calibration/restore governance):
+  - updated roadmap status to mark Phase 12 complete in both `docs/TODO.md` and `ToDo.md`,
+  - refreshed status/state/restore docs with latest flashed image metrics and memory accounting,
+  - prepared new golden/failsafe dated restore identifiers for this closure baseline.
+- 2026-03-28 | Phase 12 closure build + flash pass:
+  - build command reached compile/link/hex generation; expected combine-sign environment warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2404352 bytes`
+    - `verified 2403032 bytes`
+- 2026-03-28 | Phase 14 architecture refinement:
+  - updated doctrine so `ALGO` and `EDGEAI` are co-located on the same control core,
+  - `EDGEAI` may use U55/NPU acceleration for performance,
+  - fallback remains deterministic ALGO-only on EDGEAI/NPU failure.
 - 2026-03-28 | Docs synchronization and memory accounting pass:
   - updated `README.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, and `docs/RESTORE_POINTS.md` to reflect:
     - Phase 7/11 completion baseline,

@@ -262,7 +262,7 @@ Status: Complete
 ---
 
 ## Phase 12 - Verification + Calibration + Restore Governance
-Status: Ongoing
+Status: Complete
 
 ### Objectives
 - Keep iteration safe and reproducible.
@@ -340,16 +340,30 @@ Status: Planned
   - lock retained vs opportunistic switch counts,
   - attacker evade maneuvers count,
   - target-reached detonations vs in-flight kills.
+- Implement control-core + NPU architecture:
+  - `ALGO` and `EDGEAI` run on the same control core (single decision brain per side),
+  - `EDGEAI` may offload heavy inference kernels to U55/NPU for performance,
+  - define strict per-tick handoff contract for feature input + action output.
+- Add runtime arbitration and fallback policy:
+  - CPU ALGO always produces a valid action each tick,
+  - if EDGEAI result arrives in time and passes sanity constraints, it can override/adjust ALGO output,
+  - on timeout/error/invalid output, system stays ALGO-only for that tick (no stall).
+- Define integration milestones:
+  - M14.1: intra-core handoff schema + telemetry counters,
+  - M14.2: attacker evasion model consuming ALGO decisions,
+  - M14.3: hunter opportunistic-switch gate + lock persistence policy,
+  - M14.4: EDGEAI NPU-accelerated path enabled with safe ALGO fallback,
+  - M14.5: hardware profiling (latency, miss-rate, stability) and tuning.
 
 ### Exit criteria
 - Attack drones maneuver in all directions but only detonate at their assigned target coordinates.
 - Hunters can maneuver in all directions and make explainable opportunistic kills without random lock thrashing.
 - Behavior differences between `ALGO` and `EDGEAI` are visible and stable in HUD/WHY telemetry.
+- ALGO and EDGEAI remain co-located on one control core with deterministic fallback to ALGO on any EDGEAI/NPU failure.
 
 ---
 
 ## Immediate Next Sprint (execution order)
-1. Run hardware re-validation for new Phase 7/11 HUD and mission-end behavior.
-2. Start Phase 13 hunter guidance/intercept hardening (continuous homing + swept-hit detection).
-3. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
-4. Promote golden/failsafe tags after board-confirmed stability.
+1. Start Phase 13 hunter guidance/intercept hardening (continuous homing + swept-hit detection).
+2. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
+3. Re-profile memory/latency after Phase 13/14 implementation and retune thresholds.

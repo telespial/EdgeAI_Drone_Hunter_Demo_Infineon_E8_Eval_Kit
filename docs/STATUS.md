@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-28
-- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11 are complete. Phases 13 and 14 are planned for guidance/movement doctrine hardening.
+- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11/12 are complete. Phases 13 and 14 are planned for guidance/movement doctrine hardening.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Latest confirmed flash result:
   - `wrote 2404352 bytes`
-  - `verified 2400360 bytes`
+  - `verified 2403032 bytes`
 - Build quality confirmation:
   - using correct SDK path works for flashing:
     - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
@@ -17,10 +17,10 @@
 
 ## Memory footprint
 - External SMIF programmed image (`verified`):
-  - `2,400,360 / 134,217,728` bytes used (`1.79%`),
-  - `131,817,368` bytes remaining (`98.21%`).
+  - `2,403,032 / 134,217,728` bytes used (`1.79%`),
+  - `131,814,696` bytes remaining (`98.21%`).
 - Internal RRAM fit check (512 KB):
-  - current image would exceed internal-only capacity by `1,876,072` bytes (`~4.58x` too large).
+  - current image would exceed internal-only capacity by `1,878,744` bytes (`~4.58x` too large).
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.

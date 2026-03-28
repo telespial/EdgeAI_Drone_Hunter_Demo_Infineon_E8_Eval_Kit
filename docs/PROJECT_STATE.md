@@ -244,10 +244,21 @@
   - `build_proj` in current shell still reports GCC package resolution issue.
 
 ## Memory snapshot (2026-03-28)
-- Programmed image (`verified`): `2,400,360` bytes.
+- Programmed image (`verified`): `2,403,032` bytes.
 - External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
 - Usage:
   - used: `1.79%`
-  - free: `98.21%` (`131,817,368` bytes).
+  - free: `98.21%` (`131,814,696` bytes).
 - Internal-only fit check (512 KB RRAM):
-  - image exceeds capacity by `1,876,072` bytes (`~4.58x` larger than internal capacity).
+  - image exceeds capacity by `1,878,744` bytes (`~4.58x` larger than internal capacity).
+
+## Build + Flash confirmation (2026-03-28, Phase 12 closure pass)
+- Build command completed through compile/link/hex generation:
+  - `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Expected environment limitation remained:
+  - `EdgeProtect Secure Suite not found. Combine-Sign step not executed.`
+- Program command completed on board `PSE846GPS2DBZC4A`:
+  - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2403032 bytes`
