@@ -10,10 +10,13 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Dual CIWS emplacements with sweep-arc behavior and finite per-gun ammo.
 - CIWS now tuned as last-ditch defense with effective/hard-cutoff range behavior and overuse penalties.
 - CIWS ammo now visibly decrements by burst-sized trigger consumption (left/right counters).
+  - current burn-rate setting is `CIWS_AMMO_PER_TRIGGER = 24` (4x prior value).
 - CIWS doctrine finalization now active:
   - per-gun lock-quality modeling,
   - stronger misuse penalties via extra cooldown/reaction delay under bad geometry,
-  - live per-gun ammo/heat/lock telemetry in HUD.
+  - live per-gun ammo/heat/lock telemetry in HUD,
+  - per gun starting ammo = `2 x 1550` rounds (`3,100`),
+  - effective/hard range tuned to `1.5 km` / `5.0 km`.
 - Attack classes use rendered image assets:
   - `Shahed`-style bright yellow fixed-wing
   - red VB140-like fixed-wing
@@ -33,7 +36,9 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Phase 7 completed:
   - defender HUD panel now includes stock/endurance/availability, envelope fit, CIWS lock, and CIWS cooldown telemetry.
 - Phase 11 completed:
-  - strategic mission-end rules now active with causal round-end summaries (win/loss reason + key metrics).
+  - round-end now uses inventory exhaustion mode:
+    - defender loss when defense inventory/layer is exhausted,
+    - defender win when attacker inventory is exhausted.
 - Phase 8 completed:
   - explicit wrong-choice penalties (range/altitude/overkill/CIWS misuse/manual low-confidence),
   - live `WHY` failure explainability cues in HUD.
@@ -80,11 +85,11 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Latest flash confirmation:
 - `wrote 2408448 bytes`
-- `verified 2405104 bytes`
+- `verified 2404648 bytes`
 
 Memory snapshot from latest programmed image:
-- External SMIF flash usage: `2,405,104 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
-- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,816 bytes` (`~4.59x` too large).
+- External SMIF flash usage: `2,404,648 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
+- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,360 bytes` (`~4.59x` too large).
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

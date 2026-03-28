@@ -8,7 +8,7 @@
 - `qprogram_proj` flash confirmed on hardware.
 - Latest confirmed flash result:
   - `wrote 2408448 bytes`
-  - `verified 2405104 bytes`
+  - `verified 2404648 bytes`
 - Build quality confirmation:
   - using correct SDK path works for build + flashing:
     - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
@@ -19,10 +19,10 @@
 
 ## Memory footprint
 - External SMIF programmed image (`verified`):
-  - `2,405,104 / 134,217,728` bytes used (`1.79%`),
-  - `131,812,624` bytes remaining (`98.21%`).
+  - `2,404,648 / 134,217,728` bytes used (`1.79%`),
+  - `131,813,080` bytes remaining (`98.21%`).
 - Internal RRAM fit check (512 KB):
-  - current image would exceed internal-only capacity by `1,880,816` bytes (`~4.59x` too large).
+  - current image would exceed internal-only capacity by `1,880,360` bytes (`~4.59x` too large).
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -43,11 +43,19 @@
 - Phase 7 HUD/UX is complete:
   - defender telemetry now includes stock/endurance, CIWS cooldown/lock, envelope fit, and availability/lockout indicators.
 - Phase 11 win/loss and collateral rules are complete:
-  - strategic defender win/loss evaluation is active,
+  - inventory-exhaustion defender win/loss evaluation is active,
   - round-end overlay now reports causal summary metrics (wave/core/leaks/kills/stock/CIWS).
+- Round-end doctrine update:
+  - match now ends on inventory exhaustion mode:
+    - defender loss when defender inventory/layer is exhausted,
+    - defender win when attacker inventory is exhausted (after final mission wave).
 - Strategy update:
   - CIWS friendly-fire doctrine now includes constrained hunter-fratricide risk windows.
   - Penalty model: hunter supply can be consumed while attacker kill outcome remains uncertain.
+- CIWS doctrine tuning update:
+  - each gun now starts with two 1,550-round magazines (3,100 rounds per gun),
+  - ammo burn rate per trigger is 4x previous setting (`CIWS_AMMO_PER_TRIGGER = 24`),
+  - engagement envelope tuned to effective `1.5 km` and hard cutoff `5.0 km`.
 - Display stability update:
   - HUD refresh is now throttled to reduce occasional screen flicker from high-frequency text redraw.
 
@@ -61,7 +69,7 @@
   - explicit WHY messaging added for target-loss/no-reacquire and terminal-evade misses.
 - Hardware flash baseline updated with Phase 13 completion build:
   - `wrote 2408448 bytes`
-  - `verified 2405104 bytes`
+  - `verified 2404648 bytes`
 
 ## Explosion/FX baseline (2026-03-28)
 - Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.

@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-phase13-complete-guidance-calibrated`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase13-plus-exhaustion-and-ciws-doctrine`
 - Date: `2026-03-28`
 - Baseline summary:
   - Phase 13 completion baseline:
@@ -12,6 +12,12 @@
     - HUD telemetry counters added (`SH`, `RQ`, `OS`),
     - class-aware guidance lead/speed calibration + near-intercept overshoot damping applied,
     - explicit WHY messaging added for target-loss/no-reacquire and terminal evade misses.
+  - Gameplay doctrine update:
+    - round-end mode now uses attacker/defender inventory exhaustion semantics.
+  - CIWS doctrine update:
+    - per gun start capacity: `2 x 1550` rounds (`3,100`),
+    - per-trigger burn: `24`,
+    - effective/hard range: `1.5 km` / `5.0 km`.
   - Display stability baseline:
     - HUD redraw is rate-limited to reduce occasional flicker.
   - Phase 10 wave pacing baseline retained:
@@ -38,14 +44,14 @@
     - kill/intercept/spawn FX size scales with depth (larger near bottom, smaller near top).
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2408448 bytes`
-  - `verified 2405104 bytes`
+  - `verified 2404648 bytes`
 - Memory snapshot:
-  - external SMIF usage: `2,405,104 / 134,217,728` bytes (`1.79%` used),
-  - remaining external SMIF: `131,812,624` bytes (`98.21%` free).
+  - external SMIF usage: `2,404,648 / 134,217,728` bytes (`1.79%` used),
+  - remaining external SMIF: `131,813,080` bytes (`98.21%` free).
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-complete-guidance-calibrated`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-plus-exhaustion-and-ciws-doctrine`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 

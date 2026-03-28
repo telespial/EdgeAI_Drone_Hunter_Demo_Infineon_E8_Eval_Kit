@@ -1,5 +1,18 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Round-end doctrine update in `drone_hunter_arena.c`:
+  - switched from strategic early-end conditions to inventory exhaustion mode,
+  - defender loss now occurs when defense inventory/layer is exhausted,
+  - defender win now occurs when attacker inventory is exhausted at/after final mission wave.
+- 2026-03-28 | CIWS doctrine tuning in `drone_hunter_arena.c`:
+  - per-gun initial ammo set to two 1,550-round magazines (`3,100` rounds per gun),
+  - per-trigger ammo burn increased to `24` (4x previous setting),
+  - effective/hard engagement envelope set to `1.5 km` / `5.0 km`.
+- 2026-03-28 | Exhaustion+CIWS doctrine flash pass:
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2408448 bytes`
+    - `verified 2404648 bytes`
 - 2026-03-28 | Phase 13 completion calibration in `drone_hunter_arena.c`:
   - added class-aware guidance speed/lead multipliers for launch + pursuit steering,
   - added near-intercept overshoot damping to reduce fly-past behavior,

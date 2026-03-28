@@ -58,10 +58,11 @@
     - CIWS lock and cooldown state,
     - envelope fit hint and FF lockout mode.
 - Phase 11 win/loss + collateral completion:
-  - re-enabled strategic mission end evaluation (previous demo no-end bypass removed),
-  - defender win requires asset intact + defense layer remaining + collateral below threshold,
-  - defender loss triggers on asset destruction, early CIWS exhaustion plus leaks, or collateral/critical-node threshold breach,
-  - round-end overlay now shows causal summary metrics.
+  - mission end evaluation is active with causal round-end summary metrics.
+- Round-end doctrine update:
+  - strategic mission-end gate replaced with inventory-exhaustion mode,
+  - defender loss now triggers when defense inventory/layer is exhausted,
+  - defender win now triggers when attacker inventory is exhausted at final mission wave.
 - Phase 14 doctrine semantics are now explicit in rules/docs:
   - `ALGO` is baseline attacker+defender function logic,
   - `EDGEAI` is adaptive embedded intelligence that improves ALGO using trained/adaptive reasoning.
@@ -106,6 +107,10 @@
   - per-gun lock quality computed from geometry/lead conditions,
   - poor lock and out-of-effective-envelope firing now consume extra reaction budget (cooldown penalties),
   - heat penalties now scale with lock quality.
+- CIWS capacity/envelope tuning is now implemented:
+  - per-gun starting inventory is two 1,550-round magazines (`3,100`),
+  - per-trigger ammo burn raised to `24` (4x previous setting),
+  - effective/hard envelope set to `1.5 km` / `5.0 km`.
 - CIWS state telemetry now includes per-gun ammo/heat/lock in HUD.
 - Phase 5 attacker strategy layer is implemented and active:
   - profile set: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
@@ -261,13 +266,13 @@
   - `build_proj` in current shell still reports GCC package resolution issue.
 
 ## Memory snapshot (2026-03-28)
-- Programmed image (`verified`): `2,405,104` bytes.
+- Programmed image (`verified`): `2,404,648` bytes.
 - External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
 - Usage:
   - used: `1.79%`
-  - free: `98.21%` (`131,812,624` bytes).
+  - free: `98.21%` (`131,813,080` bytes).
 - Internal-only fit check (512 KB RRAM):
-  - image exceeds capacity by `1,880,816` bytes (`~4.59x` larger than internal capacity).
+  - image exceeds capacity by `1,880,360` bytes (`~4.59x` larger than internal capacity).
 
 ## Build + Flash confirmation (2026-03-28, Phase 12 closure pass)
 - Build command completed through compile/link/hex generation:
@@ -306,3 +311,15 @@
 - OpenOCD results:
   - `wrote 2408448 bytes`
   - `verified 2405104 bytes`
+
+## Build + Flash confirmation (2026-03-28, exhaustion-mode + CIWS doctrine tuning)
+- Rebuild completed for `proj_cm55` after:
+  - inventory-exhaustion round-end mode update,
+  - CIWS two-mag capacity update (`2 x 1550` per gun),
+  - CIWS per-trigger burn-rate increase (`24`),
+  - CIWS effective/hard range tuning (`1.5 km` / `5.0 km`).
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2408448 bytes`
+  - `verified 2404648 bytes`

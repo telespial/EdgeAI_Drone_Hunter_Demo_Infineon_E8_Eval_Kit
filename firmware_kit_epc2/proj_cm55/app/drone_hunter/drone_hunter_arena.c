@@ -35,14 +35,16 @@
 #define FX_SHAHED_DEATH_SEC       (0.30f)
 #define FX_CORE_HIT_SEC           (0.40f)
 #define MAP_SIZE_KM               (120.0f)
-#define PHALANX_EFFECTIVE_KM      (2.0f)
-#define PHALANX_HARD_CUTOFF_KM    (3.5f)
-#define CIWS_AMMO_PER_GUN         (950)
+#define PHALANX_EFFECTIVE_KM      (1.5f)
+#define PHALANX_HARD_CUTOFF_KM    (5.0f)
+#define CIWS_MAG_CAPACITY         (1550)
+#define CIWS_MAGS_PER_GUN         (2)
+#define CIWS_AMMO_PER_GUN         (CIWS_MAG_CAPACITY * CIWS_MAGS_PER_GUN)
 #define CIWS_TRACER_COUNT         (160)
 #define CIWS_TRACER_LIFE_SEC      (0.30f)
 #define CIWS_FIRE_COOLDOWN_SEC    (0.006f)
 #define CIWS_BURST_PELLETS        (14)
-#define CIWS_AMMO_PER_TRIGGER     (6)
+#define CIWS_AMMO_PER_TRIGGER     (24)
 #define CIWS_LOCK_BAD_THRESH      (0.35f)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
@@ -4249,10 +4251,8 @@ static void maybe_end_round(drone_hunter_scene_t *s)
     char subtitle[256];
     int total_stock = 0;
     int k;
-    int critical_node_destroyed;
-    int ciws_exhausted_early;
-    int defender_win_ready;
-    int defender_loss;
+    int defender_exhausted;
+    int attacker_exhausted;
 
     if (s->round_over)
     {
@@ -4262,50 +4262,28 @@ static void maybe_end_round(drone_hunter_scene_t *s)
     {
         total_stock += s->hunter_stock[k];
     }
-    critical_node_destroyed = (s->attack_leaked >= COLLATERAL_LOSS_THRESHOLD) ? 1 : 0;
-    ciws_exhausted_early = (s->wave_idx <= 4) &&
-                           (s->ciws_ammo_left <= 0) &&
-                           (s->ciws_ammo_right <= 0) &&
-                           (s->attack_leaked >= 5);
-    defender_loss = (s->core_hp <= 0) || ciws_exhausted_early || critical_node_destroyed;
-    defender_win_ready = (s->wave_idx >= WIN_WAVE_TARGET) &&
-                         (s->core_hp > 0) &&
-                         defense_layer_remaining(s) &&
-                         (s->attack_leaked < COLLATERAL_LOSS_THRESHOLD);
+    defender_exhausted = !defense_layer_remaining(s);
+    attacker_exhausted = (s->wave_idx >= WIN_WAVE_TARGET) &&
+                         (s->attack_remaining_to_spawn <= 0) &&
+                         !s->killer_active[0] &&
+                         !s->killer_active[1];
 
-    if (defender_loss)
+    if (defender_exhausted)
     {
         s->round_over = 1;
-        if (s->core_hp <= 0)
-        {
-            (void)snprintf(subtitle, sizeof(subtitle),
-                           "LOSS: key asset destroyed\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
-                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
-                           s->ciws_ammo_left, s->ciws_ammo_right);
-        }
-        else if (ciws_exhausted_early)
-        {
-            (void)snprintf(subtitle, sizeof(subtitle),
-                           "LOSS: CIWS exhausted early + terminal leaks\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
-                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
-                           s->ciws_ammo_left, s->ciws_ammo_right);
-        }
-        else
-        {
-            (void)snprintf(subtitle, sizeof(subtitle),
-                           "LOSS: critical node/collateral threshold exceeded\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
-                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
-                           s->ciws_ammo_left, s->ciws_ammo_right);
-        }
+        (void)snprintf(subtitle, sizeof(subtitle),
+                       "LOSS: defender inventory exhausted\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                       s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
+                       s->ciws_ammo_left, s->ciws_ammo_right);
         show_overlay(s, "ROUND END", subtitle);
         return;
     }
 
-    if (defender_win_ready)
+    if (attacker_exhausted)
     {
         s->round_over = 1;
         (void)snprintf(subtitle, sizeof(subtitle),
-                       "WIN: asset intact + defense layer retained + low collateral\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                       "WIN: attacker inventory exhausted\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
                        s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
                        s->ciws_ammo_left, s->ciws_ammo_right);
         show_overlay(s, "MISSION CLEAR", subtitle);
@@ -4367,10 +4345,13 @@ static void anim_cb(lv_timer_t *timer)
 
         if ((s->attack_remaining_to_spawn <= 0) && !s->killer_active[0] && !s->killer_active[1])
         {
-            start_wave(s, s->wave_idx + 1);
-            for (h = 0; h < HUNTER_COUNT; ++h)
+            if (s->wave_idx < WIN_WAVE_TARGET)
             {
-                s->h_reselect_sec[h] = 0.0f;
+                start_wave(s, s->wave_idx + 1);
+                for (h = 0; h < HUNTER_COUNT; ++h)
+                {
+                    s->h_reselect_sec[h] = 0.0f;
+                }
             }
         }
 

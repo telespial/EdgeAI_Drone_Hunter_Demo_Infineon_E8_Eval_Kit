@@ -250,21 +250,17 @@ Status: Complete
 Status: Complete
 
 ### Objectives
-- Align completion conditions with `rules.md`.
+- Align completion conditions with current gameplay doctrine.
 
 ### Tasks
 - Defender win:
-  - key asset survives,
-  - at least one defense layer remains,
-  - collateral below threshold.
+  - attacker inventory exhausted (after final mission wave).
 - Defender loss:
-  - key asset destroyed,
-  - CIWS exhausted too early and terminal leaks occur,
-  - critical node destroyed.
+  - defender inventory/layer exhausted.
 - Add round-end summary panel with causal metrics.
 
 ### Exit criteria
-- End conditions are strategic and interpretable.
+- End conditions are inventory-driven and interpretable.
 
 ---
 
