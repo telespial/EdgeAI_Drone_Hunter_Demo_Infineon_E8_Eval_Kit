@@ -70,6 +70,13 @@
 #define COMMIT_REASON_CORRIDOR    (5)
 #define COMMIT_REASON_LOS_BLOCK   (6)
 
+#define MISSION_MILESTONE_OPENING    (0)
+#define MISSION_MILESTONE_ESCALATION (1)
+#define MISSION_MILESTONE_CRISIS     (2)
+#define MISSION_MILESTONE_SATURATION (3)
+#define COLLATERAL_LOSS_THRESHOLD    (22)
+#define WIN_WAVE_TARGET              (8)
+
 typedef enum
 {
     TARGET_FPV = 0,
@@ -362,6 +369,7 @@ typedef struct
     int wave_idx;
     int wave_target_total;
     wave_archetype_t wave_archetype;
+    int mission_milestone;
     int wave_shift_applied;
     threat_faction_t threat_faction;
     attack_strategy_t attack_strategy_select;
@@ -477,6 +485,47 @@ static const char *wave_archetype_short_name(wave_archetype_t archetype)
     }
 }
 
+static int mission_milestone_from_wave(int wave_idx)
+{
+    if (wave_idx <= 2)
+    {
+        return MISSION_MILESTONE_OPENING;
+    }
+    if (wave_idx <= 4)
+    {
+        return MISSION_MILESTONE_ESCALATION;
+    }
+    if (wave_idx <= 7)
+    {
+        return MISSION_MILESTONE_CRISIS;
+    }
+    return MISSION_MILESTONE_SATURATION;
+}
+
+static const char *mission_milestone_short_name(int milestone)
+{
+    switch (milestone)
+    {
+        case MISSION_MILESTONE_OPENING:    return "OPENING";
+        case MISSION_MILESTONE_ESCALATION: return "ESCALATE";
+        case MISSION_MILESTONE_CRISIS:     return "CRISIS";
+        case MISSION_MILESTONE_SATURATION:
+        default:                           return "SATURATE";
+    }
+}
+
+static float mission_milestone_spawn_mult(int milestone)
+{
+    switch (milestone)
+    {
+        case MISSION_MILESTONE_OPENING:    return 0.92f;
+        case MISSION_MILESTONE_ESCALATION: return 1.00f;
+        case MISSION_MILESTONE_CRISIS:     return 1.10f;
+        case MISSION_MILESTONE_SATURATION:
+        default:                           return 1.18f;
+    }
+}
+
 static wave_archetype_t wave_archetype_from_wave(int wave_idx)
 {
     int phase = (wave_idx - 1) % 4;
@@ -510,6 +559,19 @@ static attack_strategy_t attack_strategy_shift_for_archetype(wave_archetype_t ar
         case WAVE_ARCHETYPE_TERMINAL_SATURATION:
         default:
             return ATTACK_STRATEGY_FLANK_PRESSURE;
+    }
+}
+
+static attack_strategy_t attack_strategy_late_shift_for_archetype(wave_archetype_t archetype)
+{
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY: return ATTACK_STRATEGY_FLANK_PRESSURE;
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM: return ATTACK_STRATEGY_TERMINAL_SATURATION;
+        case WAVE_ARCHETYPE_MIXED_DECEPTION: return ATTACK_STRATEGY_CENTER_PRESSURE;
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+        default:
+            return ATTACK_STRATEGY_CENTER_PRESSURE;
     }
 }
 
@@ -1281,6 +1343,22 @@ static int has_unassigned_higher_threat(const drone_hunter_scene_t *s, int targe
     return 0;
 }
 
+static hunter_type_t best_stocked_hunter_type(const drone_hunter_scene_t *s)
+{
+    int i;
+    int best_stock = 0;
+    hunter_type_t best = HUNTER_STING_II;
+    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
+    {
+        if (s->hunter_stock[i] > best_stock)
+        {
+            best_stock = s->hunter_stock[i];
+            best = (hunter_type_t)i;
+        }
+    }
+    return best;
+}
+
 static float hunter_pairing_bias(const drone_hunter_scene_t *s, hunter_type_t h, int k)
 {
     float b = 0.0f;
@@ -1570,7 +1648,7 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
     }
 }
 
-static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int target, int launcher_idx)
+static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int target, int launcher_idx, float *out_score)
 {
     int i;
     float req = threat_required_score(s, target);
@@ -1639,6 +1717,10 @@ static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int tar
         }
     }
 
+    if (out_score != NULL)
+    {
+        *out_score = best_pick_score;
+    }
     if (best_pick_score > -9998.0f)
     {
         return best_pick;
@@ -2068,6 +2150,7 @@ static void style_target(drone_hunter_scene_t *s, int k)
 static int wave_target_count(int wave_idx, wave_archetype_t archetype)
 {
     float multiplier = 1.0f;
+    int milestone = mission_milestone_from_wave(wave_idx);
     int total = ATTACK_POOL_BASE + ((wave_idx - 1) * ATTACK_POOL_GROWTH);
     switch (archetype)
     {
@@ -2085,6 +2168,7 @@ static int wave_target_count(int wave_idx, wave_archetype_t archetype)
             multiplier = 1.24f;
             break;
     }
+    multiplier *= mission_milestone_spawn_mult(milestone);
     total = (int)((float)total * multiplier);
     if (total > ATTACK_POOL_MAX)
     {
@@ -2096,19 +2180,39 @@ static int wave_target_count(int wave_idx, wave_archetype_t archetype)
 static void maybe_apply_mid_wave_shift(drone_hunter_scene_t *s)
 {
     int spawned;
-    int trigger;
-    if (s->wave_shift_applied || (s->attack_strategy_select != ATTACK_STRATEGY_AUTO))
+    int trigger_primary;
+    int trigger_late;
+    int leak_trigger;
+    if ((s->wave_shift_applied >= 2) || (s->attack_strategy_select != ATTACK_STRATEGY_AUTO))
     {
         return;
     }
     spawned = s->wave_target_total - s->attack_remaining_to_spawn;
-    trigger = (s->wave_target_total * 55) / 100;
-    if (spawned < trigger)
+    trigger_primary = (s->wave_target_total * 55) / 100;
+    trigger_late = (s->wave_target_total * 82) / 100;
+    leak_trigger = (s->wave_target_total * 8) / 100;
+    if (leak_trigger < 1)
+    {
+        leak_trigger = 1;
+    }
+    if ((s->wave_shift_applied == 0) && (spawned >= trigger_primary))
+    {
+        s->attack_strategy_live = attack_strategy_shift_for_archetype(s->wave_archetype);
+        s->wave_shift_applied = 1;
+        note_failure(s, "Wave shift: attacker doctrine changed mid-wave", NULL);
+        return;
+    }
+    if (s->wave_shift_applied != 1)
     {
         return;
     }
-    s->attack_strategy_live = attack_strategy_shift_for_archetype(s->wave_archetype);
-    s->wave_shift_applied = 1;
+    if ((spawned < trigger_late) && (s->attack_leaked < leak_trigger))
+    {
+        return;
+    }
+    s->attack_strategy_live = attack_strategy_late_shift_for_archetype(s->wave_archetype);
+    s->wave_shift_applied = 2;
+    note_failure(s, "Late-wave shift: terminal pressure adaptation engaged", NULL);
 }
 
 static void update_hunter_deck_ui(drone_hunter_scene_t *s)
@@ -2332,6 +2436,7 @@ static void start_wave(drone_hunter_scene_t *s, int wave_idx)
 {
     s->wave_archetype = wave_archetype_from_wave(wave_idx);
     s->wave_idx = wave_idx;
+    s->mission_milestone = mission_milestone_from_wave(wave_idx);
     s->wave_target_total = wave_target_count(wave_idx, s->wave_archetype);
     s->attack_remaining_to_spawn = s->wave_target_total;
     s->attack_destroyed = 0;
@@ -2387,6 +2492,25 @@ static void show_overlay(drone_hunter_scene_t *s, const char *title, const char 
     lv_label_set_text(s->overlay_title, title);
     lv_label_set_text(s->overlay_subtitle, subtitle);
     lv_obj_clear_flag(s->overlay, LV_OBJ_FLAG_HIDDEN);
+}
+
+static int defense_layer_remaining(const drone_hunter_scene_t *s)
+{
+    int k;
+    int total_stock = 0;
+    int hunters_air = 0;
+    for (k = 0; k < HUNTER_TYPE_COUNT; ++k)
+    {
+        total_stock += s->hunter_stock[k];
+    }
+    for (k = 0; k < HUNTER_COUNT; ++k)
+    {
+        if (s->hunter_loaded[k])
+        {
+            hunters_air++;
+        }
+    }
+    return (total_stock > 0) || (hunters_air > 0) || (s->ciws_ammo_left > 0) || (s->ciws_ammo_right > 0);
 }
 
 static void hide_quick_menu(drone_hunter_scene_t *s)
@@ -3001,6 +3125,9 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         float launch_speed;
         int launch_sector;
         hunter_type_t pick;
+        int fallback_reason = 0;
+        float auto_pick_score = -9999.0f;
+        int pick_manual = 0;
 
         if ((h == 0) &&
             (s->manual_selected_hunter >= 0) &&
@@ -3008,19 +3135,74 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             (s->hunter_stock[s->manual_selected_hunter] > 0))
         {
             pick = sanitize_hunter_pick((hunter_type_t)s->manual_selected_hunter);
+            pick_manual = 1;
         }
         else
         {
-            pick = sanitize_hunter_pick(choose_conservative_hunter(s, target, h));
+            pick = sanitize_hunter_pick(choose_conservative_hunter(s, target, h, &auto_pick_score));
+        }
+        if (!pick_manual && (auto_pick_score < -0.30f))
+        {
+            hunter_type_t rec = sanitize_hunter_pick(recommended_hunter_for_target(s, target));
+            if (s->hunter_stock[(int)rec] > 0)
+            {
+                pick = rec;
+                fallback_reason = 1;
+            }
+            else
+            {
+                hunter_type_t stocked = best_stocked_hunter_type(s);
+                if (s->hunter_stock[(int)stocked] > 0)
+                {
+                    pick = stocked;
+                    fallback_reason = 2;
+                }
+            }
         }
         if (s->hunter_stock[(int)pick] <= 0)
         {
+            hunter_type_t rec = sanitize_hunter_pick(recommended_hunter_for_target(s, target));
+            if (s->hunter_stock[(int)rec] > 0)
+            {
+                pick = rec;
+                fallback_reason = 3;
+            }
+            else
+            {
+                hunter_type_t stocked = best_stocked_hunter_type(s);
+                if (s->hunter_stock[(int)stocked] > 0)
+                {
+                    pick = stocked;
+                    fallback_reason = 4;
+                }
+            }
+        }
+        if (s->hunter_stock[(int)pick] <= 0)
+        {
+            note_failure(s, "No-stock fallback failed: all hunter classes depleted", NULL);
             return;
         }
         launch_sector = choose_launch_sector_for_target(s, s->kx[target], s->ky[target]);
         if (launch_sector < 0)
         {
+            note_failure(s, "Launch hold: no launch sector has remaining stock", NULL);
             return;
+        }
+        if (fallback_reason == 1)
+        {
+            note_failure(s, "No-fit fallback: switched to recommended counter", NULL);
+        }
+        else if (fallback_reason == 2)
+        {
+            note_failure(s, "No-fit fallback: switched to highest-stock hunter", NULL);
+        }
+        else if (fallback_reason == 3)
+        {
+            note_failure(s, "No-stock fallback: switched to recommended counter", NULL);
+        }
+        else if (fallback_reason == 4)
+        {
+            note_failure(s, "No-stock fallback: switched to highest-stock hunter", NULL);
         }
         s->h_type[h] = pick;
         s->hunter_stock[(int)pick]--;
@@ -3679,6 +3861,10 @@ static void update_hud(drone_hunter_scene_t *s)
     float lead_score = -1.0f;
     int total_stock = 0;
     int hunters_air = 0;
+    float lock_q = 0.0f;
+    int def_endurance = 0;
+    const char *env_fit = "N/A";
+    const char *availability = "HOLD";
     int h;
     int k;
     const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
@@ -3708,6 +3894,9 @@ static void update_hud(drone_hunter_scene_t *s)
             hunters_air++;
         }
     }
+    lock_q = clampf((s->ciws_lock_left > s->ciws_lock_right) ? s->ciws_lock_left : s->ciws_lock_right, 0.0f, 1.0f);
+    def_endurance = total_stock + ((s->ciws_ammo_left + s->ciws_ammo_right) / 120);
+    availability = ((total_stock > 0) || (hunters_air > 0) || (s->ciws_ammo_left > 0) || (s->ciws_ammo_right > 0)) ? "READY" : "EMPTY";
 
     lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  H:%04d A:%04d  |  IFF %s %s%s",
                           mode_name(s->mode), arena_phase_name(phase),
@@ -3723,11 +3912,13 @@ static void update_hud(drone_hunter_scene_t *s)
                           "ATTACKER(%s): %04d",
                           attacker_ctrl, s->attacker_points);
     lv_label_set_text_fmt(s->hud_wave,
-                          "WAVE %d  |  ARCH %s  |  STRAT %s%s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
+                          "WAVE %d  |  MST %s  |  ARCH %s  |  STRAT %s%s%s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
                           s->wave_idx,
+                          mission_milestone_short_name(s->mission_milestone),
                           wave_archetype_short_name(s->wave_archetype),
                           attack_strategy_short_name(s->attack_strategy_live),
-                          s->wave_shift_applied ? "*" : "",
+                          (s->wave_shift_applied >= 1) ? "*" : "",
+                          (s->wave_shift_applied >= 2) ? "+" : "",
                           s->attack_destroyed, s->wave_target_total,
                           s->attack_leaked,
                           s->attack_remaining_to_spawn);
@@ -3742,6 +3933,9 @@ static void update_hud(drone_hunter_scene_t *s)
     {
         char info[256];
         float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
+        float need_km = s->k_range_to_core[lead_k] * km_per_px;
+        float best_km = hunter_range_km(s->k_recommended_counter[lead_k]);
+        env_fit = (best_km >= need_km) ? "GOOD" : "TIGHT";
         (void)snprintf(info, sizeof(info),
                        "TARGET:%s ETA%.1fs R%.1fkm REC:%s | F:R%d A%d O%d C%d M%d FF:%d COL:%d",
                        target_type_name(s, lead_k),
@@ -3770,6 +3964,15 @@ static void update_hud(drone_hunter_scene_t *s)
                               s->iff_ff_events,
                               s->iff_collateral_events);
     }
+    lv_label_set_text_fmt(s->hud_elapsed,
+                          "EL %02d:%02d | DEF END:%d STK:%d AIR:%d AVL:%s | ENV:%s LOCK:%.2f CD %.2f/%.2f | FF:%s",
+                          elapsed_mm, elapsed_ss,
+                          def_endurance,
+                          total_stock, hunters_air, availability,
+                          env_fit,
+                          lock_q,
+                          s->ciws_cooldown_left_sec, s->ciws_cooldown_sec,
+                          s->iff_advanced_mode ? "ADV" : "LOCK");
     if (s->fail_reason_ttl > 0.0f)
     {
         lv_label_set_text_fmt(s->hud_elapsed,
@@ -3786,48 +3989,69 @@ static void update_hud(drone_hunter_scene_t *s)
 
 static void maybe_end_round(drone_hunter_scene_t *s)
 {
-    /* Continuous demo mode: never end round automatically. */
-    (void)s;
-    return;
+    char subtitle[256];
+    int total_stock = 0;
+    int k;
+    int critical_node_destroyed;
+    int ciws_exhausted_early;
+    int defender_win_ready;
+    int defender_loss;
 
     if (s->round_over)
     {
         return;
     }
-
-    if (s->core_hp <= 0)
+    for (k = 0; k < HUNTER_TYPE_COUNT; ++k)
     {
-        s->round_over = 1;
-        show_overlay(s, "ROUND END", "Core destroyed. Tap RESTART.");
-        return;
+        total_stock += s->hunter_stock[k];
     }
+    critical_node_destroyed = (s->attack_leaked >= COLLATERAL_LOSS_THRESHOLD) ? 1 : 0;
+    ciws_exhausted_early = (s->wave_idx <= 4) &&
+                           (s->ciws_ammo_left <= 0) &&
+                           (s->ciws_ammo_right <= 0) &&
+                           (s->attack_leaked >= 5);
+    defender_loss = (s->core_hp <= 0) || ciws_exhausted_early || critical_node_destroyed;
+    defender_win_ready = (s->wave_idx >= WIN_WAVE_TARGET) &&
+                         (s->core_hp > 0) &&
+                         defense_layer_remaining(s) &&
+                         (s->attack_leaked < COLLATERAL_LOSS_THRESHOLD);
 
-    if ((s->team_score[0] - s->team_score[1] >= ROUND_WIN_MARGIN) ||
-        (s->team_score[1] - s->team_score[0] >= ROUND_WIN_MARGIN) ||
-        (s->round_time_sec <= 0.0f))
+    if (defender_loss)
     {
-        char subtitle[120];
-
-        s->round_time_sec = clampf(s->round_time_sec, 0.0f, ROUND_TIME_SEC);
         s->round_over = 1;
-
-        if (s->team_score[0] == s->team_score[1])
+        if (s->core_hp <= 0)
         {
-            (void)snprintf(subtitle, sizeof(subtitle), "Draw %d - %d. Tap RESTART.",
-                           s->team_score[0], s->team_score[1]);
+            (void)snprintf(subtitle, sizeof(subtitle),
+                           "LOSS: key asset destroyed\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
+                           s->ciws_ammo_left, s->ciws_ammo_right);
         }
-        else if (s->team_score[0] > s->team_score[1])
+        else if (ciws_exhausted_early)
         {
-            (void)snprintf(subtitle, sizeof(subtitle), "T1 (%s) wins %d - %d. Tap RESTART.",
-                           ctrl_name(s->team_ctrl[0]), s->team_score[0], s->team_score[1]);
+            (void)snprintf(subtitle, sizeof(subtitle),
+                           "LOSS: CIWS exhausted early + terminal leaks\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
+                           s->ciws_ammo_left, s->ciws_ammo_right);
         }
         else
         {
-            (void)snprintf(subtitle, sizeof(subtitle), "T2 (%s) wins %d - %d. Tap RESTART.",
-                           ctrl_name(s->team_ctrl[1]), s->team_score[1], s->team_score[0]);
+            (void)snprintf(subtitle, sizeof(subtitle),
+                           "LOSS: critical node/collateral threshold exceeded\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                           s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
+                           s->ciws_ammo_left, s->ciws_ammo_right);
         }
-
         show_overlay(s, "ROUND END", subtitle);
+        return;
+    }
+
+    if (defender_win_ready)
+    {
+        s->round_over = 1;
+        (void)snprintf(subtitle, sizeof(subtitle),
+                       "WIN: asset intact + defense layer retained + low collateral\nW%d CORE:%d LEAK:%d KILL:%d STOCK:%d CIWS:%d/%d",
+                       s->wave_idx, s->core_hp, s->attack_leaked, s->attack_destroyed, total_stock,
+                       s->ciws_ammo_left, s->ciws_ammo_right);
+        show_overlay(s, "MISSION CLEAR", subtitle);
     }
 }
 
@@ -4451,6 +4675,9 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     s->overlay_subtitle = lv_label_create(s->overlay);
     lv_obj_set_style_text_color(s->overlay_subtitle, lv_color_hex(0x93C5FD), 0);
     lv_obj_set_style_text_font(s->overlay_subtitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_width(s->overlay_subtitle, sw - 132);
+    lv_label_set_long_mode(s->overlay_subtitle, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(s->overlay_subtitle, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(s->overlay_subtitle, LV_ALIGN_TOP_MID, 0, 46);
 
     s->restart_btn = lv_btn_create(s->overlay);

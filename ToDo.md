@@ -97,7 +97,7 @@ Status: Complete
 ---
 
 ## Phase 4 - Hunter Assignment + Matchup Matrix
-Status: In progress
+Status: Complete
 
 ### Objectives
 - Make defender selection follow matchup doctrine and envelope constraints.
@@ -161,7 +161,7 @@ Status: Complete
 ---
 
 ## Phase 7 - HUD/UX Completion (Rules Section 13)
-Status: Partially started
+Status: Complete
 
 ### Objectives
 - Make decision support complete and readable.
@@ -220,7 +220,7 @@ Status: Complete
 ---
 
 ## Phase 10 - Mission/Wave Structure and Difficulty
-Status: In progress
+Status: Complete
 
 ### Objectives
 - Build coherent campaign pacing from hundreds to thousands of threats.
@@ -240,7 +240,7 @@ Status: In progress
 ---
 
 ## Phase 11 - Win/Loss and Collateral Rules
-Status: Partially started
+Status: Complete
 
 ### Objectives
 - Align completion conditions with `rules.md`.
@@ -282,8 +282,74 @@ Status: Ongoing
 
 ---
 
+## Phase 13 - Hunter Guidance + Intercept Geometry Hardening
+Status: Planned
+
+### Objectives
+- Eliminate straight-line fly-past behavior by making hunter intercepts continuously guided and hit-safe at frame boundaries.
+
+### Tasks
+- Add continuous terminal homing while hunter is committed:
+  - re-steer velocity each tick toward predicted intercept point (not one-time launch vector only),
+  - cap turn rate per hunter class to preserve role differentiation.
+- Add swept-hit detection to prevent tunneling:
+  - evaluate line-segment movement against target kill radius each tick,
+  - preserve existing probability gate and failure accounting.
+- Harden target handoff/loss handling:
+  - reacquire when valid replacement exists inside envelope,
+  - otherwise force explicit miss state with clear WHY reason.
+- Add telemetry for validation:
+  - log overshoot count, swept-hit count, reacquire count.
+- Rebalance per-class speed/kill-radius only after guidance is stable.
+
+### Exit criteria
+- Hunters no longer pass through viable targets due to one-frame overshoot.
+- Intercepts are visually centered on actual target position with no off-track despawns.
+- Hardware validation confirms reduced miss-rate without breaking Phase 8 consequence model.
+
+---
+
+## Phase 14 - 360 Movement Doctrine + Dynamic Intercept Decisions
+Status: Planned
+
+### Objectives
+- Enable full-direction movement for both hunter and attack drones with explicit behavior doctrine:
+  - attack drones evade hunters but only detonate at their preset launch target coordinates,
+  - hunter drones preserve primary lock while allowing controlled opportunistic intercepts on easier/path-conflict threats.
+
+### Tasks
+- Add all-direction steering model for both sides:
+  - replace mostly ballistic movement with bounded acceleration/turn-rate steering,
+  - allow positive/negative X/Y maneuver updates each tick (not lane-only drift).
+- Implement attacker objective doctrine:
+  - each attacker stores immutable launch target coordinates,
+  - attacker uses evasive steering against nearby hunters,
+  - attacker explodes only if it reaches target radius around its own preset coordinates,
+  - attacker destroyed by hunter/CIWS does not count as city-impact detonation.
+- Implement hunter objective doctrine:
+  - keep primary locked target as default objective,
+  - add opportunistic intercept gate for "easy/path-conflict" targets:
+    - short time-to-intercept advantage,
+    - low turn demand,
+    - high kill confidence,
+    - low risk of abandoning primary threat.
+- Add controller-specific behavior profiles:
+  - `ALGO` (baseline engine for both attacker and defender): conservative retargeting, stronger lock persistence, deterministic evasion/intercept heuristics.
+  - `EDGEAI` (embedded intelligence layer): improves ALGO behavior using trained/adaptive reasoning for predictive retargeting, evasive pathing, and context-aware switching.
+- Add explainability telemetry:
+  - lock retained vs opportunistic switch counts,
+  - attacker evade maneuvers count,
+  - target-reached detonations vs in-flight kills.
+
+### Exit criteria
+- Attack drones maneuver in all directions but only detonate at their assigned target coordinates.
+- Hunters can maneuver in all directions and make explainable opportunistic kills without random lock thrashing.
+- Behavior differences between `ALGO` and `EDGEAI` are visible and stable in HUD/WHY telemetry.
+
+---
+
 ## Immediate Next Sprint (execution order)
-1. Finish remaining Phase 7 defender panel details (stock/endurance/envelope/lockout readability).
-2. Start Phase 11 round-end summary panel with causal metrics.
-3. Continue Phase 10 campaign tuning (wave milestones + strategic shifts balancing).
-4. Reflash and validate gameplay feel after each balancing pass before next tag promotion.
+1. Run hardware re-validation for new Phase 7/11 HUD and mission-end behavior.
+2. Start Phase 13 hunter guidance/intercept hardening (continuous homing + swept-hit detection).
+3. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
+4. Promote golden/failsafe tags after board-confirmed stability.

@@ -1,5 +1,47 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Docs synchronization and memory accounting pass:
+  - updated `README.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, and `docs/RESTORE_POINTS.md` to reflect:
+    - Phase 7/11 completion baseline,
+    - Phase 14 ALGO-vs-EDGEAI semantics,
+    - corrected SDK path usage for successful flashing,
+    - external/internal memory footprint report.
+- 2026-03-28 | Phase 14 controller semantics clarified:
+  - `ALGO` is now explicitly defined as the baseline attacker+defender function set.
+  - `EDGEAI` is now explicitly defined as an embedded intelligence layer that improves ALGO using trained/adaptive reasoning.
+- 2026-03-28 | Corrected SDK/tool path and re-ran programming:
+  - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
+  - `qprogram_proj` succeeded on board `PSE846GPS2DBZC4A`.
+  - OpenOCD results:
+    - `wrote 2404352 bytes`
+    - `verified 2400360 bytes`
+  - `build_proj` in same shell still reports missing GCC package wiring.
+- 2026-03-28 | Completed Phase 7 + Phase 11 implementation in `drone_hunter_arena.c`:
+  - Phase 7: HUD now exposes defender decision-support telemetry:
+    - endurance proxy, stock/airborne availability,
+    - CIWS lock and cooldown state,
+    - envelope fit hint and FF lockout mode.
+  - Phase 11: strategic mission-end logic re-enabled and expanded:
+    - defender win/loss conditions now evaluate asset survival, defense-layer remaining, CIWS exhaustion timing, and collateral threshold,
+    - round-end overlay now reports causal summary metrics (`W/CORE/LEAK/KILL/STOCK/CIWS`),
+    - overlay subtitle wrapping enabled for readable multi-line summaries.
+- 2026-03-28 | Added Phase 14 specification and expanded canonical movement doctrine:
+  - created Phase 14 "360 Movement Doctrine + Dynamic Intercept Decisions" in `docs/TODO.md` and `ToDo.md`,
+  - expanded `rules.md` with objective rules:
+    - attackers evade hunters but detonate only at assigned launch target coordinates,
+    - hunters retain primary lock unless opportunistic-switch gate conditions are satisfied,
+    - explicit ALGO vs EDGEAI behavior split and telemetry requirements.
+- 2026-03-28 | Completed Phase 4 + Phase 10 closure pass in `drone_hunter_arena.c`:
+  - Phase 4: added explicit no-fit/no-stock fallback logic and WHY reason reporting for fallback + launch-sector depletion,
+  - Phase 10: added mission milestones (`OPENING`, `ESCALATE`, `CRISIS`, `SATURATE`) and late-wave strategy shift layer in AUTO mode,
+  - HUD wave row now shows milestone plus dual shift markers (`*` primary, `+` late).
+- 2026-03-28 | Build attempt after Phase 4/10 closure pass:
+  - command: `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+  - result: failed early in current shell with `Unable to find any of the available CY_TOOLS_PATHS`.
+- 2026-03-28 | Added explicit roadmap phase for hunter guidance hardening:
+  - introduced Phase 13 "Hunter Guidance + Intercept Geometry Hardening" in both `docs/TODO.md` and `ToDo.md`,
+  - moved Phase 13 to top of immediate next sprint queue,
+  - updated `docs/STATUS.md` state line to reflect Phase 13 priority.
 - 2026-03-25 | Imported firmware baseline and established Drone Hunter app flow.
 - 2026-03-25..2026-03-26 | Iterated splash/carousel and gameplay baseline.
 - 2026-03-27 | Stabilized dual-CIWS layout, transparency, and sweep/tracer behavior.

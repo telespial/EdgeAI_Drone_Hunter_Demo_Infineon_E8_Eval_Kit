@@ -2,13 +2,20 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-depth-scaled-class-fx`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase7-11-and-phase14-spec`
 - Date: `2026-03-28`
 - Baseline summary:
   - Phase 10 wave pacing baseline retained:
     - rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
     - composition-driven scaling,
-    - auto mid-wave strategy shift behavior.
+    - auto mid-wave + late-wave strategy shift behavior.
+  - Phase 7 HUD completion retained:
+    - defender telemetry includes stock/endurance, CIWS cooldown/lock, envelope fit, and availability/lockout.
+  - Phase 11 mission-end completion retained:
+    - strategic defender win/loss conditions active with causal summary overlay.
+  - Phase 14 specification retained:
+    - `ALGO` defined as baseline attacker+defender logic,
+    - `EDGEAI` defined as adaptive intelligence layer over ALGO.
   - Explosion anchor correctness baseline:
     - both hunter-kill and CIWS-kill FX are anchored to rendered target center.
   - Per-class kill FX profile mapping:
@@ -20,10 +27,13 @@
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2404352 bytes`
   - `verified 2400360 bytes`
+- Memory snapshot:
+  - external SMIF usage: `2,400,360 / 134,217,728` bytes (`1.79%` used),
+  - remaining external SMIF: `131,817,368` bytes (`98.21%` free).
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-depth-scaled-class-fx`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase7-11-and-phase14-spec`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 

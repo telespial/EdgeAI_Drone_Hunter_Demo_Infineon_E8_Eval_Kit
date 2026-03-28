@@ -283,3 +283,46 @@ If no: hold or choose a different defender.
 - Keep losses attributable to player choices (range, class mismatch, allocation, timing).
 - Preserve finite-resource pressure (hunter stock + per-gun CIWS ammo).
 - Maintain clear HUD feedback so players learn why engagements succeed or fail.
+
+## 19. Movement and objective doctrine (Phase 14)
+
+### 19.1 Shared movement model
+- Both hunter and attack drones must be able to maneuver in all directions (full X/Y steering).
+- Motion should be steering-based (bounded acceleration + turn-rate), not one-time ballistic vectors.
+- Boundary handling should preserve intent (slide/steer correction) instead of hard teleport behavior.
+
+### 19.2 Attack drone doctrine
+- Every attack drone receives immutable target coordinates at launch (`goal_x`, `goal_y`).
+- Primary objective: survive hunters and reach assigned goal coordinates.
+- Evasion behavior:
+  - if hunter proximity risk is high, attacker applies lateral/evasive steering while keeping progress toward goal.
+- Detonation policy:
+  - attacker detonates only when reaching its own assigned goal radius.
+  - attacker destroyed mid-flight by hunter/CIWS is counted as intercept kill, not city-target detonation.
+
+### 19.3 Hunter doctrine
+- Each hunter has a primary lock target by default.
+- Hunter should continue toward locked target unless opportunistic switch gate is satisfied.
+- Opportunistic switch gate (all required):
+  - alternate target is easier/immediate (better time-to-intercept),
+  - turn demand is acceptable,
+  - confidence/kill probability is higher than current engagement,
+  - switching does not expose a higher-threat lane or critical ETA target.
+- If gate fails, hunter stays committed to original lock.
+
+### 19.4 Controller behavior split (`ALGO` vs `EDGEAI`)
+- `ALGO` profile (baseline for both attacker and defender):
+  - core deterministic movement, lock, evade, and intercept functions,
+  - conservative lock persistence with fewer opportunistic switches,
+  - explainable fixed-weight heuristics suitable as fallback-safe default.
+- `EDGEAI` profile (embedded intelligence layer on top of ALGO):
+  - uses trained/adaptive reasoning to improve ALGO outputs,
+  - adaptive predictive steering/lead updates and contextual target switching,
+  - dynamic weighting of confidence, ETA, lane risk, and opportunity cost.
+
+### 19.5 Explainability and telemetry requirements
+- Track and expose:
+  - lock-retain count vs opportunistic-switch count,
+  - attacker evade-maneuver count,
+  - target-reached detonations vs in-flight intercept kills.
+- `WHY` text and HUD rows should make switch/hold decisions interpretable to the player.

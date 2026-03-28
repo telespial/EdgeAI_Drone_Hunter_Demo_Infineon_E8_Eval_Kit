@@ -45,8 +45,26 @@
 - Phase 10 wave-structure progression advanced:
   - explicit wave archetypes now rotate by wave (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
   - per-archetype composition now scales target mix/tier pressure (not count-only growth),
-  - auto strategy mode now performs one mid-wave strategy shift around 55% wave progress,
-  - HUD wave row now shows live archetype and shift marker (`*` after strategy once shift is applied).
+  - mission milestones are now explicit (`OPENING`, `ESCALATE`, `CRISIS`, `SATURATE`) and feed wave scaling,
+  - auto strategy mode now performs primary and late-wave strategic shifts (55% and late pressure trigger),
+  - HUD wave row shows milestone and shift markers (`*` and `+`).
+- Phase 4 hunter assignment and fallback hardening:
+  - no-fit fallback now switches to recommended counter or highest-stock hunter class,
+  - no-stock fallback now attempts recommended/highest-stock replacement before launch hold,
+  - launch-sector depletion and fallback events now emit explicit `WHY` reason messages.
+- Phase 7 HUD/UX completion:
+  - defender panel telemetry is now surfaced in runtime HUD:
+    - endurance proxy, stock/airborne availability,
+    - CIWS lock and cooldown state,
+    - envelope fit hint and FF lockout mode.
+- Phase 11 win/loss + collateral completion:
+  - re-enabled strategic mission end evaluation (previous demo no-end bypass removed),
+  - defender win requires asset intact + defense layer remaining + collateral below threshold,
+  - defender loss triggers on asset destruction, early CIWS exhaustion plus leaks, or collateral/critical-node threshold breach,
+  - round-end overlay now shows causal summary metrics.
+- Phase 14 doctrine semantics are now explicit in rules/docs:
+  - `ALGO` is baseline attacker+defender function logic,
+  - `EDGEAI` is adaptive embedded intelligence that improves ALGO using trained/adaptive reasoning.
 - Phase 9 IFF advanced mode is implemented:
   - optional advanced toggle via long-press on Phalanx deck item,
   - blue-on-blue path only opens under strict combined gate:
@@ -205,3 +223,31 @@
 - OpenOCD results:
   - `wrote 2404352 bytes`
   - `verified 2400360 bytes`
+
+## Build confirmation (2026-03-28, Phase 4/10 completion pass)
+- Local rebuild attempt command:
+  - `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Result in this shell environment:
+  - failed early with `Unable to find any of the available CY_TOOLS_PATHS`.
+- Impact:
+  - code/doc updates completed, but compile/flash verification must run in the provisioned build environment used for prior board flashes.
+
+## Flash confirmation (2026-03-28, corrected SDK path)
+- Environment used:
+  - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
+- Program command completed on board `PSE846GPS2DBZC4A`:
+  - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
+- Note:
+  - `build_proj` in current shell still reports GCC package resolution issue.
+
+## Memory snapshot (2026-03-28)
+- Programmed image (`verified`): `2,400,360` bytes.
+- External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
+- Usage:
+  - used: `1.79%`
+  - free: `98.21%` (`131,817,368` bytes).
+- Internal-only fit check (512 KB RRAM):
+  - image exceeds capacity by `1,876,072` bytes (`~4.58x` larger than internal capacity).
