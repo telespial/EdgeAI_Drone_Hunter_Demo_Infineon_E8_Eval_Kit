@@ -20,6 +20,11 @@
 ## Current behavior in code
 - Attack drone runtime rendering is locked to generated attack sprites (ODIN no longer used in attacker path).
 - Hunter launch path includes urgency fallback so defense still launches when strict commit confidence is temporarily low.
+- Hunter selection/render stability fixes:
+  - removed forced Sting-only fallback in hunter pick sanitizer,
+  - switched in-game Sting render to stable sprite source,
+  - added minimum visible launch window before intercept resolution,
+  - tightened hunter zoom and ground clamp to prevent oversized bottom-edge artifacts.
 - CIWS uses gameplay arc range scaling (`CIWS_RANGE_FRAC`) instead of map-km hard cutoff, restoring visible engagements.
 - Persistent city-fire model from leak impacts, with scaling pressure.
 - CIWS near-front short-range gating + tracer visual range alignment.
@@ -48,4 +53,4 @@
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2371584 bytes`
-  - `verified 2370160 bytes`
+  - `verified 2370368 bytes`

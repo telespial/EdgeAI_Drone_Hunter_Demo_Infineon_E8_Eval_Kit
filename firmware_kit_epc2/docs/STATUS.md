@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; attacker sprite path fixed + hunter defense and CIWS engagement restored.
+- State: Stable runtime baseline validated on hardware; hunter visibility/scale stabilized and mixed hunter selection restored.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2371584 bytes`
-  - `verified 2370160 bytes`
+  - `verified 2370368 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -23,6 +23,11 @@
   - `attack_vb140_like_red`
   - `attack_dji_x_orange`
 - Hunter launch logic now includes urgency fallback when commit gate confidence is low, preventing no-defense stalls.
+- Hunter render/launch stability fixes applied:
+  - removed forced Sting-only hunter selection fallback,
+  - switched in-game Sting render path to stable sprite source,
+  - added minimum visible flight window before intercept resolution,
+  - tightened hunter zoom and bottom-edge clamps to prevent oversized icon-bar popups.
 - Rules-engine progression active:
   - detect/classify/commit confidence,
   - dynamic threat score,

@@ -32,3 +32,11 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2371584 bytes`
   - `verified 2370160 bytes`
+- 2026-03-27 | Fixed hunter visibility/selection regression:
+  - removed forced Sting-only selection sanitizer path,
+  - switched gameplay Sting source to stable sprite,
+  - added minimum visible launch interval before intercept resolve,
+  - tightened hunter zoom + bottom clamp to prevent giant icon-bar popups.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2371584 bytes`
+  - `verified 2370368 bytes`

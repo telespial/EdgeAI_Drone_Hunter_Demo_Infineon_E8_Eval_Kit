@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-attack-render-defense-fix`
+- Dated tag: `golden-e8-drone-hunter-20260327-hunter-visibility-fix`
 - Date: `2026-03-27`
 - Baseline summary:
   - Attack drone render path fixed:
@@ -10,17 +10,22 @@
     - ODIN fallback removed from attacker update path.
   - Hunter defense launch reliability fixed:
     - urgency fallback added when strict commit gate confidence is low.
+  - Hunter runtime visibility/size fixes:
+    - mixed hunter selection restored (removed Sting-only forced fallback),
+    - stable Sting sprite source in gameplay,
+    - minimum visible launch window before intercept resolve,
+    - tightened zoom and bottom-edge clamp to avoid oversized icon-bar popups.
   - CIWS engagement restored:
     - gameplay-visible sweep range uses `CIWS_RANGE_FRAC` screen scaling,
     - no longer effectively suppressed by map-km hard-cutoff conversion.
   - Existing stability guards and telemetry remain active.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2371584 bytes`
-  - `verified 2370160 bytes`
+  - `verified 2370368 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-attack-render-defense-fix`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-hunter-visibility-fix`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 
