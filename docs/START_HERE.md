@@ -17,8 +17,8 @@
   - `docs/RESTORE_POINTS.md` (when golden/failsafe moves)
 
 ## Current focus
-- Phase 15 execution:
-  - cleanup/hygiene,
-  - settings popup controls,
+- Phase 15 completion:
   - HUD simplification,
-  - polish and safety hardening.
+  - cleanup/hygiene,
+  - fire-render polish,
+  - flash safety continuity.

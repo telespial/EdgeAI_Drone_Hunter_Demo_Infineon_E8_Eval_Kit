@@ -65,6 +65,7 @@
 #define H_SWITCH_COOLDOWN_ALGO    (0.54f)
 #define H_SWITCH_COOLDOWN_EDGE    (0.34f)
 #define ATTACK_EVADE_RADIUS_FRAC  (0.23f)
+#define SETTINGS_ROW_COUNT        (5)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_WHITE  (1)
@@ -104,6 +105,20 @@ typedef enum
     MODE_ALGO_VS_EDGEAI,
     MODE_COUNT
 } match_mode_t;
+
+typedef enum
+{
+    DEFENDER_MODE_ALGO = 0,
+    DEFENDER_MODE_EDGEAI,
+    DEFENDER_MODE_HUMAN
+} defender_mode_t;
+
+typedef enum
+{
+    DIFFICULTY_EASY = 0,
+    DIFFICULTY_MEDIUM,
+    DIFFICULTY_HARD
+} difficulty_t;
 
 typedef enum
 {
@@ -231,6 +246,7 @@ typedef struct
     lv_obj_t *quick_menu_title;
     lv_obj_t *quick_menu_body;
     lv_obj_t *quick_menu_close;
+    int quick_menu_settings_active;
 
     lv_obj_t *overlay;
     lv_obj_t *overlay_title;
@@ -414,6 +430,11 @@ typedef struct
     int round_over;
     uint32_t round_start_tick_ms;
     float hud_refresh_t;
+    controller_t attacker_mode_sel;
+    defender_mode_t defender_mode_sel;
+    difficulty_t difficulty_sel;
+    int npu_enabled;
+    int speed_pp_idx;
 
     float t;
 } drone_hunter_scene_t;
@@ -432,6 +453,8 @@ static void deck_pick_cb(lv_event_t *e);
 static void target_pick_cb(lv_event_t *e);
 static void iff_toggle_cb(lv_event_t *e);
 static void quick_menu_close_cb(lv_event_t *e);
+static void quick_menu_body_cb(lv_event_t *e);
+static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body);
 
 static void add_city_fire(drone_hunter_scene_t *s, float x, float y)
 {
@@ -1111,6 +1134,84 @@ static void update_mode_button_label(drone_hunter_scene_t *s)
     }
 }
 
+static const char *difficulty_name(difficulty_t d)
+{
+    switch (d)
+    {
+        case DIFFICULTY_EASY: return "EASY";
+        case DIFFICULTY_HARD: return "HARD";
+        case DIFFICULTY_MEDIUM:
+        default: return "MED";
+    }
+}
+
+static const char *speed_pp_name(int idx)
+{
+    switch (idx)
+    {
+        case 2: return "FAST++";
+        case 1: return "FAST+";
+        default: return "NORMAL";
+    }
+}
+
+static float speed_pp_mult(const drone_hunter_scene_t *s)
+{
+    return (s->speed_pp_idx == 2) ? 1.35f : ((s->speed_pp_idx == 1) ? 1.18f : 1.00f);
+}
+
+static float difficulty_attack_mult(const drone_hunter_scene_t *s)
+{
+    if (s->difficulty_sel == DIFFICULTY_EASY)
+    {
+        return 0.90f;
+    }
+    if (s->difficulty_sel == DIFFICULTY_HARD)
+    {
+        return 1.12f;
+    }
+    return 1.00f;
+}
+
+static float difficulty_defense_mult(const drone_hunter_scene_t *s)
+{
+    if (s->difficulty_sel == DIFFICULTY_EASY)
+    {
+        return 1.08f;
+    }
+    if (s->difficulty_sel == DIFFICULTY_HARD)
+    {
+        return 0.92f;
+    }
+    return 1.00f;
+}
+
+static void apply_control_settings(drone_hunter_scene_t *s)
+{
+    s->team_ctrl[1] = s->attacker_mode_sel;
+    if (s->defender_mode_sel == DEFENDER_MODE_EDGEAI)
+    {
+        s->team_ctrl[0] = CTRL_EDGEAI;
+    }
+    else
+    {
+        s->team_ctrl[0] = CTRL_ALGO;
+    }
+
+    if ((s->team_ctrl[0] == CTRL_ALGO) && (s->team_ctrl[1] == CTRL_ALGO))
+    {
+        s->mode = MODE_ALGO_VS_ALGO;
+    }
+    else if ((s->team_ctrl[0] == CTRL_EDGEAI) && (s->team_ctrl[1] == CTRL_EDGEAI))
+    {
+        s->mode = MODE_EDGEAI_VS_EDGEAI;
+    }
+    else
+    {
+        s->mode = MODE_ALGO_VS_EDGEAI;
+    }
+}
+
 static int arena_phase(drone_hunter_scene_t *s)
 {
     if (s->t < 20.0f)
@@ -1396,7 +1497,10 @@ static void steer_hunter_toward_target(drone_hunter_scene_t *s, int h, int targe
     float delta;
     float turn_limit = hunter_turn_rate_limit(s->h_type[h], s->team_ctrl[h]);
     float speed_now = sqrtf((s->hvx[h] * s->hvx[h]) + (s->hvy[h] * s->hvy[h]));
-    float speed_goal = p->speed * hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]);
+    float speed_goal = p->speed *
+                       hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]) *
+                       difficulty_defense_mult(s) *
+                       speed_pp_mult(s);
     float speed;
     float lead_frames = hunter_guidance_lead_frames(s->h_type[h], s->team_ctrl[h], p->lead_gain);
     tx = s->kx[target] + (s->kvx[target] * lead_frames);
@@ -2340,23 +2444,22 @@ static void assign_mode(drone_hunter_scene_t *s, match_mode_t m)
 
 
 {
-    s->mode = m;
-
     if (m == MODE_ALGO_VS_ALGO)
     {
-        s->team_ctrl[0] = CTRL_ALGO;
-        s->team_ctrl[1] = CTRL_ALGO;
+        s->attacker_mode_sel = CTRL_ALGO;
+        s->defender_mode_sel = DEFENDER_MODE_ALGO;
     }
     else if (m == MODE_EDGEAI_VS_EDGEAI)
     {
-        s->team_ctrl[0] = CTRL_EDGEAI;
-        s->team_ctrl[1] = CTRL_EDGEAI;
+        s->attacker_mode_sel = CTRL_EDGEAI;
+        s->defender_mode_sel = DEFENDER_MODE_EDGEAI;
     }
     else
     {
-        s->team_ctrl[0] = CTRL_ALGO;
-        s->team_ctrl[1] = CTRL_EDGEAI;
+        s->attacker_mode_sel = CTRL_EDGEAI;
+        s->defender_mode_sel = DEFENDER_MODE_ALGO;
     }
+    apply_control_settings(s);
     update_mode_button_label(s);
 }
 
@@ -2829,8 +2932,58 @@ static void hide_quick_menu(drone_hunter_scene_t *s)
 {
     if (s->quick_menu != NULL)
     {
+        s->quick_menu_settings_active = 0;
         lv_obj_add_flag(s->quick_menu, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+static void refresh_settings_menu(drone_hunter_scene_t *s)
+{
+    char body[448];
+    const char *attacker = ctrl_name_compact(s->attacker_mode_sel);
+    const char *defender = (s->defender_mode_sel == DEFENDER_MODE_HUMAN) ? "HUMAN" :
+                           ((s->defender_mode_sel == DEFENDER_MODE_EDGEAI) ? "EDGEAI" : "ALGO");
+    (void)snprintf(body, sizeof(body),
+                   "[Tap row to cycle]\n"
+                   "ATTACKER: %s\n"
+                   "DEFENDER: %s\n"
+                   "NPU: %s\n"
+                   "DIFFICULTY: %s\n"
+                   "SPEED++: %s",
+                   attacker,
+                   defender,
+                   s->npu_enabled ? "ON" : "OFF",
+                   difficulty_name(s->difficulty_sel),
+                   speed_pp_name(s->speed_pp_idx));
+    show_quick_menu(s, "Settings", body);
+    s->quick_menu_settings_active = 1;
+}
+
+static void cycle_setting_row(drone_hunter_scene_t *s, int row)
+{
+    switch (row)
+    {
+        case 0:
+            s->attacker_mode_sel = (s->attacker_mode_sel == CTRL_ALGO) ? CTRL_EDGEAI : CTRL_ALGO;
+            break;
+        case 1:
+            s->defender_mode_sel = (defender_mode_t)(((int)s->defender_mode_sel + 1) % 3);
+            break;
+        case 2:
+            s->npu_enabled = s->npu_enabled ? 0 : 1;
+            break;
+        case 3:
+            s->difficulty_sel = (difficulty_t)(((int)s->difficulty_sel + 1) % 3);
+            break;
+        case 4:
+            s->speed_pp_idx = (s->speed_pp_idx + 1) % 3;
+            break;
+        default:
+            break;
+    }
+    apply_control_settings(s);
+    update_mode_button_label(s);
+    refresh_settings_menu(s);
 }
 
 static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body)
@@ -2853,6 +3006,44 @@ static void quick_menu_close_cb(lv_event_t *e)
         return;
     }
     hide_quick_menu(s);
+}
+
+static void quick_menu_body_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t *indev;
+    lv_point_t p;
+    lv_area_t a;
+    int row_h;
+    int y_rel;
+    int row;
+
+    if ((code != LV_EVENT_CLICKED) || !s->quick_menu_settings_active)
+    {
+        return;
+    }
+
+    indev = lv_indev_get_act();
+    if (indev == NULL)
+    {
+        return;
+    }
+    lv_indev_get_point(indev, &p);
+    lv_obj_get_coords(s->quick_menu_body, &a);
+    if ((p.x < a.x1) || (p.x > a.x2) || (p.y < a.y1) || (p.y > a.y2))
+    {
+        return;
+    }
+
+    row_h = lv_font_get_line_height(&lv_font_montserrat_12) + 4;
+    y_rel = p.y - a.y1;
+    row = (y_rel / row_h) - 1; /* first visible line is hint text */
+    if ((row < 0) || (row >= SETTINGS_ROW_COUNT))
+    {
+        return;
+    }
+    cycle_setting_row(s, row);
 }
 
 static void reset_round(drone_hunter_scene_t *s)
@@ -3028,17 +3219,7 @@ static void mode_cb(lv_event_t *e)
 
     if (left_half)
     {
-        (void)snprintf(body, sizeof(body),
-                       "Mode: %s\n"
-                       "Attack strategy: %s\n"
-                       "IFF: %s\n"
-                       "CIWS ammo L:%d R:%d\n"
-                       "Tip: Long-press Phalanx icon to toggle advanced IFF.",
-                       mode_name(s->mode),
-                       attack_strategy_short_name(s->attack_strategy_select),
-                       s->iff_advanced_mode ? "ADVANCED" : "LOCKED",
-                       s->ciws_ammo_left, s->ciws_ammo_right);
-        show_quick_menu(s, "Settings", body);
+        refresh_settings_menu(s);
     }
     else
     {
@@ -3049,6 +3230,7 @@ static void mode_cb(lv_event_t *e)
                        "Tap attack drone: set priority target\n"
                        "Press START ARENA to run gameplay.");
         show_quick_menu(s, "Help", body);
+        s->quick_menu_settings_active = 0;
     }
 }
 
@@ -3137,6 +3319,9 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     float ciws_max_vertical = (float)s->arena_h * CIWS_MAX_VERTICAL_FRAC;
     float floor_y = combat_floor_y(s);
     float sweep_step = CIWS_SWEEP_SPEED_RAD * DT_SEC;
+    float speed_mult = speed_pp_mult(s) * difficulty_attack_mult(s);
+
+    phase_speed_gain *= speed_mult;
 
     s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec - DT_SEC, 0.0f, 2.0f);
     s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec - DT_SEC, 0.0f, 2.0f);
@@ -3202,7 +3387,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         float move_y;
         float evade_weight = 0.0f;
         int hh;
-        int use_edge = (s->team_ctrl[1] == CTRL_EDGEAI);
+        int use_edge = (s->team_ctrl[1] == CTRL_EDGEAI) && s->npu_enabled;
         float evade_r = clampf((float)s->arena_w * ATTACK_EVADE_RADIUS_FRAC, 26.0f, 130.0f);
         float evade_r2 = evade_r * evade_r;
 
@@ -3702,6 +3887,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             ty = s->ky[target] + (s->kvy[target] * lead_frames);
             launch_speed = p->speed * hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]);
         }
+        launch_speed *= difficulty_defense_mult(s) * speed_pp_mult(s);
         dx = tx - s->hx[h];
         dy = ty - s->hy[h];
         d = sqrtf((dx * dx) + (dy * dy));
@@ -4412,7 +4598,7 @@ static void update_hud(drone_hunter_scene_t *s)
     const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
     const char *attacker_ctrl = ctrl_name_compact(s->team_ctrl[1]);
 
-    if ((s->manual_selected_hunter >= 0) || (s->manual_selected_target >= 0))
+    if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
     {
         hunter_ctrl = "HUMAN";
     }
@@ -4585,7 +4771,7 @@ static void anim_cb(lv_timer_t *timer)
         return;
     }
 
-    s->t += 0.040f;
+    s->t += 0.040f * speed_pp_mult(s);
 
     if (!s->round_over)
     {
@@ -4596,6 +4782,19 @@ static void anim_cb(lv_timer_t *timer)
 
         for (h = 0; h < HUNTER_COUNT; ++h)
         {
+            if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
+            {
+                int manual_gate = (h == 0) &&
+                                  ((s->manual_selected_hunter >= 0) || (s->manual_selected_target >= 0));
+                if (!s->hunter_loaded[h] && !manual_gate)
+                {
+                    continue;
+                }
+                if (h == 1 && !s->hunter_loaded[h])
+                {
+                    continue;
+                }
+            }
             update_hunter(s, h, core_x, core_y);
         }
 
@@ -5170,6 +5369,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_label_set_long_mode(s->quick_menu_body, LV_LABEL_LONG_WRAP);
     lv_obj_align(s->quick_menu_body, LV_ALIGN_TOP_LEFT, 12, 36);
     lv_label_set_text(s->quick_menu_body, "");
+    lv_obj_add_flag(s->quick_menu_body, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s->quick_menu_body, quick_menu_body_cb, LV_EVENT_CLICKED, s);
 
     s->quick_menu_close = lv_btn_create(s->quick_menu);
     lv_obj_set_size(s->quick_menu_close, 70, 28);
@@ -5222,6 +5423,12 @@ void drone_hunter_arena_start(lv_obj_t *screen)
 
     s->attack_strategy_select = ATTACK_STRATEGY_AUTO;
     s->attack_strategy_live = ATTACK_STRATEGY_CENTER_PRESSURE;
+    s->quick_menu_settings_active = 0;
+    s->attacker_mode_sel = CTRL_EDGEAI;
+    s->defender_mode_sel = DEFENDER_MODE_ALGO;
+    s->difficulty_sel = DIFFICULTY_MEDIUM;
+    s->npu_enabled = 1;
+    s->speed_pp_idx = 0;
     assign_mode(s, MODE_ALGO_VS_EDGEAI);
     reset_round(s);
 

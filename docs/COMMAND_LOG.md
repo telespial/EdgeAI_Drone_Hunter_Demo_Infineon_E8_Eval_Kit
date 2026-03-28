@@ -1,5 +1,25 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 15 settings-control integration completed in `drone_hunter_arena.c`:
+  - settings popup rows now tap-to-cycle for attacker mode, defender mode, NPU, difficulty, and speed++,
+  - defender HUMAN mode gating integrated,
+  - NPU toggle now gates attacker EDGEAI override path,
+  - difficulty/speed++ now affect attacker/hunter movement pacing.
+- 2026-03-28 | Build + flash validation after settings integration:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` and `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2412544 bytes` / `verified 2408416 bytes`
+    - `** Resetting Target **`
+- 2026-03-28 | Documentation and restore-governance refresh:
+  - produced new detailed GitHub-facing `README.md`,
+  - updated roadmap/status/state/runbook/restore docs for Phase 15 settings baseline,
+  - prepared new dated golden/failsafe restore point identifiers for this validated build.
+
+
 - 2026-03-28 | Phase 15 first-steps implementation and lower-deck bounce hardening:
   - added shared `combat_floor_y()` boundary in `drone_hunter_arena.c`,
   - applied floor clamp to attacker movement, hunter ground contact, respawn bounds, and render-time clamps,

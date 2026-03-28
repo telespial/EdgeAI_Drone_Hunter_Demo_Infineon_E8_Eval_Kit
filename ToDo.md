@@ -102,10 +102,19 @@ Finish UX/settings cleanup and repository hygiene, while preserving reliable fla
     - added shared combat floor boundary,
     - applied floor clamp to attacker/hunter update + render paths,
     - validated with fresh full 3-image flash pass.
+  - Settings popup touch controls integrated and validated:
+    - `ATTACKER`: `ALGO/EDGEAI`,
+    - `DEFENDER`: `ALGO/EDGEAI/HUMAN`,
+    - `NPU`: `ON/OFF`,
+    - `DIFFICULTY`: `EASY/MED/HARD`,
+    - `SPEED++`: `NORMAL/FAST+/FAST++`.
+  - Runtime behavior wiring added for settings:
+    - control mode application for attacker/defender,
+    - attacker EDGEAI path gated by `NPU`,
+    - difficulty/speed++ movement multipliers.
 - Next queued:
   - Remove or quarantine non-gameplay-facing `start_here`/framework guidance from gameplay docs.
   - Implement simplified top HUD scoreboard (`ATTACKER` left, `DEFENDER` right) replacing dense telemetry text.
-  - Add settings popup touch controls for attacker mode, defender mode, NPU, difficulty, and speed++.
   - Begin first pass on improved fire rendering variants/sizing.
 
 ---

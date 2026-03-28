@@ -6,8 +6,11 @@
 
 ## Current Baseline Summary
 - Phases 1-14 complete.
-- Phase 15 started.
-- Latest runtime includes lower-deck bounce fix (no drone rebound on icon/HUD strip).
+- Phase 15 in progress.
+- Current runtime includes:
+  - lower-deck bounce hardening,
+  - interactive settings popup controls,
+  - runtime control tuning for attacker/defender/NPU/difficulty/speed++.
 
 ## Verified Board + Device
 - Kit: `KIT_PSE84_EVAL`
@@ -22,13 +25,12 @@
 Observed successful signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2408448 bytes` / `verified 2407304 bytes`
+- `wrote 2412544 bytes` / `verified 2408416 bytes`
 - `** Resetting Target **`
 
 ## Known-Good Restore Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Workfront
-- Continue Phase 15 settings popup controls + HUD simplification.
-- Continue Phase 15 repo cleanup/hygiene pass.
+- Continue Phase 15 HUD simplification and repository cleanup/hygiene.
 - Start Phase 16 audio layer after Phase 15 closure.
