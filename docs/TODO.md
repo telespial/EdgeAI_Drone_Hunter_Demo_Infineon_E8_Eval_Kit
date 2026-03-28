@@ -183,7 +183,7 @@ Status: Partially started
 ---
 
 ## Phase 8 - Wrong-Choice Consequence System
-Status: Not started
+Status: Complete
 
 ### Objectives
 - Make strategic mistakes produce predictable losses (not random chaos).
@@ -203,7 +203,7 @@ Status: Not started
 ---
 
 ## Phase 9 - Friendly-Fire / IFF Advanced Mode (Optional Toggle)
-Status: Not started
+Status: Complete
 
 ### Objectives
 - Add constrained blue-on-blue risk only under combined failure conditions.

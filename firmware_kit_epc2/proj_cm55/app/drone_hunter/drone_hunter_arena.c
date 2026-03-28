@@ -229,6 +229,7 @@ typedef struct
     int h_target_idx[HUNTER_COUNT];
     int h_target_serial[HUNTER_COUNT];
     int h_falling[HUNTER_COUNT];
+    float h_launch_penalty[HUNTER_COUNT];
 
     float kx[KILLER_COUNT];
     float ky[KILLER_COUNT];
@@ -301,6 +302,13 @@ typedef struct
     int commit_hold_conf;
     int commit_hold_corridor;
     int commit_hold_los;
+    int fail_range_mismatch;
+    int fail_altitude_mismatch;
+    int fail_overkill;
+    int fail_ciws_misuse;
+    int fail_manual_override_low_conf;
+    float fail_reason_ttl;
+    char fail_reason_text[96];
 
     match_mode_t mode;
     controller_t team_ctrl[HUNTER_COUNT];
@@ -311,6 +319,15 @@ typedef struct
     float launch_sector_x[LAUNCH_SECTOR_COUNT];
     float launch_sector_y[LAUNCH_SECTOR_COUNT];
     int h_launch_sector[HUNTER_COUNT];
+    int manual_selected_hunter;
+    int manual_selected_target;
+    float manual_select_ttl;
+    int iff_advanced_mode;
+    int iff_degraded;
+    int iff_merged_tracks;
+    int iff_ff_events;
+    int iff_collateral_events;
+    float iff_recovery_ttl;
     int attack_remaining_to_spawn;
     int attack_destroyed;
     int attack_leaked;
@@ -336,6 +353,7 @@ typedef struct
     int core_hp;
     float round_time_sec;
     int round_over;
+    uint32_t round_start_tick_ms;
 
     float t;
 } drone_hunter_scene_t;
@@ -345,6 +363,10 @@ static float clampf(float v, float lo, float hi);
 static float dist2(float ax, float ay, float bx, float by);
 static void update_hunter_deck_ui(drone_hunter_scene_t *s);
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side);
+static void note_failure(drone_hunter_scene_t *s, const char *txt, int *counter);
+static void deck_pick_cb(lv_event_t *e);
+static void target_pick_cb(lv_event_t *e);
+static void iff_toggle_cb(lv_event_t *e);
 
 static void add_city_fire(drone_hunter_scene_t *s, float x, float y)
 {
@@ -597,6 +619,26 @@ static float wrap_angle_pi(float a)
     return a;
 }
 
+static int iff_tracks_merged(const drone_hunter_scene_t *s, float core_x, float core_y)
+{
+    float a0;
+    float a1;
+    float da;
+    float r0;
+    float r1;
+
+    if (!s->killer_active[0] || !s->killer_active[1])
+    {
+        return 0;
+    }
+    a0 = atan2f(s->ky[0] - core_y, s->kx[0] - core_x);
+    a1 = atan2f(s->ky[1] - core_y, s->kx[1] - core_x);
+    da = fabsf(wrap_angle_pi(a0 - a1));
+    r0 = sqrtf(dist2(s->kx[0], s->ky[0], core_x, core_y));
+    r1 = sqrtf(dist2(s->kx[1], s->ky[1], core_x, core_y));
+    return (da < 0.22f) && (fabsf(r0 - r1) < 56.0f);
+}
+
 static int ciws_target_in_sweep(float gun_x, float gun_y,
                                 float sweep_rad, float range_px,
                                 float target_x, float target_y)
@@ -710,6 +752,13 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     }
     *ammo -= ammo_spent;
     s->ciws_shots++;
+    if ((d_px > effective_px) || (lock_q < CIWS_LOCK_BAD_THRESH))
+    {
+        if ((s->ciws_shots % 8) == 0)
+        {
+            note_failure(s, "CIWS misuse: out-of-envelope/low-lock burst", &s->fail_ciws_misuse);
+        }
+    }
     {
         int burst;
         float horizontal = fabsf(dir_x);
@@ -777,12 +826,6 @@ static void update_mode_button_label(drone_hunter_scene_t *s)
     }
 }
 
-static const char *threat_faction_name(threat_faction_t f)
-{
-    (void)f;
-    return "ATTACK SWARM";
-}
-
 static int arena_phase(drone_hunter_scene_t *s)
 {
     if (s->t < 20.0f)
@@ -841,11 +884,6 @@ static const lv_image_dsc_t *hunter_icon_src(hunter_type_t type)
         return &img_hunter_sting_ii;
     }
     return hunter_image_src(type);
-}
-
-static const char *hunter_type_name(hunter_type_t t)
-{
-    return g_hunter_profiles[(int)t].name;
 }
 
 static const char *hunter_type_short_name(hunter_type_t t)
@@ -956,6 +994,45 @@ static float hunter_capability_score(hunter_type_t t)
 {
     const hunter_profile_t *p = &g_hunter_profiles[(int)t];
     return (p->speed * 0.75f) + (p->lead_gain * 0.85f) + (p->kill_radius * 0.05f);
+}
+
+static float hunter_range_km(hunter_type_t t)
+{
+    switch (t)
+    {
+        case HUNTER_STING_II:       return 25.0f;
+        case HUNTER_BAGNET:         return 15.0f;
+        case HUNTER_SKYFALL_P1:     return 23.0f;
+        case HUNTER_OCTOPUS_100:    return 30.0f;
+        case HUNTER_ODIN_WIN_HIT:   return 18.0f;
+        case HUNTER_VB140_FLAMINGO: return 50.0f;
+        case HUNTER_TYTAN:          return 35.0f;
+        case HUNTER_MEROPS:         return 30.0f;
+        default:                    return 20.0f;
+    }
+}
+
+static int hunter_is_low_alt_mismatch(hunter_type_t h, target_type_t tt, float altitude_norm)
+{
+    if (tt != TARGET_FPV)
+    {
+        return 0;
+    }
+    if (altitude_norm > 0.26f)
+    {
+        return 0;
+    }
+    return (h == HUNTER_VB140_FLAMINGO) || (h == HUNTER_TYTAN) || (h == HUNTER_MEROPS);
+}
+
+static void note_failure(drone_hunter_scene_t *s, const char *txt, int *counter)
+{
+    if (counter != NULL)
+    {
+        (*counter)++;
+    }
+    s->fail_reason_ttl = 3.6f;
+    (void)snprintf(s->fail_reason_text, sizeof(s->fail_reason_text), "%s", txt);
 }
 
 static float attack_speed_score(const drone_hunter_scene_t *s, int k)
@@ -1148,20 +1225,6 @@ static float attack_speed_kmh_est(const drone_hunter_scene_t *s, int k)
         base = 95.0f;
     }
     return base + ((float)s->k_tier[k] * 18.0f);
-}
-
-static const char *commit_reason_name(int reason)
-{
-    switch (reason)
-    {
-        case COMMIT_REASON_READY: return "READY";
-        case COMMIT_REASON_DETECT_LOW: return "D_LOW";
-        case COMMIT_REASON_CLASS_LOW: return "C_LOW";
-        case COMMIT_REASON_COMMIT_LOW: return "HOLD";
-        case COMMIT_REASON_CORRIDOR: return "LANE";
-        case COMMIT_REASON_LOS_BLOCK: return "LOS";
-        default: return "NO_TGT";
-    }
 }
 
 static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float core_y)
@@ -1871,11 +1934,13 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
         int in_use = (s->h_type[0] == (hunter_type_t)i) || (s->h_type[1] == (hunter_type_t)i);
+        int selected = (s->manual_selected_hunter == i);
         lv_obj_set_style_opa(s->deck_icon[i], (s->hunter_stock[i] > 0) ? LV_OPA_COVER : LV_OPA_30, 0);
         lv_obj_set_style_border_width(s->deck_icon[i], in_use ? 2 : 0, 0);
         lv_obj_set_style_border_color(s->deck_icon[i], lv_color_hex(0x22D3EE), 0);
         lv_obj_set_style_radius(s->deck_icon[i], 3, 0);
-        lv_obj_set_style_outline_width(s->deck_icon[i], 0, 0);
+        lv_obj_set_style_outline_width(s->deck_icon[i], selected ? 2 : 0, 0);
+        lv_obj_set_style_outline_color(s->deck_icon[i], lv_color_hex(0xFBBF24), 0);
         lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
         lv_obj_set_style_text_color(s->deck_count[i],
                                     (s->hunter_stock[i] > 0) ? lv_color_hex(0xFDE68A) : lv_color_hex(0x6B7280),
@@ -2094,6 +2159,7 @@ static void reset_hunters(drone_hunter_scene_t *s)
         s->h_target_idx[i] = -1;
         s->h_target_serial[i] = 0;
         s->h_falling[i] = 0;
+        s->h_launch_penalty[i] = 0.0f;
         apply_hunter_profile(s, i);
     }
 }
@@ -2122,9 +2188,16 @@ static void reset_round(drone_hunter_scene_t *s)
 
     s->team_score[0] = 0;
     s->team_score[1] = 0;
+    s->iff_degraded = 0;
+    s->iff_merged_tracks = 0;
+    s->iff_recovery_ttl = 0.0f;
+    s->manual_selected_hunter = -1;
+    s->manual_selected_target = -1;
+    s->manual_select_ttl = 0.0f;
     s->core_hp = CORE_HP_START;
     s->round_time_sec = ROUND_TIME_SEC;
     s->round_over = 0;
+    s->round_start_tick_ms = lv_tick_get();
     s->t = 0.0f;
     s->killer_spawn_tick = 0;
     s->fx_core_hit_t = 0.0f;
@@ -2153,6 +2226,15 @@ static void reset_round(drone_hunter_scene_t *s)
     s->commit_hold_conf = 0;
     s->commit_hold_corridor = 0;
     s->commit_hold_los = 0;
+    s->fail_range_mismatch = 0;
+    s->fail_altitude_mismatch = 0;
+    s->fail_overkill = 0;
+    s->fail_ciws_misuse = 0;
+    s->fail_manual_override_low_conf = 0;
+    s->iff_ff_events = 0;
+    s->iff_collateral_events = 0;
+    s->fail_reason_ttl = 0.0f;
+    s->fail_reason_text[0] = '\0';
     s->ciws_tracer_head = 0;
     for (i = 0; i < CIWS_TRACER_COUNT; ++i)
     {
@@ -2246,6 +2328,77 @@ static void mode_cb(lv_event_t *e)
 
     assign_mode(s, (match_mode_t)((s->mode + 1) % MODE_COUNT));
     reset_round(s);
+}
+
+static void deck_pick_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    lv_obj_t *target;
+    int i;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    {
+        return;
+    }
+    target = lv_event_get_target(e);
+    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
+    {
+        if (target == s->deck_icon[i])
+        {
+            if (s->hunter_stock[i] <= 0)
+            {
+                note_failure(s, "Manual pick blocked: selected hunter out of stock", NULL);
+                return;
+            }
+            s->manual_selected_hunter = i;
+            s->manual_select_ttl = 5.0f;
+            note_failure(s, "Manual hunter selected from icon bar", NULL);
+            update_hunter_deck_ui(s);
+            return;
+        }
+    }
+}
+
+static void target_pick_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    lv_obj_t *target;
+    int k;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    {
+        return;
+    }
+    target = lv_event_get_target(e);
+    for (k = 0; k < KILLER_COUNT; ++k)
+    {
+        if ((target == s->killers[k]) && s->killer_active[k])
+        {
+            s->manual_selected_target = k;
+            s->manual_select_ttl = 5.0f;
+            note_failure(s, "Manual target priority selected", NULL);
+            return;
+        }
+    }
+}
+
+static void iff_toggle_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    if (lv_event_get_code(e) != LV_EVENT_LONG_PRESSED)
+    {
+        return;
+    }
+    s->iff_advanced_mode = !s->iff_advanced_mode;
+    if (!s->iff_advanced_mode)
+    {
+        s->iff_degraded = 0;
+        s->iff_merged_tracks = 0;
+        s->iff_recovery_ttl = 0.0f;
+    }
+    note_failure(s,
+                 s->iff_advanced_mode ? "IFF advanced mode enabled" : "IFF advanced mode disabled",
+                 NULL);
 }
 
 static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
@@ -2421,6 +2574,37 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     }
 
     refresh_target_metrics(s, core_x, core_y);
+    if (s->iff_advanced_mode)
+    {
+        float noise_avg = 0.0f;
+        int active_n = 0;
+        for (k = 0; k < KILLER_COUNT; ++k)
+        {
+            if (s->killer_active[k])
+            {
+                noise_avg += s->k_noise[k];
+                active_n++;
+            }
+        }
+        if (active_n > 0)
+        {
+            noise_avg /= (float)active_n;
+        }
+        s->iff_merged_tracks = iff_tracks_merged(s, core_x, core_y);
+        if ((noise_avg > 0.42f) || (s->fail_ciws_misuse > 0) || (s->iff_recovery_ttl > 0.0f))
+        {
+            s->iff_degraded = 1;
+        }
+        else
+        {
+            s->iff_degraded = 0;
+        }
+    }
+    else
+    {
+        s->iff_merged_tracks = 0;
+        s->iff_degraded = 0;
+    }
 }
 
 static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float core_y)
@@ -2476,6 +2660,14 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         return;
     }
 
+    if ((h == 0) &&
+        (s->manual_selected_target >= 0) &&
+        (s->manual_selected_target < KILLER_COUNT) &&
+        s->killer_active[s->manual_selected_target])
+    {
+        target = s->manual_selected_target;
+    }
+
     /* Commit gate: launch only when staged pipeline marks target as committable. */
     if (!s->hunter_loaded[h])
     {
@@ -2519,7 +2711,19 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         float d;
         float launch_speed;
         int launch_sector;
-        hunter_type_t pick = sanitize_hunter_pick(choose_conservative_hunter(s, target, h));
+        hunter_type_t pick;
+
+        if ((h == 0) &&
+            (s->manual_selected_hunter >= 0) &&
+            (s->manual_selected_hunter < HUNTER_TYPE_COUNT) &&
+            (s->hunter_stock[s->manual_selected_hunter] > 0))
+        {
+            pick = sanitize_hunter_pick((hunter_type_t)s->manual_selected_hunter);
+        }
+        else
+        {
+            pick = sanitize_hunter_pick(choose_conservative_hunter(s, target, h));
+        }
         if (s->hunter_stock[(int)pick] <= 0)
         {
             return;
@@ -2538,10 +2742,45 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_target_idx[h] = target;
         s->h_target_serial[h] = s->k_serial[target];
         s->h_reselect_sec[h] = 0.20f; /* minimum visible flight time before intercept resolve */
+        s->h_launch_penalty[h] = 0.0f;
         s->hx[h] = s->launch_sector_x[launch_sector];
         s->hy[h] = s->launch_sector_y[launch_sector];
         update_hunter_deck_ui(s);
         apply_hunter_profile(s, h);
+        {
+            float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
+            float launch_range_km = sqrtf(dist2(s->hx[h], s->hy[h], s->kx[target], s->ky[target])) * km_per_px;
+            float range_cap_km = hunter_range_km(s->h_type[h]);
+            int overkill_pick = hunter_is_high_speed_tier(s->h_type[h]) &&
+                                (s->k_threat_score[target] < 1.40f) &&
+                                has_unassigned_higher_threat(s, target);
+            int low_conf_override = (!s->k_commit_ok[target]) &&
+                                    (s->k_commit_conf[target] < 0.48f) &&
+                                    ((s->team_ctrl[h] == CTRL_ALGO) ||
+                                     ((h == 0) && (s->manual_selected_hunter >= 0)));
+
+            if (launch_range_km > (range_cap_km * 1.05f))
+            {
+                s->h_launch_penalty[h] += 0.22f;
+                note_failure(s, "Range mismatch: selected hunter out of ideal envelope", &s->fail_range_mismatch);
+            }
+            if (hunter_is_low_alt_mismatch(s->h_type[h], s->ktype[target], s->k_altitude_norm[target]))
+            {
+                s->h_launch_penalty[h] += 0.20f;
+                note_failure(s, "Altitude mismatch: fixed-wing on low erratic target", &s->fail_altitude_mismatch);
+            }
+            if (overkill_pick)
+            {
+                s->h_launch_penalty[h] += 0.14f;
+                note_failure(s, "Overkill allocation: premium hunter burned on low threat", &s->fail_overkill);
+            }
+            if (low_conf_override)
+            {
+                s->h_launch_penalty[h] += 0.12f;
+                note_failure(s, "Low-confidence override: risky launch committed", &s->fail_manual_override_low_conf);
+            }
+            s->h_launch_penalty[h] = clampf(s->h_launch_penalty[h], 0.0f, 0.54f);
+        }
 
         p = &g_hunter_profiles[(int)s->h_type[h]];
         if (s->team_ctrl[h] == CTRL_EDGEAI)
@@ -2647,6 +2886,41 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             float req = threat_required_score(s, committed);
             float p_kill = clampf(0.34f + ((cap - req) * 0.22f), 0.12f, 0.93f);
             float roll = 0.5f + (0.5f * sinf((s->t * 2.3f) + (float)(h * 7 + committed * 11)));
+            int manual_override = ((h == 0) && ((s->manual_selected_hunter >= 0) || (s->manual_selected_target >= 0))) ? 1 : 0;
+            int low_conf = (s->k_commit_conf[committed] < 0.45f) ? 1 : 0;
+            int ff_gate = (s->iff_advanced_mode && s->iff_degraded && s->iff_merged_tracks && manual_override && low_conf) ? 1 : 0;
+            p_kill = clampf(p_kill - s->h_launch_penalty[h], 0.05f, 0.95f);
+
+            if (ff_gate)
+            {
+                float ff_roll = 0.5f + (0.5f * cosf((s->t * 2.9f) + (float)(h * 13 + committed * 3)));
+                if (ff_roll < 0.36f)
+                {
+                    float hx = s->hx[h];
+                    float hy = s->hy[h];
+                    s->iff_ff_events++;
+                    s->iff_collateral_events++;
+                    s->defense_misses++;
+                    s->attacker_points++;
+                    s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
+                    s->iff_recovery_ttl = 4.0f;
+                    add_city_fire(s, hx, hy);
+                    add_city_fire(s, hx + 6.0f, hy + 4.0f);
+                    note_failure(s, "IFF failure: blue-on-blue event, recovery in progress", NULL);
+
+                    s->hunter_loaded[h] = 0;
+                    s->h_falling[h] = 0;
+                    s->h_target_idx[h] = -1;
+                    s->h_target_serial[h] = 0;
+                    s->h_reselect_sec[h] = 0.10f;
+                    s->hvx[h] = 0.0f;
+                    s->hvy[h] = 0.0f;
+                    s->hx[h] = hunter_regroup_x(s, h, core_x);
+                    s->hy[h] = hunter_regroup_y(s, h);
+                    lv_obj_add_flag(s->hunters[h], LV_OBJ_FLAG_HIDDEN);
+                    return;
+                }
+            }
 
             if (roll <= p_kill)
             {
@@ -2954,9 +3228,15 @@ static void update_positions(drone_hunter_scene_t *s)
 static void update_hud(drone_hunter_scene_t *s)
 {
     int phase = arena_phase(s);
-    int elapsed = (int)s->t;
+    uint32_t elapsed_ms = lv_tick_get() - s->round_start_tick_ms;
+    int elapsed = (int)(elapsed_ms / 1000U);
+    int elapsed_mm = elapsed / 60;
+    int elapsed_ss = elapsed % 60;
     int lead_k = -1;
     float lead_score = -1.0f;
+    int total_stock = 0;
+    int hunters_air = 0;
+    int h;
     int k;
 
     for (k = 0; k < KILLER_COUNT; ++k)
@@ -2967,105 +3247,83 @@ static void update_hud(drone_hunter_scene_t *s)
             lead_k = k;
         }
     }
+    for (k = 0; k < HUNTER_TYPE_COUNT; ++k)
+    {
+        total_stock += s->hunter_stock[k];
+    }
+    for (h = 0; h < HUNTER_COUNT; ++h)
+    {
+        if (s->hunter_loaded[h])
+        {
+            hunters_air++;
+        }
+    }
 
-    lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  %s", mode_name(s->mode), arena_phase_name(phase));
+    lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  IFF %s %s%s",
+                          mode_name(s->mode), arena_phase_name(phase),
+                          s->iff_advanced_mode ? "ADV" : "LOCK",
+                          s->iff_degraded ? "DEG" : "NOM",
+                          s->iff_merged_tracks ? " MERGED" : "");
     lv_label_set_text_fmt(s->hud_score,
-                          "HUNTER %d  |  ATTACKER %d  |  KILLS %d  |  MISSES %d",
-                          s->hunter_points, s->attacker_points, s->defense_kills, s->defense_misses);
+                          "HUNTER %d  |  ATTACKER %d  |  CORE %d",
+                          s->hunter_points, s->attacker_points, s->core_hp);
     lv_label_set_text_fmt(s->hud_wave,
-                          "WAVE %d  |  %s  |  STRAT %s  |  NEUTRALIZED %d/%d  |  LEAKED %d",
+                          "WAVE %d  |  STRAT %s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
                           s->wave_idx,
-                          threat_faction_name(s->threat_faction),
                           attack_strategy_short_name(s->attack_strategy_live),
                           s->attack_destroyed, s->wave_target_total,
-                          s->attack_leaked);
+                          s->attack_leaked,
+                          s->attack_remaining_to_spawn);
     lv_label_set_text_fmt(s->hud_elapsed,
-                          "CORE %d  |  ELAPSED %03ds  |  CIWS R A%d H%02d L%02d  L A%d H%02d L%02d",
-                          s->core_hp, elapsed,
-                          s->ciws_ammo_right,
-                          (int)(s->ciws_heat_right * 99.0f),
-                          (int)(s->ciws_lock_right * 99.0f),
+                          "ELAPSED %02d:%02d  |  CIWS L%d/R%d  |  MAN H:%s T:%d",
+                          elapsed_mm, elapsed_ss,
                           s->ciws_ammo_left,
-                          (int)(s->ciws_heat_left * 99.0f),
-                          (int)(s->ciws_lock_left * 99.0f));
+                          s->ciws_ammo_right,
+                          (s->manual_selected_hunter >= 0) ? hunter_type_short_name((hunter_type_t)s->manual_selected_hunter) : "AUTO",
+                          (s->manual_selected_target >= 0) ? (s->manual_selected_target + 1) : 0);
     if (lead_k >= 0)
     {
-        char tline0[128];
-        char tline1[128];
         char info[256];
-        int active_idx[2] = {-1, -1};
-        int n = 0;
-        int i;
         float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
-        for (i = 0; i < KILLER_COUNT; ++i)
-        {
-            if (s->killer_active[i])
-            {
-                active_idx[n++] = i;
-            }
-        }
-
-        if (n > 0)
-        {
-            int k0 = active_idx[0];
-            (void)snprintf(tline0, sizeof(tline0),
-                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f TV%.2f LP%.1f REC:%s D%.0f C%.0f M%.0f %s",
-                           s->k_priority_rank[k0],
-                           target_type_name(s, k0),
-                           s->k_speed_est[k0],
-                           clampf(s->k_altitude_norm[k0] * 6.0f, 0.0f, 6.0f),
-                           s->k_range_to_core[k0] * km_per_px,
-                           s->k_eta_to_goal[k0],
-                           s->k_threat_score[k0],
-                           s->k_target_value_mod[k0],
-                           s->k_lane_pressure[k0],
-                           hunter_type_short_name(s->k_recommended_counter[k0]),
-                           s->k_detect_conf[k0] * 100.0f,
-                           s->k_class_conf[k0] * 100.0f,
-                           s->k_commit_conf[k0] * 100.0f,
-                           commit_reason_name(s->k_commit_reason[k0]));
-        }
-        else
-        {
-            (void)snprintf(tline0, sizeof(tline0), "No active threats");
-        }
-
-        if (n > 1)
-        {
-            int k1 = active_idx[1];
-            (void)snprintf(tline1, sizeof(tline1),
-                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f TV%.2f LP%.1f REC:%s D%.0f C%.0f M%.0f %s",
-                           s->k_priority_rank[k1],
-                           target_type_name(s, k1),
-                           s->k_speed_est[k1],
-                           clampf(s->k_altitude_norm[k1] * 6.0f, 0.0f, 6.0f),
-                           s->k_range_to_core[k1] * km_per_px,
-                           s->k_eta_to_goal[k1],
-                           s->k_threat_score[k1],
-                           s->k_target_value_mod[k1],
-                           s->k_lane_pressure[k1],
-                           hunter_type_short_name(s->k_recommended_counter[k1]),
-                           s->k_detect_conf[k1] * 100.0f,
-                           s->k_class_conf[k1] * 100.0f,
-                           s->k_commit_conf[k1] * 100.0f,
-                           commit_reason_name(s->k_commit_reason[k1]));
-        }
-        else
-        {
-            tline1[0] = '\0';
-        }
-
-        (void)snprintf(info, sizeof(info), "%.112s%.112s  |  REM %d",
-                       tline0, tline1, s->attack_remaining_to_spawn);
+        (void)snprintf(info, sizeof(info),
+                       "TARGET:%s ETA%.1fs R%.1fkm REC:%s | F:R%d A%d O%d C%d M%d FF:%d COL:%d",
+                       target_type_name(s, lead_k),
+                       s->k_eta_to_goal[lead_k],
+                       s->k_range_to_core[lead_k] * km_per_px,
+                       hunter_type_short_name(s->k_recommended_counter[lead_k]),
+                       s->fail_range_mismatch,
+                       s->fail_altitude_mismatch,
+                       s->fail_overkill,
+                       s->fail_ciws_misuse,
+                       s->fail_manual_override_low_conf,
+                       s->iff_ff_events,
+                       s->iff_collateral_events);
         lv_label_set_text(s->hud_info, info);
     }
     else
     {
         lv_label_set_text_fmt(s->hud_info,
-                              "Active launchers: %s / %s  |  WAVE REM %d",
-                              hunter_type_name(s->h_type[0]),
-                              hunter_type_name(s->h_type[1]),
-                              s->attack_remaining_to_spawn);
+                              "No active target | DEF STK:%d AIR:%d | F:R%d A%d O%d C%d M%d FF:%d COL:%d",
+                              total_stock, hunters_air,
+                              s->fail_range_mismatch,
+                              s->fail_altitude_mismatch,
+                              s->fail_overkill,
+                              s->fail_ciws_misuse,
+                              s->fail_manual_override_low_conf,
+                              s->iff_ff_events,
+                              s->iff_collateral_events);
+    }
+    if (s->fail_reason_ttl > 0.0f)
+    {
+        lv_label_set_text_fmt(s->hud_elapsed,
+                              "ELAPSED %02d:%02d  |  WHY: %s",
+                              elapsed_mm, elapsed_ss, s->fail_reason_text);
+    }
+    else if (s->iff_recovery_ttl > 0.0f)
+    {
+        lv_label_set_text_fmt(s->hud_elapsed,
+                              "ELAPSED %02d:%02d  |  IFF RECOVERY %.1fs",
+                              elapsed_mm, elapsed_ss, s->iff_recovery_ttl);
     }
 }
 
@@ -3156,6 +3414,14 @@ static void anim_cb(lv_timer_t *timer)
                 s->ciws_tracer_y1[k] += s->ciws_tracer_g[k] * DT_SEC;
             }
             s->ciws_tracer_t[k] = clampf(s->ciws_tracer_t[k] - DT_SEC, 0.0f, CIWS_TRACER_LIFE_SEC);
+        }
+        s->fail_reason_ttl = clampf(s->fail_reason_ttl - DT_SEC, 0.0f, 10.0f);
+        s->manual_select_ttl = clampf(s->manual_select_ttl - DT_SEC, 0.0f, 10.0f);
+        s->iff_recovery_ttl = clampf(s->iff_recovery_ttl - DT_SEC, 0.0f, 10.0f);
+        if ((s->manual_selected_target >= 0) &&
+            ((s->manual_selected_target >= KILLER_COUNT) || !s->killer_active[s->manual_selected_target]))
+        {
+            s->manual_selected_target = -1;
         }
 
         if ((s->attack_remaining_to_spawn <= 0) && !s->killer_active[0] && !s->killer_active[1])
@@ -3330,21 +3596,29 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         s->hud_mode = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_mode, lv_color_hex(0x93C5FD), 0);
         lv_obj_set_style_text_font(s->hud_mode, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_mode, (sw - 16) - 210);
+        lv_label_set_long_mode(s->hud_mode, LV_LABEL_LONG_CLIP);
         lv_obj_align(s->hud_mode, LV_ALIGN_TOP_LEFT, 8, 3);
 
         s->hud_score = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_score, lv_color_hex(0xFBBF24), 0);
         lv_obj_set_style_text_font(s->hud_score, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_score, (sw - 16) - 16);
+        lv_label_set_long_mode(s->hud_score, LV_LABEL_LONG_CLIP);
         lv_obj_align(s->hud_score, LV_ALIGN_TOP_LEFT, 8, 35);
 
         s->hud_info = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_info, lv_color_hex(0x67E8F9), 0);
         lv_obj_set_style_text_font(s->hud_info, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_info, (sw - 16) - 16);
+        lv_label_set_long_mode(s->hud_info, LV_LABEL_LONG_CLIP);
         lv_obj_align(s->hud_info, LV_ALIGN_BOTTOM_LEFT, 8, -3);
 
         s->hud_wave = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_wave, lv_color_hex(0xFCA5A5), 0);
         lv_obj_set_style_text_font(s->hud_wave, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_wave, (sw - 16) - 16);
+        lv_label_set_long_mode(s->hud_wave, LV_LABEL_LONG_CLIP);
         lv_obj_align(s->hud_wave, LV_ALIGN_TOP_LEFT, 8, 19);
 
         s->hud_elapsed = lv_label_create(hud);
@@ -3405,6 +3679,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_transform_pivot_x(s->deck_icon[i], lv_obj_get_width(s->deck_icon[i]) / 2, 0);
         lv_obj_set_style_transform_pivot_y(s->deck_icon[i], lv_obj_get_height(s->deck_icon[i]) / 2, 0);
         lv_obj_set_style_outline_pad(s->deck_icon[i], 1, 0);
+        lv_obj_add_flag(s->deck_icon[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(s->deck_icon[i], deck_pick_cb, LV_EVENT_CLICKED, s);
 
         s->deck_name[i] = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_name[i], &lv_font_montserrat_12, 0);
@@ -3468,6 +3744,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_pos(s->deck_ciws_icon, x + ((slot_w - iw) / 2), 12);
         lv_obj_set_style_transform_zoom(s->deck_ciws_icon, 150, 0);
         lv_obj_set_style_translate_y(s->deck_ciws_icon, 0, 0);
+        lv_obj_add_flag(s->deck_ciws_icon, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(s->deck_ciws_icon, iff_toggle_cb, LV_EVENT_LONG_PRESSED, s);
 
         s->deck_ciws_name = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_ciws_name, &lv_font_montserrat_12, 0);
@@ -3477,6 +3755,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_label_set_text(s->deck_ciws_name, "Phalanx");
         lv_label_set_long_mode(s->deck_ciws_name, LV_LABEL_LONG_CLIP);
         lv_obj_set_pos(s->deck_ciws_name, x, 80);
+        lv_obj_add_flag(s->deck_ciws_name, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(s->deck_ciws_name, iff_toggle_cb, LV_EVENT_LONG_PRESSED, s);
 
         s->deck_ciws_count = lv_label_create(s->deck_bar);
         lv_obj_set_style_text_font(s->deck_ciws_count, &lv_font_montserrat_12, 0);
@@ -3485,6 +3765,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_width(s->deck_ciws_count, slot_w);
         lv_label_set_text(s->deck_ciws_count, "x0");
         lv_obj_set_pos(s->deck_ciws_count, x, 94);
+        lv_obj_add_flag(s->deck_ciws_count, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(s->deck_ciws_count, iff_toggle_cb, LV_EVENT_LONG_PRESSED, s);
     }
 
     s->core = lv_obj_create(s->arena);
@@ -3527,6 +3809,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_remove_style_all(s->killers[i]);
         lv_image_set_src(s->killers[i], &attack_shahed_yellow);
         lv_obj_set_style_transform_zoom(s->killers[i], 185, 0);
+        lv_obj_add_flag(s->killers[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(s->killers[i], target_pick_cb, LV_EVENT_CLICKED, s);
 
         s->killer_wing[i] = lv_obj_create(s->killers[i]);
         lv_obj_remove_style_all(s->killer_wing[i]);

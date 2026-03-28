@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; Phase 6 CIWS doctrine finalization is now wired and visible in HUD telemetry.
+- State: Stable runtime baseline validated on hardware; Phases 8 and 9 are completed and active.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2379776 bytes`
-  - `verified 2375752 bytes`
+  - `verified 2378312 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -25,6 +25,14 @@
   - heat growth is now stronger when firing with poor lock quality.
 - HUD now includes live CIWS doctrine state per gun:
   - ammo, heat, and lock quality telemetry.
+- Phase 8 wrong-choice consequence system is active:
+  - explicit penalties for range mismatch, altitude mismatch, overkill allocation, CIWS misuse, and low-confidence manual override.
+  - HUD explainability now reports latest causal reason (`WHY`) plus aggregate failure counters.
+- Phase 9 friendly-fire / IFF advanced mode is active:
+  - optional advanced toggle via long-press on Phalanx deck item.
+  - blue-on-blue can occur only under strict gate:
+    - IFF degraded + merged tracks + manual override + low confidence.
+  - collateral and recovery outcomes are now surfaced in HUD (`FF`, `COL`, recovery timer).
 - Hunter top-edge skid behavior fixed via forced horizon egress (shrink/fade/despawn) instead of line sliding.
 - Falling hunters no longer bounce/reverse off lower icon/deck region:
   - failed/missed hunters continue descending off the bottom of the screen,

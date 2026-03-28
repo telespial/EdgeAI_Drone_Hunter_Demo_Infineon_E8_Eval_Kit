@@ -27,6 +27,13 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
   - `Mode` button click = cycle match mode,
   - `Mode` button long-press = cycle attacker strategy.
 - Continuous gameplay with phase HUD retained.
+- Phase 8 completed:
+  - explicit wrong-choice penalties (range/altitude/overkill/CIWS misuse/manual low-confidence),
+  - live `WHY` failure explainability cues in HUD.
+- Phase 9 completed:
+  - optional advanced IFF mode toggle (long-press Phalanx deck item),
+  - blue-on-blue enabled only under strict combined-failure gate,
+  - collateral + recovery telemetry wired (`FF`, `COL`, recovery timer).
 
 ## Rules spec
 - Canonical rules are documented in `rules.md`.
@@ -42,7 +49,7 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Latest flash confirmation:
 - `wrote 2379776 bytes`
-- `verified 2375752 bytes`
+- `verified 2378312 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

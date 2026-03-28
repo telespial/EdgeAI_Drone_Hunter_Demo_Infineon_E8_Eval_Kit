@@ -18,6 +18,14 @@
 - `rules.md`
 
 ## Current behavior in code
+- Phase 9 IFF advanced mode is implemented:
+  - optional advanced toggle via long-press on Phalanx deck item,
+  - blue-on-blue path only opens under strict combined gate:
+    - IFF degraded + merged tracks + manual override + low confidence,
+  - collateral and recovery telemetry added (`FF`, `COL`, recovery timer).
+- Phase 8 wrong-choice consequence system is implemented:
+  - explicit penalties for range mismatch, altitude mismatch, overkill allocation, CIWS misuse, and low-confidence override,
+  - HUD explainability cues added (`WHY`) with aggregate failure counters.
 - Phase 6 CIWS doctrine finalization is implemented:
   - per-gun lock quality computed from geometry/lead conditions,
   - poor lock and out-of-effective-envelope firing now consume extra reaction budget (cooldown penalties),
@@ -77,4 +85,4 @@
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2379776 bytes`
-  - `verified 2375752 bytes`
+  - `verified 2378312 bytes`

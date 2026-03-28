@@ -2,64 +2,34 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-phase6-ciws-doctrine-finalization`
+- Dated tag: `golden-e8-drone-hunter-20260327-phase9-iff-advanced`
 - Date: `2026-03-27`
 - Baseline summary:
-  - Phase 6 CIWS doctrine finalization completed:
-    - lock-quality model implemented from geometry/lead conditions,
-    - poor lock and out-of-effective-range shots now carry stronger cooldown/reaction-delay penalties,
-    - heat gain now scales with lock quality.
-  - CIWS doctrine telemetry now visible in HUD:
-    - per-gun ammo, heat, and lock quality.
-  - Phase 5 attacker strategy layer completed:
-    - attacker profiles implemented: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
-    - profile-based lane selection over 16 launch sites,
-    - even edge launch rotation preserved across left/right/top/bottom.
-  - Strategy control and telemetry wired:
-    - mode button long-press cycles attacker strategy and resets round,
-    - mode button label + wave HUD line show active strategy (`STRAT`).
-  - 8-sector hunter launch allocator added:
-    - hidden city sectors with balanced stock,
-    - nearest-target sector selection with nearest-stock fallback.
-  - CIWS ammo accounting tightened:
-    - each trigger event now consumes burst-sized ammo (`CIWS_AMMO_PER_TRIGGER`),
-    - deck ammo display refreshes more frequently for visible decrement.
-  - Falling-hunter lower boundary behavior fixed:
-    - missed hunters no longer bounce/reverse at icon/deck boundary,
-    - they continue descending and reset only after exiting bottom of screen.
-  - Attack drone render path fixed:
-    - runtime attacker sprites forced to generated attack set only,
-    - ODIN fallback removed from attacker update path.
-  - Hunter defense launch reliability fixed:
-    - urgency fallback added when strict commit gate confidence is low.
-  - Hunter runtime visibility/size fixes:
-    - mixed hunter selection restored (removed Sting-only forced fallback),
-    - stable Sting sprite source in gameplay,
-    - minimum visible launch window before intercept resolve,
-    - tightened zoom and bottom-edge clamp to avoid oversized icon-bar popups.
-  - CIWS engagement restored:
-    - gameplay-visible sweep range uses `CIWS_RANGE_FRAC` screen scaling,
-    - no longer effectively suppressed by map-km hard-cutoff conversion.
-  - Phase 3 completed:
-    - weighted threat score formula implemented,
-    - target-value modifier implemented,
-    - 16-site lane-pressure model with decay + adjacent spillover implemented,
-    - deterministic active-target priority ordering implemented.
-  - Existing stability guards and telemetry remain active.
-  - Hunter top-edge skid fixed:
-    - reaching upper arena boundary now triggers horizon egress (shrink/fade/despawn), eliminating top-line sliding.
-  - CIWS stream/range tuning pass:
-    - denser/larger bullets retained,
-    - spread/coverage narrowed,
-    - tracer persistence increased for visibility,
-    - practical stream distance bounded to gun-to-~75% screen width envelope.
+  - Phase 8 completed:
+    - explicit wrong-choice penalties now drive predictable losses for:
+      - range mismatch,
+      - altitude mismatch,
+      - overkill allocation,
+      - CIWS misuse,
+      - manual low-confidence override.
+    - HUD explainability now surfaces causal `WHY` reason text and cumulative failure counters.
+  - Phase 9 completed:
+    - advanced IFF mode toggle added (long-press Phalanx deck item),
+    - blue-on-blue can occur only under strict multi-condition gate:
+      - IFF degraded + merged tracks + manual override + low confidence.
+    - collateral outcomes and recovery telemetry added (`FF`, `COL`, recovery timer).
+  - Existing baseline preserved:
+    - attack strategy system (`AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`) over 16 launch sites,
+    - 8-sector hunter launch allocator,
+    - CIWS doctrine + lock/heat/ammo telemetry,
+    - stable generated attack render path.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2379776 bytes`
-  - `verified 2375752 bytes`
+  - `verified 2378312 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-phase6-ciws-doctrine-finalization`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-phase9-iff-advanced`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

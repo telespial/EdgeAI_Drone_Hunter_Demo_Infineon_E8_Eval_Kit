@@ -90,3 +90,17 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2379776 bytes`
   - `verified 2375752 bytes`
+- 2026-03-27 | Completed Phase 8 wrong-choice consequence system:
+  - explicit penalties added for range/altitude mismatch, overkill allocation, CIWS misuse, and low-confidence override,
+  - HUD explainability cues added with `WHY` reason stream + failure counters.
+- 2026-03-27 | Added manual selection hooks used by consequence engine:
+  - hunter deck icon tap selection,
+  - target tap prioritization.
+- 2026-03-27 | Completed Phase 9 friendly-fire / IFF advanced mode:
+  - advanced toggle added via long-press on Phalanx deck item,
+  - blue-on-blue enabled only when combined gate is met:
+    - IFF degraded + merged tracks + manual override + low confidence,
+  - collateral and recovery telemetry added (`FF`, `COL`, recovery timer).
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2379776 bytes`
+  - `verified 2378312 bytes`
