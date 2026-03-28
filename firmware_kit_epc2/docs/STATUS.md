@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; Phase 5 attacker strategy layer is now wired and selectable on device.
+- State: Stable runtime baseline validated on hardware; Phase 6 CIWS doctrine finalization is now wired and visible in HUD telemetry.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2379776 bytes`
-  - `verified 2374944 bytes`
+  - `verified 2375752 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -19,6 +19,12 @@
 - CIWS now uses gameplay-visible sweep range (~75% screen width) and engages reliably in arc.
 - CIWS tracer stream tuned for density/visibility while preserving bounded range behavior.
 - CIWS per-gun ammo now decreases by burst-sized consumption each trigger event (`CIWS_AMMO_PER_TRIGGER`), with faster deck-counter refresh.
+- Phase 6 CIWS doctrine finalization now active:
+  - lock-quality model added (range + sweep alignment + lateral lead difficulty),
+  - poor-geometry and out-of-effective-envelope shots now add reaction delay/cooldown penalties,
+  - heat growth is now stronger when firing with poor lock quality.
+- HUD now includes live CIWS doctrine state per gun:
+  - ammo, heat, and lock quality telemetry.
 - Hunter top-edge skid behavior fixed via forced horizon egress (shrink/fade/despawn) instead of line sliding.
 - Falling hunters no longer bounce/reverse off lower icon/deck region:
   - failed/missed hunters continue descending off the bottom of the screen,

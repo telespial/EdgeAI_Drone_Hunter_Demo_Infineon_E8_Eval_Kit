@@ -81,3 +81,12 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2379776 bytes`
   - `verified 2374944 bytes`
+- 2026-03-27 | Completed Phase 6 CIWS doctrine finalization:
+  - added lock-quality model (range + sweep-angle alignment + lateral lead difficulty),
+  - added misuse penalties (extra cooldown/reaction delay on poor lock and out-of-effective shots),
+  - scaled CIWS heat growth by lock quality.
+- 2026-03-27 | Added CIWS HUD doctrine telemetry:
+  - per-gun ammo, heat, and lock quality are now visible live.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2379776 bytes`
+  - `verified 2375752 bytes`

@@ -10,6 +10,10 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Dual CIWS emplacements with sweep-arc behavior and finite per-gun ammo.
 - CIWS now tuned as last-ditch defense with effective/hard-cutoff range behavior and overuse penalties.
 - CIWS ammo now visibly decrements by burst-sized trigger consumption (left/right counters).
+- CIWS doctrine finalization now active:
+  - per-gun lock-quality modeling,
+  - stronger misuse penalties via extra cooldown/reaction delay under bad geometry,
+  - live per-gun ammo/heat/lock telemetry in HUD.
 - Attack classes use rendered image assets:
   - `Shahed`-style bright yellow fixed-wing
   - red VB140-like fixed-wing
@@ -38,7 +42,7 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 
 Latest flash confirmation:
 - `wrote 2379776 bytes`
-- `verified 2374944 bytes`
+- `verified 2375752 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

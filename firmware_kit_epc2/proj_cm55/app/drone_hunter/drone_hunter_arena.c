@@ -41,6 +41,7 @@
 #define CIWS_FIRE_COOLDOWN_SEC    (0.006f)
 #define CIWS_BURST_PELLETS        (14)
 #define CIWS_AMMO_PER_TRIGGER     (6)
+#define CIWS_LOCK_BAD_THRESH      (0.35f)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
 #define CIWS_SWEEP_HALF_CONE      (0.14f)
@@ -251,6 +252,8 @@ typedef struct
     float ciws_sweep_left_dir;
     float ciws_heat_right;
     float ciws_heat_left;
+    float ciws_lock_right;
+    float ciws_lock_left;
     float ciws_tracer_t[CIWS_TRACER_COUNT];
     float ciws_tracer_x0[CIWS_TRACER_COUNT];
     float ciws_tracer_y0[CIWS_TRACER_COUNT];
@@ -615,8 +618,52 @@ static int ciws_target_in_sweep(float gun_x, float gun_y,
     return (fabsf(d_ang) <= CIWS_SWEEP_HALF_CONE);
 }
 
+static float ciws_lock_quality(const drone_hunter_scene_t *s, int k,
+                               float gun_x, float gun_y,
+                               float sweep_rad, float range_px)
+{
+    float dx = s->kx[k] - gun_x;
+    float dy = s->ky[k] - gun_y;
+    float d2 = (dx * dx) + (dy * dy);
+    float d = sqrtf(d2);
+    float range_q;
+    float ang_target;
+    float ang_err;
+    float ang_q;
+    float speed = sqrtf((s->kvx[k] * s->kvx[k]) + (s->kvy[k] * s->kvy[k]));
+    float rnx;
+    float rny;
+    float lateral_q;
+    float q;
+
+    if (d < 1.0f || d > range_px)
+    {
+        return 0.0f;
+    }
+
+    range_q = 1.0f - clampf(d / range_px, 0.0f, 1.0f);
+    ang_target = atan2f(dy, dx);
+    ang_err = fabsf(wrap_angle_pi(ang_target - sweep_rad));
+    ang_q = 1.0f - clampf(ang_err / CIWS_SWEEP_HALF_CONE, 0.0f, 1.0f);
+
+    rnx = dx / d;
+    rny = dy / d;
+    if (speed < 0.05f)
+    {
+        lateral_q = 0.70f;
+    }
+    else
+    {
+        float lateral_ratio = fabsf((s->kvx[k] * rny) - (s->kvy[k] * rnx)) / speed;
+        lateral_q = 1.0f - clampf(lateral_ratio, 0.0f, 1.0f);
+    }
+
+    q = (range_q * 0.32f) + (ang_q * 0.48f) + (lateral_q * 0.20f);
+    return clampf(q, 0.0f, 1.0f);
+}
+
 static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y,
-                        float sweep_rad, float range_px, float *cooldown_sec, int *ammo)
+                        float sweep_rad, float range_px, float lock_q, float *cooldown_sec, int *ammo)
 {
     float dir_x = cosf(sweep_rad);
     float dir_y = sinf(sweep_rad);
@@ -633,6 +680,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         /* Outside effective range but inside hard cutoff: mostly wastes ammo. */
         p_ciws *= 0.22f;
     }
+    p_ciws *= clampf(0.22f + (lock_q * 0.95f), 0.08f, 1.0f);
     p_ciws = clampf(p_ciws, 0.02f, 0.95f);
 
     if (*ammo <= 0)
@@ -650,6 +698,16 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     }
 
     *cooldown_sec += CIWS_FIRE_COOLDOWN_SEC;
+    if (lock_q < CIWS_LOCK_BAD_THRESH)
+    {
+        /* Poor lead/geometry still burns barrel time and reaction budget. */
+        *cooldown_sec += (CIWS_LOCK_BAD_THRESH - lock_q) * 0.10f;
+    }
+    if (d_px > effective_px)
+    {
+        /* Out-of-envelope shots further slow follow-up response. */
+        *cooldown_sec += 0.045f;
+    }
     *ammo -= ammo_spent;
     s->ciws_shots++;
     {
@@ -2078,6 +2136,8 @@ static void reset_round(drone_hunter_scene_t *s)
     s->ciws_sweep_left_dir = 1.0f;
     s->ciws_heat_right = 0.0f;
     s->ciws_heat_left = 0.0f;
+    s->ciws_lock_right = 0.0f;
+    s->ciws_lock_left = 0.0f;
     s->defense_kills = 0;
     s->defense_misses = 0;
     s->hunter_points = 0;
@@ -2206,6 +2266,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec - DT_SEC, 0.0f, 2.0f);
     s->ciws_heat_right = clampf(s->ciws_heat_right - (0.16f * DT_SEC), 0.0f, 1.0f);
     s->ciws_heat_left = clampf(s->ciws_heat_left - (0.16f * DT_SEC), 0.0f, 1.0f);
+    s->ciws_lock_right = clampf(s->ciws_lock_right * 0.92f, 0.0f, 1.0f);
+    s->ciws_lock_left = clampf(s->ciws_lock_left * 0.92f, 0.0f, 1.0f);
     s->ciws_sweep_right_rad += s->ciws_sweep_right_dir * sweep_step;
     s->ciws_sweep_left_rad += s->ciws_sweep_left_dir * sweep_step;
 
@@ -2310,11 +2372,16 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             ((ciws_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, &s->ciws_cooldown_sec, &s->ciws_ammo_right))
+            float lock_q = ciws_lock_quality(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range);
+            if (lock_q > s->ciws_lock_right)
+            {
+                s->ciws_lock_right = lock_q;
+            }
+            if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, lock_q, &s->ciws_cooldown_sec, &s->ciws_ammo_right))
             {
                 continue;
             }
-            s->ciws_heat_right = clampf(s->ciws_heat_right + 0.012f, 0.0f, 1.0f);
+            s->ciws_heat_right = clampf(s->ciws_heat_right + (0.010f + ((1.0f - lock_q) * 0.020f)), 0.0f, 1.0f);
             s->ciws_cooldown_sec = clampf(s->ciws_cooldown_sec + (s->ciws_heat_right * 0.040f), 0.0f, 2.0f);
         }
         if ((s->ciws_ammo_left > 0) &&
@@ -2323,11 +2390,16 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             ((ciws_left_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, &s->ciws_cooldown_left_sec, &s->ciws_ammo_left))
+            float lock_q = ciws_lock_quality(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range);
+            if (lock_q > s->ciws_lock_left)
+            {
+                s->ciws_lock_left = lock_q;
+            }
+            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, lock_q, &s->ciws_cooldown_left_sec, &s->ciws_ammo_left))
             {
                 continue;
             }
-            s->ciws_heat_left = clampf(s->ciws_heat_left + 0.012f, 0.0f, 1.0f);
+            s->ciws_heat_left = clampf(s->ciws_heat_left + (0.010f + ((1.0f - lock_q) * 0.020f)), 0.0f, 1.0f);
             s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec + (s->ciws_heat_left * 0.040f), 0.0f, 2.0f);
         }
 
@@ -2908,8 +2980,14 @@ static void update_hud(drone_hunter_scene_t *s)
                           s->attack_destroyed, s->wave_target_total,
                           s->attack_leaked);
     lv_label_set_text_fmt(s->hud_elapsed,
-                          "CORE %d  |  ELAPSED %03ds",
-                          s->core_hp, elapsed);
+                          "CORE %d  |  ELAPSED %03ds  |  CIWS R A%d H%02d L%02d  L A%d H%02d L%02d",
+                          s->core_hp, elapsed,
+                          s->ciws_ammo_right,
+                          (int)(s->ciws_heat_right * 99.0f),
+                          (int)(s->ciws_lock_right * 99.0f),
+                          s->ciws_ammo_left,
+                          (int)(s->ciws_heat_left * 99.0f),
+                          (int)(s->ciws_lock_left * 99.0f));
     if (lead_k >= 0)
     {
         char tline0[128];

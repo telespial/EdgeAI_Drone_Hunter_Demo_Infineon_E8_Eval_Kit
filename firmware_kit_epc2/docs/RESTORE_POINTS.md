@@ -2,9 +2,15 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-phase5-attacker-strategy-layer`
+- Dated tag: `golden-e8-drone-hunter-20260327-phase6-ciws-doctrine-finalization`
 - Date: `2026-03-27`
 - Baseline summary:
+  - Phase 6 CIWS doctrine finalization completed:
+    - lock-quality model implemented from geometry/lead conditions,
+    - poor lock and out-of-effective-range shots now carry stronger cooldown/reaction-delay penalties,
+    - heat gain now scales with lock quality.
+  - CIWS doctrine telemetry now visible in HUD:
+    - per-gun ammo, heat, and lock quality.
   - Phase 5 attacker strategy layer completed:
     - attacker profiles implemented: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
     - profile-based lane selection over 16 launch sites,
@@ -49,11 +55,11 @@
     - practical stream distance bounded to gun-to-~75% screen width envelope.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2379776 bytes`
-  - `verified 2374944 bytes`
+  - `verified 2375752 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-phase5-attacker-strategy-layer`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-phase6-ciws-doctrine-finalization`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

@@ -18,6 +18,11 @@
 - `rules.md`
 
 ## Current behavior in code
+- Phase 6 CIWS doctrine finalization is implemented:
+  - per-gun lock quality computed from geometry/lead conditions,
+  - poor lock and out-of-effective-envelope firing now consume extra reaction budget (cooldown penalties),
+  - heat penalties now scale with lock quality.
+- CIWS state telemetry now includes per-gun ammo/heat/lock in HUD.
 - Phase 5 attacker strategy layer is implemented and active:
   - profile set: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
   - 4-edge spawn balancing is retained,
@@ -72,4 +77,4 @@
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2379776 bytes`
-  - `verified 2374944 bytes`
+  - `verified 2375752 bytes`

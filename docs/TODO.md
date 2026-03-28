@@ -138,7 +138,7 @@ Status: Complete
 ---
 
 ## Phase 6 - CIWS Doctrine Finalization
-Status: In progress
+Status: Complete
 
 ### Objectives
 - Fully model CIWS as last-ditch finite terminal layer.
