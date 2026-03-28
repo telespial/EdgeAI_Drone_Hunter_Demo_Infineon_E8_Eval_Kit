@@ -428,58 +428,6 @@ static void set_obj_center(lv_obj_t *obj, float x, float y)
     lv_obj_set_pos(obj, (int32_t)(x - (float)w * 0.5f), (int32_t)(y - (float)h * 0.5f));
 }
 
-static void create_ciws_model(lv_obj_t *parent, lv_obj_t **turret_out)
-{
-    lv_obj_t *base = lv_obj_create(parent);
-    lv_obj_t *pedestal = lv_obj_create(parent);
-    lv_obj_t *turret = lv_obj_create(parent);
-    lv_obj_t *radome = lv_obj_create(parent);
-    lv_obj_t *barrel = lv_obj_create(turret);
-
-    lv_obj_remove_style_all(base);
-    lv_obj_set_size(base, 54, 14);
-    lv_obj_set_pos(base, 13, 54);
-    lv_obj_set_style_radius(base, 3, 0);
-    lv_obj_set_style_bg_color(base, lv_color_hex(0x4B5563), 0);
-    lv_obj_set_style_bg_opa(base, LV_OPA_COVER, 0);
-
-    lv_obj_remove_style_all(pedestal);
-    lv_obj_set_size(pedestal, 22, 18);
-    lv_obj_set_pos(pedestal, 29, 38);
-    lv_obj_set_style_radius(pedestal, 3, 0);
-    lv_obj_set_style_bg_color(pedestal, lv_color_hex(0x6B7280), 0);
-    lv_obj_set_style_bg_opa(pedestal, LV_OPA_COVER, 0);
-
-    lv_obj_remove_style_all(turret);
-    lv_obj_set_size(turret, 34, 14);
-    lv_obj_set_pos(turret, 24, 26);
-    lv_obj_set_style_radius(turret, 4, 0);
-    lv_obj_set_style_bg_color(turret, lv_color_hex(0x9CA3AF), 0);
-    lv_obj_set_style_bg_opa(turret, LV_OPA_COVER, 0);
-    lv_obj_set_style_transform_pivot_x(turret, 6, 0);
-    lv_obj_set_style_transform_pivot_y(turret, 7, 0);
-
-    lv_obj_remove_style_all(radome);
-    lv_obj_set_size(radome, 16, 16);
-    lv_obj_set_pos(radome, 35, 12);
-    lv_obj_set_style_radius(radome, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(radome, lv_color_hex(0xE5E7EB), 0);
-    lv_obj_set_style_bg_opa(radome, LV_OPA_COVER, 0);
-
-    lv_obj_remove_style_all(barrel);
-    lv_obj_set_size(barrel, 18, 3);
-    lv_obj_set_pos(barrel, 16, 6);
-    lv_obj_set_style_radius(barrel, 1, 0);
-    lv_obj_set_style_bg_color(barrel, lv_color_hex(0x111827), 0);
-    lv_obj_set_style_bg_opa(barrel, LV_OPA_COVER, 0);
-
-    if (turret_out != NULL)
-    {
-        *turret_out = turret;
-    }
-}
-
-
 static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
 {
     int16_t angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
@@ -677,15 +625,6 @@ static const lv_image_dsc_t *hunter_icon_src(hunter_type_t type)
     return hunter_image_src(type);
 }
 
-static int is_xwing_hunter(hunter_type_t type)
-{
-    return (type == HUNTER_STING_II) ||
-           (type == HUNTER_ODIN_WIN_HIT) ||
-           (type == HUNTER_SKYFALL_P1) ||
-           (type == HUNTER_BAGNET) ||
-           (type == HUNTER_OCTOPUS_100);
-}
-
 static const char *hunter_type_name(hunter_type_t t)
 {
     return g_hunter_profiles[(int)t].name;
@@ -718,44 +657,6 @@ static int any_hunter_stock_remaining(drone_hunter_scene_t *s)
         }
     }
     return 0;
-}
-
-static hunter_type_t fallback_hunter_type(drone_hunter_scene_t *s, target_type_t threat)
-{
-    int i;
-    hunter_type_t best = HUNTER_STING_II;
-    int best_stock = -1;
-
-    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
-    {
-        if (s->hunter_stock[i] <= 0)
-        {
-            continue;
-        }
-
-        if (threat == TARGET_FIXED_WING)
-        {
-            if ((i == HUNTER_STING_II) || (i == HUNTER_SKYFALL_P1) || (i == HUNTER_TYTAN) || (i == HUNTER_MEROPS))
-            {
-                return (hunter_type_t)i;
-            }
-        }
-        else
-        {
-            if ((i == HUNTER_BAGNET) || (i == HUNTER_OCTOPUS_100) || (i == HUNTER_ODIN_WIN_HIT) || (i == HUNTER_VB140_FLAMINGO))
-            {
-                return (hunter_type_t)i;
-            }
-        }
-
-        if (s->hunter_stock[i] > best_stock)
-        {
-            best_stock = s->hunter_stock[i];
-            best = (hunter_type_t)i;
-        }
-    }
-
-    return best;
 }
 
 static float hunter_capability_score(hunter_type_t t)
@@ -1003,31 +904,6 @@ static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int tar
     return best_any;
 }
 
-static hunter_type_t choose_hunter_type(target_type_t threat, int selector)
-{
-    static const hunter_type_t fast_vs_fixed[] =
-    {
-        HUNTER_STING_II,
-        HUNTER_SKYFALL_P1,
-        HUNTER_TYTAN,
-        HUNTER_MEROPS
-    };
-    static const hunter_type_t agile_vs_fpv[] =
-    {
-        HUNTER_BAGNET,
-        HUNTER_OCTOPUS_100,
-        HUNTER_ODIN_WIN_HIT,
-        HUNTER_VB140_FLAMINGO
-    };
-
-    if (threat == TARGET_FIXED_WING)
-    {
-        return fast_vs_fixed[selector & 0x3];
-    }
-
-    return agile_vs_fpv[selector & 0x3];
-}
-
 static void apply_hunter_profile(drone_hunter_scene_t *s, int h)
 {
     const hunter_profile_t *p = &g_hunter_profiles[(int)s->h_type[h]];
@@ -1246,83 +1122,6 @@ static void splash_gesture_cb(lv_event_t *e)
     {
         splash_spin_step(s, -1);
     }
-}
-
-static void update_lineup_3d(drone_hunter_scene_t *s)
-{
-    int i;
-    int best_idx = 0;
-    float best_depth = -10.0f;
-    float depth[HUNTER_TYPE_COUNT];
-    int order[HUNTER_TYPE_COUNT];
-    int32_t cw = lv_obj_get_width(s->lineup_cont);
-    int32_t ch = lv_obj_get_height(s->lineup_cont);
-    int32_t cx = cw / 2;
-    int32_t cy = (ch / 2) + 8;
-    float rx = (float)cw * 0.34f;
-    float ry = (float)ch * 0.22f;
-    float step = (2.0f * PI_F) / (float)HUNTER_TYPE_COUNT;
-
-    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
-    {
-        lv_obj_t *card = s->lineup_cards[i];
-        hunter_type_t t = (hunter_type_t)i;
-        float a = s->lineup_angle + ((float)i * step);
-        float z = (cosf(a) + 1.0f) * 0.5f;
-        uint16_t zoom = (uint16_t)(320 + (uint16_t)(z * 200.0f));
-        lv_opa_t opa = (lv_opa_t)(135 + (int32_t)(z * 120.0f));
-        int16_t yoff = (int16_t)(9.0f - (z * 14.0f));
-        int16_t x = (int16_t)((float)cx + sinf(a) * rx);
-        int16_t y = (int16_t)((float)cy + cosf(a) * ry);
-        int32_t bw = lv_obj_get_width(card);
-        int32_t bh = lv_obj_get_height(card);
-        int32_t sw = (bw * (int32_t)zoom) / 256;
-        int32_t sh = (bh * (int32_t)zoom) / 256;
-        int32_t extw = ((sw - bw) / 2) + 2;
-        int32_t exth = ((sh - bh) / 2) + 2;
-
-        depth[i] = z;
-        order[i] = i;
-
-        if (z > best_depth)
-        {
-            best_depth = z;
-            best_idx = i;
-        }
-
-        lv_obj_set_style_transform_zoom(card, zoom, 0);
-        lv_obj_set_style_transform_angle(card, is_xwing_hunter(t) ? 0 : 900, 0);
-        lv_obj_set_style_transform_width(card, extw, 0);
-        lv_obj_set_style_transform_height(card, exth, 0);
-        lv_obj_set_style_translate_y(card, yoff, 0);
-        lv_obj_set_style_opa(card, opa, 0);
-        set_obj_center(card, (float)x, (float)y);
-    }
-
-    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
-    {
-        int j;
-        for (j = i + 1; j < HUNTER_TYPE_COUNT; ++j)
-        {
-            if (depth[order[i]] > depth[order[j]])
-            {
-                int tmp = order[i];
-                order[i] = order[j];
-                order[j] = tmp;
-            }
-        }
-    }
-
-    for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
-    {
-        lv_obj_move_foreground(s->lineup_cards[order[i]]);
-    }
-
-    s->lineup_focus_idx = best_idx;
-    lv_label_set_text_fmt(s->lineup_desc,
-                          "%s: %s",
-                          g_hunter_profiles[s->lineup_focus_idx].name,
-                          g_hunter_profiles[s->lineup_focus_idx].desc);
 }
 
 static void lineup_spin_step(drone_hunter_scene_t *s, int dir)
@@ -2467,7 +2266,8 @@ static void update_hud(drone_hunter_scene_t *s)
             tline1[0] = '\0';
         }
 
-        (void)snprintf(info, sizeof(info), "%s%s  |  REM %d", tline0, tline1, s->attack_remaining_to_spawn);
+        (void)snprintf(info, sizeof(info), "%.112s%.112s  |  REM %d",
+                       tline0, tline1, s->attack_remaining_to_spawn);
         lv_label_set_text(s->hud_info, info);
     }
     else

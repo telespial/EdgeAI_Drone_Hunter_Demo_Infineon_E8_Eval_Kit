@@ -31,6 +31,10 @@
   - track history + noise influence,
   - explicit commit-reason accounting for hold/launch paths.
 - Continuous phase-driven gameplay retained.
+- Runtime code hygiene pass completed on `drone_hunter_arena.c`:
+  - dead/unused helper functions removed,
+  - HUD line formatting hardened,
+  - workspace restored to normal gameplay baseline.
 
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.

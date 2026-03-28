@@ -1,7 +1,7 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Phase 2 complete baseline validated; golden + failsafe updated.
+- State: Phase 2 complete baseline validated; normal baseline restored; code-quality cleanup review completed.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
@@ -9,6 +9,8 @@
 - Confirmed flash result:
   - `wrote 2371584 bytes`
   - `verified 2369544 bytes`
+- Build quality confirmation:
+  - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -29,6 +31,9 @@
   - Reduced icon-bar flashing by throttling deck UI updates during CIWS firing.
 - HUD now includes full live threat telemetry for active tracks:
   - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
+- Code hygiene improvements:
+  - Removed unused/dead helper functions from arena runtime.
+  - Hardened HUD info text composition to avoid truncation-prone formatting.
 
 ## Environment notes
 - EdgeProtect combine-sign step remains unavailable in this environment.

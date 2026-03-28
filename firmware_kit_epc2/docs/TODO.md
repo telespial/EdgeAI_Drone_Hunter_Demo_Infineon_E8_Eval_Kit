@@ -15,6 +15,10 @@ Primary code target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_
   - dynamic threat score seed,
   - commit gate on low-confidence engagements,
   - recommended counter surfaced in HUD.
+- Code-quality cleanup pass completed:
+  - removed dead/unused helper functions from arena runtime file,
+  - hardened HUD info line formatting to avoid truncation-prone composition,
+  - restored code to normal baseline behavior after isolation experiments.
 
 ## 1. Architecture Goal
 Implement `rules.md` end-to-end as an explainable strategy game loop where every launch decision is based on:

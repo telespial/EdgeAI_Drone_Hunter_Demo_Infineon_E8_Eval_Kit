@@ -16,6 +16,9 @@
   - Persistent leak-fire model remains active.
   - CIWS remains constrained to short-range near-front envelope.
   - Hunter vs Attacker score model + continuous phase flow retained.
+  - Code-quality sweep applied on arena runtime:
+    - removed dead/unused helper functions,
+    - tightened HUD info formatting safety.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2371584 bytes`
   - `verified 2369544 bytes`
