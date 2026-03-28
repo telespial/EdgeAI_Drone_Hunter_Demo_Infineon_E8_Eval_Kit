@@ -8,9 +8,10 @@
 - Phases 1-14 complete.
 - Phase 15 in progress.
 - Current runtime includes:
-  - lower-deck bounce hardening,
-  - interactive settings popup controls,
-  - runtime control tuning for attacker/defender/NPU/difficulty/speed++.
+  - stationary CIWS structures with depth-aware stream targeting,
+  - randomized attack opening and adaptive attacker strategy evolution,
+  - settings popup controls (`ATTACKER/DEFENDER/NPU/DIFFICULTY/SPEED++`),
+  - sprite-based fire/explosion layer with depth-aware placement/scaling.
 
 ## Verified Board + Device
 - Kit: `KIT_PSE84_EVAL`
@@ -25,12 +26,12 @@
 Observed successful signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2412544 bytes` / `verified 2408416 bytes`
+- `wrote 2859008 bytes` / `verified 2854888 bytes`
 - `** Resetting Target **`
 
 ## Known-Good Restore Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Workfront
-- Continue Phase 15 HUD simplification and repository cleanup/hygiene.
+- Continue Phase 15 HUD simplification/repo cleanup and flame visual tuning.
 - Start Phase 16 audio layer after Phase 15 closure.

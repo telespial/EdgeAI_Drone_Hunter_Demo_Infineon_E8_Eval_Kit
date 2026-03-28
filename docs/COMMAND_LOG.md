@@ -1,5 +1,22 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 15 strategic-balance + visual stabilization pass in `drone_hunter_arena.c`:
+  - added randomized opening attack archetype/target selection to prevent reboot replay patterns,
+  - added adaptive attacker strategy planner to keep attacker and defender outcomes competitively balanced,
+  - enforced stationary CIWS structure visuals while retaining depth-aware bullet stream tracking.
+- 2026-03-28 | Fire/explosion rendering pass:
+  - moved to sprite-driven city-fire profiles with intensity routing (big hits -> burst/torch, small hits -> smoke/ground),
+  - kept depth-based placement/scaling and ground anchoring,
+  - tuned profile scale/opacity/jitter variation for higher visual differentiation.
+- 2026-03-28 | Build + flash validation for this baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - full recovery flash succeeded (cm33_s_signed -> cm33_ns_shifted -> cm55),
+  - OpenOCD signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2859008 bytes` / `verified 2854888 bytes`
+    - `** Resetting Target **`
+
 - 2026-03-28 | Phase 15 settings-control integration completed in `drone_hunter_arena.c`:
   - settings popup rows now tap-to-cycle for attacker mode, defender mode, NPU, difficulty, and speed++,
   - defender HUMAN mode gating integrated,

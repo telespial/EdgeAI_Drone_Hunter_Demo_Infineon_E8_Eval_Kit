@@ -1,0 +1,150 @@
+{
+  "pack": "flame_pack_v2",
+  "count": 12,
+  "assets": [
+    {
+      "id": "flame_01_torch_orange_tall",
+      "kind": "torch",
+      "frames": 20,
+      "frame_size": [
+        96,
+        120
+      ],
+      "duration_ms_per_frame": 45,
+      "gif": "flame_01_torch_orange_tall.gif",
+      "sprite_sheet": "flame_01_torch_orange_tall_sheet.png"
+    },
+    {
+      "id": "flame_02_plasma_blue_jet",
+      "kind": "jet",
+      "frames": 16,
+      "frame_size": [
+        96,
+        96
+      ],
+      "duration_ms_per_frame": 35,
+      "gif": "flame_02_plasma_blue_jet.gif",
+      "sprite_sheet": "flame_02_plasma_blue_jet_sheet.png"
+    },
+    {
+      "id": "flame_03_chem_green_flicker",
+      "kind": "flicker",
+      "frames": 22,
+      "frame_size": [
+        96,
+        96
+      ],
+      "duration_ms_per_frame": 60,
+      "gif": "flame_03_chem_green_flicker.gif",
+      "sprite_sheet": "flame_03_chem_green_flicker_sheet.png"
+    },
+    {
+      "id": "flame_04_violet_spiral_bloom",
+      "kind": "spiral",
+      "frames": 18,
+      "frame_size": [
+        112,
+        112
+      ],
+      "duration_ms_per_frame": 50,
+      "gif": "flame_04_violet_spiral_bloom.gif",
+      "sprite_sheet": "flame_04_violet_spiral_bloom_sheet.png"
+    },
+    {
+      "id": "flame_05_red_hot_burst",
+      "kind": "burst",
+      "frames": 14,
+      "frame_size": [
+        112,
+        112
+      ],
+      "duration_ms_per_frame": 38,
+      "gif": "flame_05_red_hot_burst.gif",
+      "sprite_sheet": "flame_05_red_hot_burst_sheet.png"
+    },
+    {
+      "id": "flame_06_white_flash_pulse",
+      "kind": "pulse",
+      "frames": 12,
+      "frame_size": [
+        96,
+        96
+      ],
+      "duration_ms_per_frame": 30,
+      "gif": "flame_06_white_flash_pulse.gif",
+      "sprite_sheet": "flame_06_white_flash_pulse_sheet.png"
+    },
+    {
+      "id": "flame_07_amber_smoke_plume",
+      "kind": "smoke",
+      "frames": 24,
+      "frame_size": [
+        112,
+        128
+      ],
+      "duration_ms_per_frame": 70,
+      "gif": "flame_07_amber_smoke_plume.gif",
+      "sprite_sheet": "flame_07_amber_smoke_plume_sheet.png"
+    },
+    {
+      "id": "flame_08_teal_dual_jet",
+      "kind": "dualjet",
+      "frames": 18,
+      "frame_size": [
+        112,
+        96
+      ],
+      "duration_ms_per_frame": 40,
+      "gif": "flame_08_teal_dual_jet.gif",
+      "sprite_sheet": "flame_08_teal_dual_jet_sheet.png"
+    },
+    {
+      "id": "flame_09_magenta_whip",
+      "kind": "whip",
+      "frames": 20,
+      "frame_size": [
+        96,
+        104
+      ],
+      "duration_ms_per_frame": 48,
+      "gif": "flame_09_magenta_whip.gif",
+      "sprite_sheet": "flame_09_magenta_whip_sheet.png"
+    },
+    {
+      "id": "flame_10_golden_torch_wide",
+      "kind": "widetorch",
+      "frames": 18,
+      "frame_size": [
+        120,
+        112
+      ],
+      "duration_ms_per_frame": 55,
+      "gif": "flame_10_golden_torch_wide.gif",
+      "sprite_sheet": "flame_10_golden_torch_wide_sheet.png"
+    },
+    {
+      "id": "flame_11_toxic_lime_sputter",
+      "kind": "sputter",
+      "frames": 26,
+      "frame_size": [
+        96,
+        96
+      ],
+      "duration_ms_per_frame": 42,
+      "gif": "flame_11_toxic_lime_sputter.gif",
+      "sprite_sheet": "flame_11_toxic_lime_sputter_sheet.png"
+    },
+    {
+      "id": "flame_12_ashen_ground_fire",
+      "kind": "ground",
+      "frames": 20,
+      "frame_size": [
+        128,
+        96
+      ],
+      "duration_ms_per_frame": 65,
+      "gif": "flame_12_ashen_ground_fire.gif",
+      "sprite_sheet": "flame_12_ashen_ground_fire_sheet.png"
+    }
+  ]
+}

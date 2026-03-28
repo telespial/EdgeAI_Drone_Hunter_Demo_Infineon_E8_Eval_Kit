@@ -1,25 +1,42 @@
-# EdgeAI Drone Hunter Firmware (firmware_kit_epc2)
+# EdgeAI Drone Hunter Firmware (`firmware_kit_epc2`)
 
-This firmware workspace contains the active Drone Hunter implementation for the PSOC Edge E84 EPC2 platform.
+Firmware workspace for the active Drone Hunter runtime on Infineon PSoC Edge E84 (`KIT_PSE84_EVAL_EPC2`).
 
-## Active target
+## Active Target
 - Board: `KIT_PSE84_EVAL_EPC2`
 - Display config: `CONFIG_DISPLAY=W4P3INCH_DISP`
-- Primary app: `proj_cm55/app/drone_hunter/`
+- Primary app path: `proj_cm55/app/drone_hunter/`
 
-## Primary source file
+## Primary Source File
 - `proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
-## Build + flash (validated)
+## Build (validated)
 ```bash
-export CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7
-export CY_COMPILER_GCC_ARM_DIR=/home/user/.local/opt/xpack-arm-none-eabi-gcc-14.2.1-1.1
-
-make -C proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8
-make -C proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1
+cd proj_cm55
+ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v
 ```
 
-## Documentation order
+## Regenerate CM55 HEX/BIN
+```bash
+OBJCOPY=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/mtb-gcc-arm-eabi/14.2.1/gcc/bin/arm-none-eabi-objcopy
+ELF=build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.elf
+
+$OBJCOPY -O ihex "$ELF" ../build/project_hex/proj_cm55.hex
+$OBJCOPY -O binary "$ELF" ../build/project_hex/proj_cm55.bin
+```
+
+## Flash (validated full recovery)
+```bash
+bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
+```
+
+Latest verified signatures:
+- `wrote 32768 bytes` / `verified 30456 bytes`
+- `wrote 12288 bytes` / `verified 8732 bytes`
+- `wrote 2859008 bytes` / `verified 2854888 bytes`
+- `** Resetting Target **`
+
+## Documentation Order
 1. `../README.md`
 2. `../rules.md`
 3. `docs/START_HERE.md`
@@ -28,4 +45,5 @@ make -C proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP M
 6. `docs/OPS_RUNBOOK.md`
 
 ## Notes
-- This repo is scoped to Drone Hunter. Smart Pong references and generic demo workflows are not part of the active baseline.
+- Repo scope is Drone Hunter only.
+- Keep restore governance current whenever flashing a new validated baseline.
