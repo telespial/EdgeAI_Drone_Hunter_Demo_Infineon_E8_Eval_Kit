@@ -15,16 +15,22 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 ## Expected flash confirmation (current baseline)
-- `wrote 2367488 bytes`
-- `verified 2362856 bytes`
+- `wrote 2404352 bytes`
+- `verified 2400360 bytes`
 
 ## Post-flash checks
 - Confirm splash and lineup flow appears.
 - Confirm `START ARENA` enters gameplay.
 - Confirm attack goals are spread in city play region (not bottom-edge clustered).
 - Confirm leaked attacks create persistent fire markers.
-- Confirm `Hunter`/`Attacker` score line updates.
+- Confirm `HUNTER`/`ATTACKER` score rows update.
 - Confirm CIWS per-gun ammo display updates and depletion behavior.
+- Confirm kill FX behavior:
+  - Shahed (yellow fixed-wing): giant orange explosion,
+  - red fixed-wing: medium white circular explosion,
+  - orange X-wing: small bright white circular explosion,
+  - explosion anchoring matches destroyed drone center,
+  - explosion size scales by depth (larger near bottom, smaller near top).
 
 ## Notes
-- EdgeProtect combine-sign step may fail in this environment; use the validated `qprogram_proj` path above.
+- EdgeProtect combine-sign step may fail in this environment; use validated `qprogram_proj` path above.

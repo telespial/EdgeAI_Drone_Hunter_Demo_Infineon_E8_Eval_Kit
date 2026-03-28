@@ -2,7 +2,7 @@
 
 Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch LCD.
 
-## Current baseline (2026-03-27)
+## Current baseline (2026-03-28)
 - Two-player gameplay model: `Hunter` vs `Attacker` points.
 - Attack goals distributed across the playable city area (not bottom-pinned).
 - Leaked attack drones impact city targets and trigger explosions.
@@ -27,6 +27,9 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
   - `Mode` button click = cycle match mode,
   - `Mode` button long-press = cycle attacker strategy.
 - Continuous gameplay with phase HUD retained.
+- Phase 10 wave pacing advanced:
+  - rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
+  - composition-driven difficulty and mid-wave strategy shifts in `AUTO`.
 - Phase 8 completed:
   - explicit wrong-choice penalties (range/altitude/overkill/CIWS misuse/manual low-confidence),
   - live `WHY` failure explainability cues in HUD.
@@ -38,7 +41,12 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
   - dedicated left/right score labels with control tags and zero-padded counters,
   - shortened top-right pill `SET   |   HELP` with split-touch Settings/Help popup behavior.
 - Hunter kill visual feedback:
-  - bright white circular flash at kill location when a hunter destroys an attacker.
+  - class-specific blast profiles:
+    - Shahed: giant orange explosion,
+    - red fixed-wing: medium white circular explosion,
+    - orange DJI X-wing: small bright white circular explosion.
+  - explosion anchor now uses rendered target center for both hunter and CIWS kills.
+  - explosion size now scales with scene depth (larger near screen bottom, smaller toward top).
 
 ## Rules spec
 - Canonical rules are documented in `rules.md`.
@@ -53,8 +61,8 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 Latest flash confirmation:
-- `wrote 2400256 bytes`
-- `verified 2396432 bytes`
+- `wrote 2404352 bytes`
+- `verified 2400360 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

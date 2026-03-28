@@ -97,7 +97,7 @@ Status: Complete
 ---
 
 ## Phase 4 - Hunter Assignment + Matchup Matrix
-Status: Not started
+Status: In progress
 
 ### Objectives
 - Make defender selection follow matchup doctrine and envelope constraints.
@@ -118,7 +118,7 @@ Status: Not started
 ---
 
 ## Phase 5 - Attacker Strategy Layer (16 Launch Sites)
-Status: Partially started (site selection exists, no player strategy UI yet)
+Status: Complete
 
 ### Objectives
 - Turn attack spawning into explicit strategic pressure.
@@ -138,7 +138,7 @@ Status: Partially started (site selection exists, no player strategy UI yet)
 ---
 
 ## Phase 6 - CIWS Doctrine Finalization
-Status: In progress
+Status: Complete
 
 ### Objectives
 - Fully model CIWS as last-ditch finite terminal layer.
@@ -283,7 +283,7 @@ Status: Ongoing
 ---
 
 ## Immediate Next Sprint (execution order)
-1. Complete Phase 4 matchup matrix with explicit penalties and overkill prevention.
-2. Complete Phase 6 CIWS heat/lock telemetry in HUD.
-3. Add Phase 8 explainability reasons in round-time text.
-4. Reflash and validate on hardware before next tag promotion.
+1. Finish remaining Phase 7 defender panel details (stock/endurance/envelope/lockout readability).
+2. Start Phase 11 round-end summary panel with causal metrics.
+3. Continue Phase 10 campaign tuning (wave milestones + strategic shifts balancing).
+4. Reflash and validate gameplay feel after each balancing pass before next tag promotion.

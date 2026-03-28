@@ -120,3 +120,95 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2400256 bytes`
   - `verified 2396432 bytes`
+- 2026-03-28 | Advanced Phase 10 wave pacing model in `drone_hunter_arena.c`:
+  - added rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
+  - added archetype-based target composition/tier scaling (difficulty by behavior, not count alone),
+  - added auto-mode mid-wave strategy shift trigger (~55% progress),
+  - added HUD archetype telemetry + strategy-shift marker.
+- 2026-03-28 | Rebuild executed (`build_proj`) after wave-archetype update:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after wave-archetype update:
+  - `wrote 2400256 bytes`
+  - `verified 2398272 bytes`
+- 2026-03-28 | Shahed kill visual behavior fix in `drone_hunter_arena.c`:
+  - added explicit Shahed destroy sequence (explosion + short dying hold) before despawn,
+  - excluded dying targets from hunter retarget/manual selection and threat pipeline,
+  - preserved immediate behavior for non-Shahed kill path.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed explosion fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed explosion fix:
+  - `wrote 2400256 bytes`
+  - `verified 2398944 bytes`
+- 2026-03-28 | Shahed blast visibility boost in `drone_hunter_arena.c`:
+  - increased Shahed death blast scale, brightness, border width, and hold duration,
+  - moved intercept blast foreground and enlarged kill-ring fill to improve readability at gun-impact point,
+  - tuned effect so blast is clearly larger relative to Shahed sprite size.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed blast visibility boost:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed blast visibility boost:
+  - `wrote 2404352 bytes`
+  - `verified 2399336 bytes`
+- 2026-03-28 | Shahed blast center anchoring fix in `drone_hunter_arena.c`:
+  - added rendered-object center helper and anchored kill FX to live target object center,
+  - ensured intercept blast origin tracks visible Shahed center at kill time.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed blast center anchoring fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed blast center anchoring fix:
+  - `wrote 2404352 bytes`
+  - `verified 2399496 bytes`
+- 2026-03-28 | Refined explosion anchor to transformed visual center:
+  - added helper to compute rendered object center from transformed coordinates relative to arena,
+  - kill FX now anchors from transformed sprite center instead of logical track center.
+- 2026-03-28 | Rebuild executed (`build_proj`) after transformed visual-center anchoring:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after transformed visual-center anchoring:
+  - `wrote 2404352 bytes`
+  - `verified 2399472 bytes`
+- 2026-03-28 | CIWS kill-impact FX anchoring fix in `drone_hunter_arena.c`:
+  - CIWS kill path now captures rendered target center and emits kill/intercept FX before respawn,
+  - aligns gun-kill blast visuals with actual destroyed target location.
+- 2026-03-28 | Rebuild executed (`build_proj`) after CIWS kill-anchor parity fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after CIWS kill-anchor parity fix:
+  - `wrote 2404352 bytes`
+  - `verified 2399760 bytes`
+- 2026-03-28 | Added explicit per-class blast profile mapping in `drone_hunter_arena.c`:
+  - Shahed -> giant orange explosion,
+  - Strike-X (DJI) -> medium orange explosion,
+  - red Strike-Prop fixed-wing -> small white ring.
+- 2026-03-28 | Applied mapping consistently for both hunter-kill and CIWS-kill paths with rendered-center anchoring.
+- 2026-03-28 | Rebuild executed (`build_proj`) after per-class blast mapping:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after per-class blast mapping:
+  - `wrote 2404352 bytes`
+  - `verified 2400112 bytes`
+- 2026-03-28 | Revised class-to-blast mapping in `drone_hunter_arena.c`:
+  - red fixed-wing Strike-Prop now uses medium white circular explosion,
+  - X-wing (DJI/Strike-X) now uses small bright white circular explosion,
+  - Shahed remains giant orange explosion.
+- 2026-03-28 | Rebuild executed (`build_proj`) after revised white blast mapping:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after revised white blast mapping:
+  - `wrote 2404352 bytes`
+  - `verified 2400160 bytes`
+- 2026-03-28 | Applied perspective depth scaling to drone explosion FX in `drone_hunter_arena.c`:
+  - intercept, spawn, and kill explosion sizes now scale by `depth_zoom_factor_for_y`,
+  - near-bottom impacts render larger; far/top impacts render smaller.
+- 2026-03-28 | Rebuild executed (`build_proj`) after depth-scaled explosion update:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after depth-scaled explosion update:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
+- 2026-03-28 | Documentation synchronization pass:
+  - refreshed `README.md`, `docs/STATUS.md`, `docs/OPS_RUNBOOK.md`, `docs/TODO.md`, `ToDo.md`, and `docs/HARDWARE_SETUP.md` to current baseline.
+- 2026-03-28 | Restore-point docs updated:
+  - set new dated golden/failsafe target names in `docs/RESTORE_POINTS.md` for depth-scaled class-FX baseline.

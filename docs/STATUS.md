@@ -1,99 +1,38 @@
 # STATUS
 
-- Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; Phases 8 and 9 are completed and active.
+- Date: 2026-03-28
+- State: Stable runtime baseline validated on hardware; Phases 1/2/3/5/6/8/9 are complete, Phase 10 is active.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
-- Confirmed flash result:
-  - `wrote 2400256 bytes`
-  - `verified 2396432 bytes`
+- Latest confirmed flash result:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
 - Build quality confirmation:
-  - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
+  - `drone_hunter_arena.c` compiles/links cleanly; environment still lacks EdgeProtect combine-sign.
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
-- Attack targets distributed across playable city area.
+- Attack goals distributed across playable city area.
 - Leak impacts produce persistent, flame-like fire patches.
-- CIWS now uses gameplay-visible sweep range (~75% screen width) and engages reliably in arc.
-- CIWS tracer stream tuned for density/visibility while preserving bounded range behavior.
-- CIWS per-gun ammo now decreases by burst-sized consumption each trigger event (`CIWS_AMMO_PER_TRIGGER`), with faster deck-counter refresh.
-- Phase 6 CIWS doctrine finalization now active:
-  - lock-quality model added (range + sweep alignment + lateral lead difficulty),
-  - poor-geometry and out-of-effective-envelope shots now add reaction delay/cooldown penalties,
-  - heat growth is now stronger when firing with poor lock quality.
-- HUD now includes live CIWS doctrine state per gun:
-  - ammo, heat, and lock quality telemetry.
-- Top HUD control pill updated:
-  - shortened to `SET   |   HELP`,
-  - left/right half touch opens Settings/Help popup respectively.
-- Hunter-kill visual feedback updated:
-  - successful hunter intercept now emits a bright white circular flash at kill point,
-  - hunter and attacker still disappear immediately on kill.
-- Score HUD made explicit and always-visible:
-  - dedicated hunter/attacker score labels with zero-padded counters,
-  - control mode shown in label (`ALGO` / `EDGEAI` / `HUMAN`),
-  - center core counter retained.
-- Phase 8 wrong-choice consequence system is active:
-  - explicit penalties for range mismatch, altitude mismatch, overkill allocation, CIWS misuse, and low-confidence manual override.
-  - HUD explainability now reports latest causal reason (`WHY`) plus aggregate failure counters.
-- Phase 9 friendly-fire / IFF advanced mode is active:
-  - optional advanced toggle via long-press on Phalanx deck item.
-  - blue-on-blue can occur only under strict gate:
-    - IFF degraded + merged tracks + manual override + low confidence.
-  - collateral and recovery outcomes are now surfaced in HUD (`FF`, `COL`, recovery timer).
-- Hunter top-edge skid behavior fixed via forced horizon egress (shrink/fade/despawn) instead of line sliding.
-- Falling hunters no longer bounce/reverse off lower icon/deck region:
-  - failed/missed hunters continue descending off the bottom of the screen,
-  - auto-reset occurs only after off-screen exit.
-- Hunter launch origin now uses 8 hidden city sectors with nearest-target selection and nearest-stock fallback.
-- Phase 5 attacker strategy layer is now active over 16 launch sites:
-  - strategies implemented: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
-  - launch edges remain evenly rotated (left/right/top/bottom),
-  - lane selection is strategy-driven per edge.
-- Player strategy control is now available:
-  - mode button `click`: cycles match mode,
-  - mode button `long-press`: cycles attacker strategy and restarts round.
-- HUD wave row now shows live attacker strategy (`STRAT ...`).
-- Hunter vs Attacker scoring active.
-- Attack drones now forced to generated attack render set at runtime (ODIN fallback removed):
-  - `attack_shahed_yellow`
-  - `attack_vb140_like_red`
-  - `attack_dji_x_orange`
-- Hunter launch logic now includes urgency fallback when commit gate confidence is low, preventing no-defense stalls.
-- Hunter render/launch stability fixes applied:
-  - removed forced Sting-only hunter selection fallback,
-  - switched in-game Sting render path to stable sprite source,
-  - added minimum visible flight window before intercept resolution,
-  - tightened hunter zoom and bottom-edge clamps to prevent oversized icon-bar popups.
-- Rules-engine progression active:
-  - detect/classify/commit confidence,
-  - dynamic threat score,
-  - launch commit gating,
-  - recommended counter logic.
-- Phase 2 completion details:
-  - Added LOS masking into commit gate.
-  - Added track-history and noise shaping into detect/classify/commit confidence.
-  - Added commit hold reason telemetry counters:
-    - detect/class/confidence/corridor/LOS.
-  - Reduced icon-bar flashing by throttling deck UI updates during CIWS firing.
-- Phase 3 completion details:
-  - Added weighted dynamic threat formula:
-    - `Payload x Proximity/Urgency x Survivability x Confidence x TargetValueModifier x LanePressure`.
-  - Added per-target `target_value_mod` and lane-pressure weighting.
-  - Added lane-pressure model over 16 launch sites with decay + adjacent-lane spillover.
-  - Added deterministic active-target priority ordering from computed threat score.
-  - HUD telemetry now includes `TV` (target value) and `LP` (lane pressure) per active track.
-- HUD now includes full live threat telemetry for active tracks:
-  - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
-- Code hygiene improvements:
-  - Removed unused/dead helper functions from arena runtime.
-  - Hardened HUD info text composition to avoid truncation-prone formatting.
-  - Added runtime image-dimension guards and zoom clamps to prevent invalid giant sprites.
-  - Clamped hunter/attacker movement to arena bounds to prevent icon-bar/deck bleed-through.
-  - Reduced render pressure by capping simultaneous fire renders and removing heavy shadow load.
-  - Removed attacker respawn foreground forcing that contributed to redraw flashing.
+- CIWS finite-ammo behavior, sweep envelope, lock/heat penalties, and per-gun HUD telemetry are active.
+- Hunter/Attacker score HUD, menu pill split-touch (`SET | HELP`), and `WHY` failure explainability are active.
+- Phase 9 IFF advanced mode is active (strict gate for blue-on-blue only).
+- Phase 10 wave pacing is active:
+  - rotating wave archetypes: `SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`,
+  - composition-based scaling and auto mid-wave strategy shifts.
+- Hunter launch origin allocator remains 8-sector with fallback.
+
+## Explosion/FX baseline (2026-03-28)
+- Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.
+- Per-class blast profiles are active:
+  - Shahed (yellow fixed-wing): giant orange explosion,
+  - Strike-Prop (red fixed-wing): medium white circular explosion,
+  - Strike-X (orange DJI X-wing): small bright white circular explosion.
+- Explosion size now scales with depth perspective:
+  - larger near screen bottom (closer),
+  - smaller toward top of arena (farther).
 
 ## Environment notes
 - EdgeProtect combine-sign step remains unavailable in this environment.

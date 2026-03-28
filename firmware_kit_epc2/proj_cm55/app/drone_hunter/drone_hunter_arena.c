@@ -32,6 +32,7 @@
 #define FX_INTERCEPT_SEC          (0.42f)
 #define FX_SPAWN_SEC              (0.36f)
 #define FX_KILL_SEC               (0.32f)
+#define FX_SHAHED_DEATH_SEC       (0.30f)
 #define FX_CORE_HIT_SEC           (0.40f)
 #define MAP_SIZE_KM               (120.0f)
 #define PHALANX_EFFECTIVE_KM      (2.0f)
@@ -56,6 +57,10 @@
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
 #define ATTACK_SPRITE_STABLE_ONLY (0)
+
+#define BLAST_STYLE_SMALL_WHITE   (0)
+#define BLAST_STYLE_MEDIUM_WHITE  (1)
+#define BLAST_STYLE_GIANT_ORANGE  (2)
 
 #define COMMIT_REASON_READY       (0)
 #define COMMIT_REASON_DETECT_LOW  (1)
@@ -100,6 +105,15 @@ typedef enum
     ATTACK_STRATEGY_TERMINAL_SATURATION,
     ATTACK_STRATEGY_COUNT
 } attack_strategy_t;
+
+typedef enum
+{
+    WAVE_ARCHETYPE_SHAHED_HEAVY = 0,
+    WAVE_ARCHETYPE_STRIKE_X_SWARM,
+    WAVE_ARCHETYPE_MIXED_DECEPTION,
+    WAVE_ARCHETYPE_TERMINAL_SATURATION,
+    WAVE_ARCHETYPE_COUNT
+} wave_archetype_t;
 
 typedef enum
 {
@@ -255,6 +269,8 @@ typedef struct
     float fx_kill_t[KILLER_COUNT];
     float fx_kill_x[KILLER_COUNT];
     float fx_kill_y[KILLER_COUNT];
+    int fx_blast_style[KILLER_COUNT];
+    float k_dying_t[KILLER_COUNT];
     float fx_core_hit_t;
     float ciws_cooldown_sec;
     float ciws_cooldown_left_sec;
@@ -278,6 +294,7 @@ typedef struct
     int k_tier[KILLER_COUNT];
     int killer_active[KILLER_COUNT];
     int k_missed_by_hunter[KILLER_COUNT];
+    int k_dying[KILLER_COUNT];
     int k_serial[KILLER_COUNT];
     float k_goal_x[KILLER_COUNT];
     float k_goal_y[KILLER_COUNT];
@@ -344,6 +361,8 @@ typedef struct
     int attack_leaked;
     int wave_idx;
     int wave_target_total;
+    wave_archetype_t wave_archetype;
+    int wave_shift_applied;
     threat_faction_t threat_faction;
     attack_strategy_t attack_strategy_select;
     attack_strategy_t attack_strategy_live;
@@ -374,6 +393,7 @@ static float clampf(float v, float lo, float hi);
 static float dist2(float ax, float ay, float bx, float by);
 static void update_hunter_deck_ui(drone_hunter_scene_t *s);
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side);
+static void set_killer_hidden(drone_hunter_scene_t *s, int k);
 static void note_failure(drone_hunter_scene_t *s, const char *txt, int *counter);
 static void deck_pick_cb(lv_event_t *e);
 static void target_pick_cb(lv_event_t *e);
@@ -445,14 +465,67 @@ static const char *attack_strategy_short_name(attack_strategy_t st)
     }
 }
 
-static attack_strategy_t attack_strategy_from_wave(int wave_idx)
+static const char *wave_archetype_short_name(wave_archetype_t archetype)
+{
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY: return "SHAHED";
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM: return "X-SWARM";
+        case WAVE_ARCHETYPE_MIXED_DECEPTION: return "MIXED";
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION: return "TERM-SAT";
+        default: return "ARCH";
+    }
+}
+
+static wave_archetype_t wave_archetype_from_wave(int wave_idx)
 {
     int phase = (wave_idx - 1) % 4;
     if (phase < 0)
     {
         phase += 4;
     }
-    return (attack_strategy_t)(ATTACK_STRATEGY_CENTER_PRESSURE + phase);
+    return (wave_archetype_t)phase;
+}
+
+static attack_strategy_t attack_strategy_for_archetype(wave_archetype_t archetype)
+{
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY: return ATTACK_STRATEGY_CENTER_PRESSURE;
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM: return ATTACK_STRATEGY_FLANK_PRESSURE;
+        case WAVE_ARCHETYPE_MIXED_DECEPTION: return ATTACK_STRATEGY_MIXED_LURE_STRIKE;
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+        default:
+            return ATTACK_STRATEGY_TERMINAL_SATURATION;
+    }
+}
+
+static attack_strategy_t attack_strategy_shift_for_archetype(wave_archetype_t archetype)
+{
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY: return ATTACK_STRATEGY_TERMINAL_SATURATION;
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM: return ATTACK_STRATEGY_CENTER_PRESSURE;
+        case WAVE_ARCHETYPE_MIXED_DECEPTION: return ATTACK_STRATEGY_TERMINAL_SATURATION;
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+        default:
+            return ATTACK_STRATEGY_FLANK_PRESSURE;
+    }
+}
+
+static threat_faction_t threat_faction_for_archetype(wave_archetype_t archetype, int wave_idx)
+{
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY:
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+            return THREAT_FACTION_RUSSIA;
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM:
+            return THREAT_FACTION_USA;
+        case WAVE_ARCHETYPE_MIXED_DECEPTION:
+        default:
+            return (wave_idx & 1) ? THREAT_FACTION_RUSSIA : THREAT_FACTION_USA;
+    }
 }
 
 static int nearest_center_lane(int lane)
@@ -605,6 +678,28 @@ static void set_obj_center(lv_obj_t *obj, float x, float y)
     int32_t w = lv_obj_get_width(obj);
     int32_t h = lv_obj_get_height(obj);
     lv_obj_set_pos(obj, (int32_t)(x - (float)w * 0.5f), (int32_t)(y - (float)h * 0.5f));
+}
+
+static void get_obj_visual_center_in_parent(lv_obj_t *obj, lv_obj_t *parent, float *out_x, float *out_y)
+{
+    lv_area_t obj_area;
+    lv_area_t parent_area;
+    float cx;
+    float cy;
+
+    lv_obj_get_coords(obj, &obj_area);
+    lv_obj_get_coords(parent, &parent_area);
+    cx = ((float)obj_area.x1 + (float)obj_area.x2 + 1.0f) * 0.5f;
+    cy = ((float)obj_area.y1 + (float)obj_area.y2 + 1.0f) * 0.5f;
+
+    if (out_x != NULL)
+    {
+        *out_x = cx - (float)parent_area.x1;
+    }
+    if (out_y != NULL)
+    {
+        *out_y = cy - (float)parent_area.y1;
+    }
 }
 
 static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
@@ -801,11 +896,43 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
 
     if (roll <= p_ciws)
     {
+        float hit_x;
+        float hit_y;
+        int shahed_kill = (s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA);
+        int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
+                          ((s->ktype[k] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_WHITE);
+
+        get_obj_visual_center_in_parent(s->killers[k], s->arena, &hit_x, &hit_y);
         s->attack_destroyed++;
         s->defense_kills++;
         s->hunter_points++;
         s->ciws_kills++;
-        respawn_killer(s, k, -1);
+        s->fx_blast_style[k] = blast_style;
+        s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
+        s->fx_intercept_x[k] = hit_x;
+        s->fx_intercept_y[k] = hit_y;
+        s->fx_kill_t[k] = shahed_kill ? (FX_KILL_SEC * 1.40f) : FX_KILL_SEC;
+        s->fx_kill_x[k] = hit_x;
+        s->fx_kill_y[k] = hit_y;
+        if (shahed_kill)
+        {
+            s->k_dying[k] = 1;
+            s->k_dying_t[k] = FX_SHAHED_DEATH_SEC;
+            s->k_threat_score[k] = 0.0f;
+            s->k_commit_ok[k] = 0;
+            s->k_detect_ok[k] = 0;
+            s->k_class_ok[k] = 0;
+            s->k_corridor_ok[k] = 0;
+            s->k_los_ok[k] = 0;
+            s->kvx[k] = 0.0f;
+            s->kvy[k] = 0.0f;
+            s->k_heading[k] = -PI_F * 0.5f;
+        }
+        else
+        {
+            set_killer_hidden(s, k);
+            respawn_killer(s, k, -1);
+        }
         return 1;
     }
     return 0;
@@ -1091,6 +1218,11 @@ static const char *target_type_name(const drone_hunter_scene_t *s, int k)
     return "Strike-X";
 }
 
+static int target_is_shahed(const drone_hunter_scene_t *s, int k)
+{
+    return (s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA);
+}
+
 static hunter_type_t recommended_hunter_for_target(const drone_hunter_scene_t *s, int k)
 {
     if (s->ktype[k] == TARGET_FIXED_WING)
@@ -1252,7 +1384,7 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
     }
     for (k = 0; k < KILLER_COUNT; ++k)
     {
-        if (s->killer_active[k])
+        if (s->killer_active[k] && !s->k_dying[k])
         {
             int site = s->k_spawn_site[k];
             int edge;
@@ -1282,7 +1414,7 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
 
     for (k = 0; k < KILLER_COUNT; ++k)
     {
-        if (!s->killer_active[k])
+        if (!s->killer_active[k] || s->k_dying[k])
         {
             s->k_speed_est[k] = 0.0f;
             s->k_altitude_norm[k] = 0.0f;
@@ -1383,7 +1515,8 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
         }
     }
 
-    if (s->killer_active[0] && s->killer_active[1])
+    if (s->killer_active[0] && !s->k_dying[0] &&
+        s->killer_active[1] && !s->k_dying[1])
     {
         int active_idx[KILLER_COUNT];
         int n = 0;
@@ -1932,14 +2065,50 @@ static void style_target(drone_hunter_scene_t *s, int k)
     }
 }
 
-static int wave_target_count(int wave_idx)
+static int wave_target_count(int wave_idx, wave_archetype_t archetype)
 {
+    float multiplier = 1.0f;
     int total = ATTACK_POOL_BASE + ((wave_idx - 1) * ATTACK_POOL_GROWTH);
+    switch (archetype)
+    {
+        case WAVE_ARCHETYPE_SHAHED_HEAVY:
+            multiplier = 1.06f;
+            break;
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM:
+            multiplier = 1.18f;
+            break;
+        case WAVE_ARCHETYPE_MIXED_DECEPTION:
+            multiplier = 1.10f;
+            break;
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+        default:
+            multiplier = 1.24f;
+            break;
+    }
+    total = (int)((float)total * multiplier);
     if (total > ATTACK_POOL_MAX)
     {
         total = ATTACK_POOL_MAX;
     }
     return total;
+}
+
+static void maybe_apply_mid_wave_shift(drone_hunter_scene_t *s)
+{
+    int spawned;
+    int trigger;
+    if (s->wave_shift_applied || (s->attack_strategy_select != ATTACK_STRATEGY_AUTO))
+    {
+        return;
+    }
+    spawned = s->wave_target_total - s->attack_remaining_to_spawn;
+    trigger = (s->wave_target_total * 55) / 100;
+    if (spawned < trigger)
+    {
+        return;
+    }
+    s->attack_strategy_live = attack_strategy_shift_for_archetype(s->wave_archetype);
+    s->wave_shift_applied = 1;
 }
 
 static void update_hunter_deck_ui(drone_hunter_scene_t *s)
@@ -1989,6 +2158,8 @@ static void set_killer_hidden(drone_hunter_scene_t *s, int k)
 static void set_killer_visible(drone_hunter_scene_t *s, int k)
 {
     s->killer_active[k] = 1;
+    s->k_dying[k] = 0;
+    s->k_dying_t[k] = 0.0f;
     lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -2013,6 +2184,8 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     int lane;
     float lane_t;
     int phase = arena_phase(s);
+    int spawned_so_far;
+    float wave_progress;
 
     if (s->attack_remaining_to_spawn <= 0)
     {
@@ -2023,38 +2196,62 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     set_killer_visible(s, k);
     s->attack_remaining_to_spawn--;
     s->killer_spawn_tick++;
+    maybe_apply_mid_wave_shift(s);
     s->k_serial[k]++;
+    spawned_so_far = s->wave_target_total - s->attack_remaining_to_spawn;
+    wave_progress = (float)spawned_so_far / clampf((float)s->wave_target_total, 1.0f, 20000.0f);
 
-    if (phase == 0)
+    switch (s->wave_archetype)
     {
-        s->ktype[k] = TARGET_FPV;
-    }
-    else if (phase == 1)
-    {
-        if (k == 0)
+        case WAVE_ARCHETYPE_SHAHED_HEAVY:
         {
-            s->ktype[k] = TARGET_FPV;
+            int roll = (s->killer_spawn_tick + (k * 2)) % 10;
+            s->ktype[k] = (roll < 8) ? TARGET_FIXED_WING : TARGET_FPV;
+            s->k_tier[k] = (wave_progress > 0.72f) ? 2 : ((s->wave_idx <= 2) ? 1 : 2);
+            break;
         }
-        else
+        case WAVE_ARCHETYPE_STRIKE_X_SWARM:
         {
-            s->ktype[k] = ((s->killer_spawn_tick / 2) % 2 == 0) ? TARGET_FIXED_WING : TARGET_FPV;
+            int roll = (s->killer_spawn_tick + k) % 12;
+            s->ktype[k] = (roll < 10) ? TARGET_FPV : TARGET_FIXED_WING;
+            s->k_tier[k] = (wave_progress > 0.62f) ? 2 : ((s->wave_idx <= 2) ? 0 : 1);
+            break;
+        }
+        case WAVE_ARCHETYPE_MIXED_DECEPTION:
+        {
+            int roll = (s->killer_spawn_tick + (k * 3)) % 8;
+            if (wave_progress < 0.50f)
+            {
+                s->ktype[k] = (roll < 3) ? TARGET_FPV : TARGET_FIXED_WING;
+            }
+            else
+            {
+                s->ktype[k] = (roll < 5) ? TARGET_FPV : TARGET_FIXED_WING;
+            }
+            s->k_tier[k] = (s->wave_idx <= 2) ? 1 : ((roll & 1) ? 2 : 1);
+            break;
+        }
+        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+        default:
+        {
+            int roll = (s->killer_spawn_tick + (k * 5)) % 10;
+            if (wave_progress < 0.45f)
+            {
+                s->ktype[k] = (roll < 6) ? TARGET_FIXED_WING : TARGET_FPV;
+            }
+            else
+            {
+                s->ktype[k] = (roll < 7) ? TARGET_FPV : TARGET_FIXED_WING;
+            }
+            s->k_tier[k] = (wave_progress > 0.50f) ? 2 : ((s->wave_idx <= 2) ? 1 : 2);
+            break;
         }
     }
-    else
+
+    if (phase == 0 && s->ktype[k] == TARGET_FIXED_WING)
     {
-        s->ktype[k] = ((s->killer_spawn_tick + k) % 3 == 0) ? TARGET_FPV : TARGET_FIXED_WING;
-    }
-    if (s->wave_idx <= 2)
-    {
-        s->k_tier[k] = (s->killer_spawn_tick % 4 == 0) ? 1 : 0;
-    }
-    else if (s->wave_idx <= 5)
-    {
-        s->k_tier[k] = (s->killer_spawn_tick % 3 == 0) ? 2 : 1;
-    }
-    else
-    {
-        s->k_tier[k] = (s->killer_spawn_tick % 2 == 0) ? 2 : 1;
+        /* Keep early timeline somewhat lighter before escalation ramps. */
+        s->k_tier[k] = (s->k_tier[k] > 0) ? (s->k_tier[k] - 1) : 0;
     }
     if (s->ktype[k] == TARGET_FIXED_WING)
     {
@@ -2133,15 +2330,17 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
 
 static void start_wave(drone_hunter_scene_t *s, int wave_idx)
 {
+    s->wave_archetype = wave_archetype_from_wave(wave_idx);
     s->wave_idx = wave_idx;
-    s->wave_target_total = wave_target_count(wave_idx);
+    s->wave_target_total = wave_target_count(wave_idx, s->wave_archetype);
     s->attack_remaining_to_spawn = s->wave_target_total;
     s->attack_destroyed = 0;
     s->attack_leaked = 0;
-    s->threat_faction = (wave_idx & 1) ? THREAT_FACTION_RUSSIA : THREAT_FACTION_USA;
+    s->wave_shift_applied = 0;
+    s->threat_faction = threat_faction_for_archetype(s->wave_archetype, wave_idx);
     if (s->attack_strategy_select == ATTACK_STRATEGY_AUTO)
     {
-        s->attack_strategy_live = attack_strategy_from_wave(wave_idx);
+        s->attack_strategy_live = attack_strategy_for_archetype(s->wave_archetype);
     }
     else
     {
@@ -2304,7 +2503,10 @@ static void reset_round(drone_hunter_scene_t *s)
         s->fx_intercept_t[i] = 0.0f;
         s->fx_spawn_t[i] = 0.0f;
         s->fx_kill_t[i] = 0.0f;
+        s->fx_blast_style[i] = BLAST_STYLE_SMALL_WHITE;
+        s->k_dying_t[i] = 0.0f;
         s->killer_active[i] = 0;
+        s->k_dying[i] = 0;
         s->k_tier[i] = 0;
         s->k_missed_by_hunter[i] = 0;
         s->k_serial[i] = 0;
@@ -2526,6 +2728,17 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             continue;
         }
+        if (s->k_dying[k])
+        {
+            s->k_dying_t[k] = clampf(s->k_dying_t[k] - DT_SEC, 0.0f, FX_SHAHED_DEATH_SEC);
+            if (s->k_dying_t[k] <= 0.0f)
+            {
+                s->k_dying[k] = 0;
+                set_killer_hidden(s, k);
+                respawn_killer(s, k, -1);
+            }
+            continue;
+        }
 
         float dir_x = s->k_goal_x[k] - s->kx[k];
         float dir_y = s->k_goal_y[k] - s->ky[k];
@@ -2709,9 +2922,10 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             target = (d1 < d0) ? 1 : 0;
         }
     }
-    else if (s->killer_active[0] || s->killer_active[1])
+    else if ((s->killer_active[0] && !s->k_dying[0]) ||
+             (s->killer_active[1] && !s->k_dying[1]))
     {
-        target = s->killer_active[0] ? 0 : 1;
+        target = (s->killer_active[0] && !s->k_dying[0]) ? 0 : 1;
     }
     else
     {
@@ -2737,7 +2951,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     if ((h == 0) &&
         (s->manual_selected_target >= 0) &&
         (s->manual_selected_target < KILLER_COUNT) &&
-        s->killer_active[s->manual_selected_target])
+        s->killer_active[s->manual_selected_target] &&
+        !s->k_dying[s->manual_selected_target])
     {
         target = s->manual_selected_target;
     }
@@ -2999,18 +3214,45 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             if (roll <= p_kill)
             {
                 int pts = (s->ktype[committed] == TARGET_FIXED_WING) ? p->points_fixed : p->points_fpv;
-                float hit_x = s->kx[committed];
-                float hit_y = s->ky[committed];
+                float hit_x;
+                float hit_y;
+                int shahed_kill = target_is_shahed(s, committed);
+                int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
+                                  ((s->ktype[committed] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_WHITE);
+
+                /* Anchor FX to the rendered target center (post-transform). */
+                get_obj_visual_center_in_parent(s->killers[committed], s->arena, &hit_x, &hit_y);
                 s->team_score[h] += pts;
                 s->attack_destroyed++;
                 s->defense_kills++;
                 s->hunter_points++;
 
-                /* Successful intercept: both hunter and attack drone disappear immediately. */
-                set_killer_hidden(s, committed);
-                s->fx_kill_t[committed] = FX_KILL_SEC;
+                s->fx_blast_style[committed] = blast_style;
+                s->fx_kill_t[committed] = shahed_kill ? (FX_KILL_SEC * 1.40f) : FX_KILL_SEC;
                 s->fx_kill_x[committed] = hit_x;
                 s->fx_kill_y[committed] = hit_y;
+                if (shahed_kill)
+                {
+                    /* Shahed kills should visibly erupt before despawn. */
+                    s->fx_intercept_t[committed] = FX_INTERCEPT_SEC;
+                    s->fx_intercept_x[committed] = hit_x;
+                    s->fx_intercept_y[committed] = hit_y;
+                    s->k_dying[committed] = 1;
+                    s->k_dying_t[committed] = FX_SHAHED_DEATH_SEC;
+                    s->k_threat_score[committed] = 0.0f;
+                    s->k_commit_ok[committed] = 0;
+                    s->k_detect_ok[committed] = 0;
+                    s->k_class_ok[committed] = 0;
+                    s->k_corridor_ok[committed] = 0;
+                    s->k_los_ok[committed] = 0;
+                    s->kvx[committed] = 0.0f;
+                    s->kvy[committed] = 0.0f;
+                    s->k_heading[committed] = -PI_F * 0.5f;
+                }
+                else
+                {
+                    set_killer_hidden(s, committed);
+                }
                 s->hunter_loaded[h] = 0;
                 s->h_falling[h] = 0;
                 s->h_target_idx[h] = -1;
@@ -3021,7 +3263,10 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 s->hx[h] = hunter_regroup_x(s, h, core_x);
                 s->hy[h] = hunter_regroup_y(s, h);
                 lv_obj_add_flag(s->hunters[h], LV_OBJ_FLAG_HIDDEN);
-                respawn_killer(s, committed, -1);
+                if (!shahed_kill)
+                {
+                    respawn_killer(s, committed, -1);
+                }
             }
             else
             {
@@ -3097,21 +3342,55 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     {
         if (s->fx_intercept_t[k] > 0.0f)
         {
+            int blast_style = s->fx_blast_style[k];
             float life = clampf(s->fx_intercept_t[k] / FX_INTERCEPT_SEC, 0.0f, 1.0f);
             float grow = 1.0f - life;
-            int32_t size = 10 + (int32_t)(grow * 44.0f);
-            lv_opa_t fill_opa = (lv_opa_t)(40 + (int32_t)(life * 110.0f));
-            lv_opa_t border_opa = (lv_opa_t)(80 + (int32_t)(life * 140.0f));
+            float depth_scale = clampf(depth_zoom_factor_for_y(s, s->fx_intercept_y[k]), 0.62f, 1.28f);
+            int32_t size;
+            lv_opa_t fill_opa;
+            lv_opa_t border_opa;
+            lv_color_t fill_color;
+            lv_color_t border_color;
+            int border_w;
+
+            if (blast_style == BLAST_STYLE_GIANT_ORANGE)
+            {
+                size = (int32_t)((36.0f + (grow * 112.0f)) * depth_scale);
+                fill_opa = (lv_opa_t)(90 + (int32_t)(life * 145.0f));
+                border_opa = (lv_opa_t)(120 + (int32_t)(life * 135.0f));
+                fill_color = lv_color_hex(0xF97316);
+                border_color = lv_color_hex(0xFDE047);
+                border_w = 5;
+            }
+            else if (blast_style == BLAST_STYLE_MEDIUM_WHITE)
+            {
+                size = (int32_t)((22.0f + (grow * 72.0f)) * depth_scale);
+                fill_opa = (lv_opa_t)(55 + (int32_t)(life * 95.0f));
+                border_opa = (lv_opa_t)(120 + (int32_t)(life * 125.0f));
+                fill_color = lv_color_hex(0xFFFFFF);
+                border_color = lv_color_hex(0xFFFFFF);
+                border_w = 4;
+            }
+            else
+            {
+                size = (int32_t)((8.0f + (grow * 34.0f)) * depth_scale);
+                fill_opa = (lv_opa_t)(45 + (int32_t)(life * 110.0f));
+                border_opa = (lv_opa_t)(150 + (int32_t)(life * 105.0f));
+                fill_color = lv_color_hex(0xFFFFFF);
+                border_color = lv_color_hex(0xFFFFFF);
+                border_w = 3;
+            }
 
             lv_obj_clear_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_size(s->fx_intercept[k], size, size);
             lv_obj_set_style_radius(s->fx_intercept[k], LV_RADIUS_CIRCLE, 0);
-            lv_obj_set_style_bg_color(s->fx_intercept[k], lv_color_hex(0xF97316), 0);
+            lv_obj_set_style_bg_color(s->fx_intercept[k], fill_color, 0);
             lv_obj_set_style_bg_opa(s->fx_intercept[k], fill_opa, 0);
-            lv_obj_set_style_border_width(s->fx_intercept[k], 2, 0);
-            lv_obj_set_style_border_color(s->fx_intercept[k], lv_color_hex(0xFDE047), 0);
+            lv_obj_set_style_border_width(s->fx_intercept[k], border_w, 0);
+            lv_obj_set_style_border_color(s->fx_intercept[k], border_color, 0);
             lv_obj_set_style_border_opa(s->fx_intercept[k], border_opa, 0);
             set_obj_center(s->fx_intercept[k], s->fx_intercept_x[k], s->fx_intercept_y[k]);
+            lv_obj_move_foreground(s->fx_intercept[k]);
         }
         else
         {
@@ -3121,7 +3400,8 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             float life = clampf(s->fx_spawn_t[k] / FX_SPAWN_SEC, 0.0f, 1.0f);
             float grow = 1.0f - life;
-            int32_t size = 20 + (int32_t)(grow * 50.0f);
+            float depth_scale = clampf(depth_zoom_factor_for_y(s, s->fx_spawn_y[k]), 0.62f, 1.28f);
+            int32_t size = (int32_t)((20.0f + (grow * 50.0f)) * depth_scale);
             lv_opa_t ring_opa = (lv_opa_t)(70 + (int32_t)(life * 165.0f));
 
             lv_obj_clear_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
@@ -3139,17 +3419,52 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         if (s->fx_kill_t[k] > 0.0f)
         {
+            int blast_style = s->fx_blast_style[k];
             float life = clampf(s->fx_kill_t[k] / FX_KILL_SEC, 0.0f, 1.0f);
             float grow = 1.0f - life;
-            int32_t size = 20 + (int32_t)(grow * 56.0f);
-            lv_opa_t ring_opa = (lv_opa_t)(90 + (int32_t)(life * 165.0f));
+            float depth_scale = clampf(depth_zoom_factor_for_y(s, s->fx_kill_y[k]), 0.62f, 1.28f);
+            int32_t size;
+            lv_opa_t ring_opa;
+            lv_opa_t fill_opa;
+            lv_color_t fill_color;
+            lv_color_t border_color;
+            int border_w;
+
+            if (blast_style == BLAST_STYLE_GIANT_ORANGE)
+            {
+                size = (int32_t)((52.0f + (grow * 126.0f)) * depth_scale);
+                ring_opa = (lv_opa_t)(120 + (int32_t)(life * 135.0f));
+                fill_opa = (lv_opa_t)(50 + (int32_t)(life * 105.0f));
+                fill_color = lv_color_hex(0xF97316);
+                border_color = lv_color_hex(0xFDE68A);
+                border_w = 6;
+            }
+            else if (blast_style == BLAST_STYLE_MEDIUM_WHITE)
+            {
+                size = (int32_t)((30.0f + (grow * 86.0f)) * depth_scale);
+                ring_opa = (lv_opa_t)(125 + (int32_t)(life * 120.0f));
+                fill_opa = (lv_opa_t)(30 + (int32_t)(life * 85.0f));
+                fill_color = lv_color_hex(0xFFFFFF);
+                border_color = lv_color_hex(0xFFFFFF);
+                border_w = 4;
+            }
+            else
+            {
+                size = (int32_t)((14.0f + (grow * 40.0f)) * depth_scale);
+                ring_opa = (lv_opa_t)(145 + (int32_t)(life * 105.0f));
+                fill_opa = (lv_opa_t)(35 + (int32_t)(life * 80.0f));
+                fill_color = lv_color_hex(0xFFFFFF);
+                border_color = lv_color_hex(0xFFFFFF);
+                border_w = 4;
+            }
 
             lv_obj_clear_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_size(s->fx_kill[k], size, size);
             lv_obj_set_style_radius(s->fx_kill[k], LV_RADIUS_CIRCLE, 0);
-            lv_obj_set_style_bg_opa(s->fx_kill[k], LV_OPA_TRANSP, 0);
-            lv_obj_set_style_border_width(s->fx_kill[k], 4, 0);
-            lv_obj_set_style_border_color(s->fx_kill[k], lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_bg_color(s->fx_kill[k], fill_color, 0);
+            lv_obj_set_style_bg_opa(s->fx_kill[k], fill_opa, 0);
+            lv_obj_set_style_border_width(s->fx_kill[k], border_w, 0);
+            lv_obj_set_style_border_color(s->fx_kill[k], border_color, 0);
             lv_obj_set_style_border_opa(s->fx_kill[k], ring_opa, 0);
             set_obj_center(s->fx_kill[k], s->fx_kill_x[k], s->fx_kill_y[k]);
             lv_obj_move_foreground(s->fx_kill[k]);
@@ -3324,6 +3639,7 @@ static void update_positions(drone_hunter_scene_t *s)
             float depth = depth_zoom_factor_for_y(s, s->ky[k]);
             uint16_t base_zoom = (uint16_t)clampf((float)s->k_base_zoom[k], 80.0f, 900.0f);
             uint16_t zoom = (uint16_t)clampf((float)base_zoom * depth, 70.0f, 920.0f);
+            lv_opa_t killer_opa = LV_OPA_COVER;
             int32_t kw = lv_obj_get_width(s->killers[k]);
             int32_t kh = lv_obj_get_height(s->killers[k]);
             if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
@@ -3332,7 +3648,15 @@ static void update_positions(drone_hunter_scene_t *s)
                 s->k_base_zoom[k] = (uint16_t)clampf(176.0f * attack_zoom_scale(s, k), 80.0f, 900.0f);
                 zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 70.0f, 920.0f);
             }
+            if (s->k_dying[k])
+            {
+                float life = clampf(s->k_dying_t[k] / FX_SHAHED_DEATH_SEC, 0.0f, 1.0f);
+                zoom = (uint16_t)clampf((float)zoom * (1.0f + ((1.0f - life) * 0.22f)), 70.0f, 980.0f);
+                killer_opa = (lv_opa_t)(80 + (int32_t)(life * 175.0f));
+            }
             lv_obj_set_style_transform_zoom(s->killers[k], zoom, 0);
+            lv_obj_set_style_opa(s->killers[k], killer_opa, 0);
+            lv_obj_set_style_image_opa(s->killers[k], killer_opa, 0);
         }
         s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, (float)(s->arena_y + s->arena_h - 6));
         s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
@@ -3367,7 +3691,7 @@ static void update_hud(drone_hunter_scene_t *s)
 
     for (k = 0; k < KILLER_COUNT; ++k)
     {
-        if (s->killer_active[k] && (s->k_threat_score[k] > lead_score))
+        if (s->killer_active[k] && !s->k_dying[k] && (s->k_threat_score[k] > lead_score))
         {
             lead_score = s->k_threat_score[k];
             lead_k = k;
@@ -3399,9 +3723,11 @@ static void update_hud(drone_hunter_scene_t *s)
                           "ATTACKER(%s): %04d",
                           attacker_ctrl, s->attacker_points);
     lv_label_set_text_fmt(s->hud_wave,
-                          "WAVE %d  |  STRAT %s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
+                          "WAVE %d  |  ARCH %s  |  STRAT %s%s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
                           s->wave_idx,
+                          wave_archetype_short_name(s->wave_archetype),
                           attack_strategy_short_name(s->attack_strategy_live),
+                          s->wave_shift_applied ? "*" : "",
                           s->attack_destroyed, s->wave_target_total,
                           s->attack_leaked,
                           s->attack_remaining_to_spawn);
@@ -3551,7 +3877,9 @@ static void anim_cb(lv_timer_t *timer)
         s->manual_select_ttl = clampf(s->manual_select_ttl - DT_SEC, 0.0f, 10.0f);
         s->iff_recovery_ttl = clampf(s->iff_recovery_ttl - DT_SEC, 0.0f, 10.0f);
         if ((s->manual_selected_target >= 0) &&
-            ((s->manual_selected_target >= KILLER_COUNT) || !s->killer_active[s->manual_selected_target]))
+            ((s->manual_selected_target >= KILLER_COUNT) ||
+             !s->killer_active[s->manual_selected_target] ||
+             s->k_dying[s->manual_selected_target]))
         {
             s->manual_selected_target = -1;
         }
