@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-phase3-complete`
+- Dated tag: `golden-e8-drone-hunter-20260327-ciws-hunter-egress-tuning`
 - Date: `2026-03-27`
 - Baseline summary:
   - Attack drone render path fixed:
@@ -24,13 +24,20 @@
     - 16-site lane-pressure model with decay + adjacent spillover implemented,
     - deterministic active-target priority ordering implemented.
   - Existing stability guards and telemetry remain active.
+  - Hunter top-edge skid fixed:
+    - reaching upper arena boundary now triggers horizon egress (shrink/fade/despawn), eliminating top-line sliding.
+  - CIWS stream/range tuning pass:
+    - denser/larger bullets retained,
+    - spread/coverage narrowed,
+    - tracer persistence increased for visibility,
+    - practical stream distance bounded to gun-to-~75% screen width envelope.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2375680 bytes`
-  - `verified 2371784 bytes`
+  - `verified 2372912 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-phase3-complete`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-ciws-hunter-egress-tuning`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

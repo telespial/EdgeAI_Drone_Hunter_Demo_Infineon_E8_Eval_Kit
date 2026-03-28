@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; hunter visibility/scale stabilized and mixed hunter selection restored.
+- State: Stable runtime baseline validated on hardware; hunter egress/top-edge behavior and CIWS tracer stream/range tuned on board.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2375680 bytes`
-  - `verified 2371784 bytes`
+  - `verified 2372912 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -17,6 +17,8 @@
 - Attack targets distributed across playable city area.
 - Leak impacts produce persistent, flame-like fire patches.
 - CIWS now uses gameplay-visible sweep range (~75% screen width) and engages reliably in arc.
+- CIWS tracer stream tuned for density/visibility while preserving bounded range behavior.
+- Hunter top-edge skid behavior fixed via forced horizon egress (shrink/fade/despawn) instead of line sliding.
 - Hunter vs Attacker scoring active.
 - Attack drones now forced to generated attack render set at runtime (ODIN fallback removed):
   - `attack_shahed_yellow`

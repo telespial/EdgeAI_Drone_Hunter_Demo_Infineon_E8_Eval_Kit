@@ -26,6 +26,8 @@
   - added minimum visible launch window before intercept resolution,
   - tightened hunter zoom and ground clamp to prevent oversized bottom-edge artifacts.
 - CIWS uses gameplay arc range scaling (`CIWS_RANGE_FRAC`) instead of map-km hard cutoff, restoring visible engagements.
+- CIWS tracer stream is tuned for denser/clearer bullets with bounded range and narrowed coverage width.
+- Hunter top-edge behavior now prevents blue-line skating by forcing horizon egress (shrink/fade/despawn) at top-boundary contact.
 - Phase 3 threat-prioritization engine is now fully wired:
   - weighted threat score includes target-value and lane-pressure multipliers,
   - 16-site lane-pressure model with decay + adjacent-lane spillover,
@@ -57,4 +59,4 @@
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2375680 bytes`
-  - `verified 2371784 bytes`
+  - `verified 2372912 bytes`

@@ -48,3 +48,14 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2375680 bytes`
   - `verified 2371784 bytes`
+- 2026-03-27 | Fixed hunter top-edge skid:
+  - hunters that reach top boundary now enter horizon egress (shrink/fade/despawn),
+  - removed top blue-line sliding behavior.
+- 2026-03-27 | CIWS tracer retune pass:
+  - restored denser/larger bullet stream,
+  - constrained practical envelope to gun-to-~75% screen width behavior,
+  - tightened spread/coverage width,
+  - slowed tracers and increased persistence so stream is visible longer.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2375680 bytes`
+  - `verified 2372912 bytes`
