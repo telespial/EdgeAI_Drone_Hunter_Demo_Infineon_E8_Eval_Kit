@@ -8,7 +8,7 @@
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
   - `wrote 2375680 bytes`
-  - `verified 2372912 bytes`
+  - `verified 2374456 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -18,7 +18,12 @@
 - Leak impacts produce persistent, flame-like fire patches.
 - CIWS now uses gameplay-visible sweep range (~75% screen width) and engages reliably in arc.
 - CIWS tracer stream tuned for density/visibility while preserving bounded range behavior.
+- CIWS per-gun ammo now decreases by burst-sized consumption each trigger event (`CIWS_AMMO_PER_TRIGGER`), with faster deck-counter refresh.
 - Hunter top-edge skid behavior fixed via forced horizon egress (shrink/fade/despawn) instead of line sliding.
+- Falling hunters no longer bounce/reverse off lower icon/deck region:
+  - failed/missed hunters continue descending off the bottom of the screen,
+  - auto-reset occurs only after off-screen exit.
+- Hunter launch origin now uses 8 hidden city sectors with nearest-target selection and nearest-stock fallback.
 - Hunter vs Attacker scoring active.
 - Attack drones now forced to generated attack render set at runtime (ODIN fallback removed):
   - `attack_shahed_yellow`

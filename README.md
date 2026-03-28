@@ -9,11 +9,14 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Persistent city fires remain after leaks and grow as defender performance drops.
 - Dual CIWS emplacements with sweep-arc behavior and finite per-gun ammo.
 - CIWS now tuned as last-ditch defense with effective/hard-cutoff range behavior and overuse penalties.
+- CIWS ammo now visibly decrements by burst-sized trigger consumption (left/right counters).
 - Attack classes use rendered image assets:
   - `Shahed`-style bright yellow fixed-wing
   - red VB140-like fixed-wing
   - orange DJI-style X-wing
 - Hunter inventory deck + stock counters remain active.
+- Hunter launches now originate from 8 hidden city sectors with nearest-target + nearest-stock fallback.
+- Missed/failed hunters now continue descending off bottom screen instead of bouncing at deck boundary.
 - Continuous gameplay with phase HUD retained.
 
 ## Rules spec
@@ -29,8 +32,8 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 Latest flash confirmation:
-- `wrote 2367488 bytes`
-- `verified 2362856 bytes`
+- `wrote 2375680 bytes`
+- `verified 2374456 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

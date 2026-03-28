@@ -18,6 +18,9 @@
 - `rules.md`
 
 ## Current behavior in code
+- Hunter launch origin distribution now uses 8 hidden city sectors:
+  - nearest-sector first selection per target,
+  - automatic nearest-stock fallback when local sector is depleted.
 - Attack drone runtime rendering is locked to generated attack sprites (ODIN no longer used in attacker path).
 - Hunter launch path includes urgency fallback so defense still launches when strict commit confidence is temporarily low.
 - Hunter selection/render stability fixes:
@@ -26,8 +29,10 @@
   - added minimum visible launch window before intercept resolution,
   - tightened hunter zoom and ground clamp to prevent oversized bottom-edge artifacts.
 - CIWS uses gameplay arc range scaling (`CIWS_RANGE_FRAC`) instead of map-km hard cutoff, restoring visible engagements.
+- CIWS ammo accounting now subtracts a burst-sized amount per trigger event (`CIWS_AMMO_PER_TRIGGER`) with more frequent HUD counter updates.
 - CIWS tracer stream is tuned for denser/clearer bullets with bounded range and narrowed coverage width.
 - Hunter top-edge behavior now prevents blue-line skating by forcing horizon egress (shrink/fade/despawn) at top-boundary contact.
+- Hunter lower-region fall behavior now exits off-screen downward after misses instead of bouncing at the icon/deck boundary.
 - Phase 3 threat-prioritization engine is now fully wired:
   - weighted threat score includes target-value and lane-pressure multipliers,
   - 16-site lane-pressure model with decay + adjacent-lane spillover,
@@ -59,4 +64,4 @@
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
   - `wrote 2375680 bytes`
-  - `verified 2372912 bytes`
+  - `verified 2374456 bytes`

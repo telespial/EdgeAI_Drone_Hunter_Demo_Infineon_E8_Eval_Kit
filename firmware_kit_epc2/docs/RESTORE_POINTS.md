@@ -2,9 +2,18 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-ciws-hunter-egress-tuning`
+- Dated tag: `golden-e8-drone-hunter-20260327-sector-launch-ciws-ammo-fall-offscreen`
 - Date: `2026-03-27`
 - Baseline summary:
+  - 8-sector hunter launch allocator added:
+    - hidden city sectors with balanced stock,
+    - nearest-target sector selection with nearest-stock fallback.
+  - CIWS ammo accounting tightened:
+    - each trigger event now consumes burst-sized ammo (`CIWS_AMMO_PER_TRIGGER`),
+    - deck ammo display refreshes more frequently for visible decrement.
+  - Falling-hunter lower boundary behavior fixed:
+    - missed hunters no longer bounce/reverse at icon/deck boundary,
+    - they continue descending and reset only after exiting bottom of screen.
   - Attack drone render path fixed:
     - runtime attacker sprites forced to generated attack set only,
     - ODIN fallback removed from attacker update path.
@@ -33,11 +42,11 @@
     - practical stream distance bounded to gun-to-~75% screen width envelope.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
   - `wrote 2375680 bytes`
-  - `verified 2372912 bytes`
+  - `verified 2374456 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-ciws-hunter-egress-tuning`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-sector-launch-ciws-ammo-fall-offscreen`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

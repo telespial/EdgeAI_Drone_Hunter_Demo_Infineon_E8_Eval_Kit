@@ -59,3 +59,15 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2375680 bytes`
   - `verified 2372912 bytes`
+- 2026-03-27 | Added 8-sector hunter launch allocation:
+  - hidden sector ring with balanced stock,
+  - nearest-target sector pick with nearest-stock fallback.
+- 2026-03-27 | CIWS ammo accounting update:
+  - ammo now decrements by burst-sized consumption per trigger event,
+  - deck ammo counter refresh cadence increased for visible decrement.
+- 2026-03-27 | Hunter miss/fall behavior update:
+  - removed lower-deck bounce/reverse behavior,
+  - falling hunters now continue off bottom of screen before reset.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2375680 bytes`
+  - `verified 2374456 bytes`

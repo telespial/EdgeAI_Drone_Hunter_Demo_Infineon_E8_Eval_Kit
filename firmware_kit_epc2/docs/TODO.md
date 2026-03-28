@@ -118,7 +118,7 @@ Status: Not started
 ---
 
 ## Phase 5 - Attacker Strategy Layer (16 Launch Sites)
-Status: Partially started (site selection exists, no player strategy UI yet)
+Status: In progress (16-site pressure model + 8-sector hunter launch distribution in code; no player strategy UI yet)
 
 ### Objectives
 - Turn attack spawning into explicit strategic pressure.
