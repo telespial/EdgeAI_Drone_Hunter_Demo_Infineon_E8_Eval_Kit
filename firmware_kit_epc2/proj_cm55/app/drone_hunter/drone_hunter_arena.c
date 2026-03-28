@@ -46,9 +46,11 @@
 #define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
+#define CITY_FIRE_RENDER_MAX      (24)
 #define HUD_H                     (72)
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
+#define ATTACK_SPRITE_STABLE_ONLY (1)
 
 #define COMMIT_REASON_READY       (0)
 #define COMMIT_REASON_DETECT_LOW  (1)
@@ -403,6 +405,10 @@ static float depth_zoom_factor_for_y(const drone_hunter_scene_t *s, float y)
 
 static float clampf(float v, float lo, float hi)
 {
+    if (isnan(v))
+    {
+        return lo;
+    }
     if (v < lo)
     {
         return lo;
@@ -423,6 +429,10 @@ static float dist2(float ax, float ay, float bx, float by)
 
 static void set_obj_center(lv_obj_t *obj, float x, float y)
 {
+    if (isnan(x) || isnan(y))
+    {
+        return;
+    }
     int32_t w = lv_obj_get_width(obj);
     int32_t h = lv_obj_get_height(obj);
     lv_obj_set_pos(obj, (int32_t)(x - (float)w * 0.5f), (int32_t)(y - (float)h * 0.5f));
@@ -904,6 +914,13 @@ static hunter_type_t choose_conservative_hunter(drone_hunter_scene_t *s, int tar
     return best_any;
 }
 
+/* Stability guard: limit runtime launch sprites to the known-stable set. */
+static hunter_type_t sanitize_hunter_pick(hunter_type_t pick)
+{
+    (void)pick;
+    return HUNTER_STING_II;
+}
+
 static void apply_hunter_profile(drone_hunter_scene_t *s, int h)
 {
     const hunter_profile_t *p = &g_hunter_profiles[(int)s->h_type[h]];
@@ -1227,6 +1244,13 @@ static void style_target(drone_hunter_scene_t *s, int k)
     const lv_image_dsc_t *src;
     uint16_t zoom = (s->k_tier[k] >= 2) ? 205 : ((s->k_tier[k] == 1) ? 188 : 172);
 
+#if ATTACK_SPRITE_STABLE_ONLY
+    (void)s;
+    /* Stability guard: keep a known-good attack sprite source. */
+    src = &img_hunter_odin_win_hit;
+    zoom = 176;
+#else
+
     if (s->ktype[k] == TARGET_FIXED_WING)
     {
         if (s->threat_faction == THREAT_FACTION_RUSSIA)
@@ -1245,8 +1269,19 @@ static void style_target(drone_hunter_scene_t *s, int k)
         /* DJI-style X-wing quad attack drone: bright orange */
         src = &attack_dji_x_orange;
     }
+#endif
 
     lv_image_set_src(s->killers[k], src);
+    {
+        int32_t iw = lv_obj_get_width(s->killers[k]);
+        int32_t ih = lv_obj_get_height(s->killers[k]);
+        if ((iw <= 0) || (ih <= 0) || (iw > 220) || (ih > 220))
+        {
+            /* Defensive fallback for corrupted/unsupported image descriptors. */
+            lv_image_set_src(s->killers[k], &img_hunter_odin_win_hit);
+            zoom = 170;
+        }
+    }
     s->k_base_zoom[k] = zoom;
     lv_obj_set_style_transform_zoom(s->killers[k], s->k_base_zoom[k], 0);
     lv_obj_set_style_opa(s->killers[k], LV_OPA_COVER, 0);
@@ -1332,7 +1367,6 @@ static void set_killer_visible(drone_hunter_scene_t *s, int k)
 {
     s->killer_active[k] = 1;
     lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(s->killers[k]);
 }
 
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
@@ -1802,7 +1836,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float core_y)
 {
     int target = -1;
-    float ground_y = (float)lv_obj_get_height(s->screen) - 8.0f;
+    float ground_y = (float)(s->arena_y + s->arena_h) - 10.0f;
     const hunter_profile_t *p;
 
     if (!s->hunter_loaded[h] && !any_hunter_stock_remaining(s))
@@ -1885,7 +1919,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         float dy;
         float d;
         float launch_speed;
-        hunter_type_t pick = choose_conservative_hunter(s, target);
+        hunter_type_t pick = sanitize_hunter_pick(choose_conservative_hunter(s, target));
         if (s->hunter_stock[(int)pick] <= 0)
         {
             return;
@@ -2079,16 +2113,22 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                     : ((flicker > 0.38f) ? lv_color_hex(0xFB923C) : lv_color_hex(0xEF4444));
                 int32_t dx = (int32_t)((lick - 0.5f) * 4.0f);
                 int32_t dy = (int32_t)(((1.0f - flicker) * 6.0f) - 3.0f);
-                lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                lv_obj_set_size(s->city_fire[k], size, size);
-                lv_obj_set_style_radius(s->city_fire[k], LV_RADIUS_CIRCLE, 0);
-                lv_obj_set_style_bg_color(s->city_fire[k], flame_color, 0);
-                lv_obj_set_style_bg_opa(s->city_fire[k], opa, 0);
-                lv_obj_set_style_border_width(s->city_fire[k], 0, 0);
-                lv_obj_set_style_shadow_width(s->city_fire[k], 16 + (int32_t)(flicker * 10.0f), 0);
-                lv_obj_set_style_shadow_color(s->city_fire[k], lv_color_hex(0xF97316), 0);
-                lv_obj_set_style_shadow_opa(s->city_fire[k], (lv_opa_t)(90 + (int32_t)(flicker * 120.0f)), 0);
-                set_obj_center(s->city_fire[k], s->city_fire_x[k] + (float)dx, s->city_fire_y[k] + (float)dy);
+                if (k < CITY_FIRE_RENDER_MAX)
+                {
+                    lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_set_size(s->city_fire[k], size, size);
+                    lv_obj_set_style_radius(s->city_fire[k], LV_RADIUS_CIRCLE, 0);
+                    lv_obj_set_style_bg_color(s->city_fire[k], flame_color, 0);
+                    lv_obj_set_style_bg_opa(s->city_fire[k], opa, 0);
+                    lv_obj_set_style_border_width(s->city_fire[k], 0, 0);
+                    lv_obj_set_style_shadow_width(s->city_fire[k], 0, 0);
+                    lv_obj_set_style_shadow_opa(s->city_fire[k], LV_OPA_TRANSP, 0);
+                    set_obj_center(s->city_fire[k], s->city_fire_x[k] + (float)dx, s->city_fire_y[k] + (float)dy);
+                }
+                else
+                {
+                    lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                }
             }
             else
             {
@@ -2131,10 +2171,21 @@ static void update_positions(drone_hunter_scene_t *s)
     {
         int16_t angle_tenth = (int16_t)(s->h_heading[h] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
         float depth = depth_zoom_factor_for_y(s, s->hy[h]);
-        uint16_t zoom = (uint16_t)clampf((float)s->h_base_zoom[h] * depth, 140.0f, 380.0f);
+        uint16_t base_zoom = (uint16_t)clampf((float)s->h_base_zoom[h], 150.0f, 340.0f);
+        uint16_t zoom = (uint16_t)clampf((float)base_zoom * depth, 140.0f, 380.0f);
 
         int32_t hw = lv_obj_get_width(s->hunters[h]);
         int32_t hh = lv_obj_get_height(s->hunters[h]);
+        if ((hw <= 0) || (hh <= 0) || (hw > 240) || (hh > 240))
+        {
+            s->h_type[h] = HUNTER_STING_II;
+            lv_image_set_src(s->hunters[h], hunter_image_src(HUNTER_STING_II));
+            s->h_base_zoom[h] = 210;
+            hw = lv_obj_get_width(s->hunters[h]);
+            hh = lv_obj_get_height(s->hunters[h]);
+        }
+        s->hy[h] = clampf(s->hy[h], (float)s->arena_y + 6.0f, (float)(s->arena_y + s->arena_h - 10));
+        s->hx[h] = clampf(s->hx[h], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
 
         lv_obj_set_style_transform_zoom(s->hunters[h], zoom, 0);
         set_obj_center(s->hunters[h], s->hx[h], s->hy[h]);
@@ -2162,9 +2213,20 @@ static void update_positions(drone_hunter_scene_t *s)
         }
         {
             float depth = depth_zoom_factor_for_y(s, s->ky[k]);
-            uint16_t zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 130.0f, 330.0f);
+            uint16_t base_zoom = (uint16_t)clampf((float)s->k_base_zoom[k], 150.0f, 260.0f);
+            uint16_t zoom = (uint16_t)clampf((float)base_zoom * depth, 130.0f, 300.0f);
+            int32_t kw = lv_obj_get_width(s->killers[k]);
+            int32_t kh = lv_obj_get_height(s->killers[k]);
+            if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
+            {
+                lv_image_set_src(s->killers[k], &img_hunter_odin_win_hit);
+                s->k_base_zoom[k] = 176;
+                zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 130.0f, 300.0f);
+            }
             lv_obj_set_style_transform_zoom(s->killers[k], zoom, 0);
         }
+        s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, (float)(s->arena_y + s->arena_h - 6));
+        s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
         lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
         set_obj_center(s->killers[k], s->kx[k], s->ky[k]);
     }

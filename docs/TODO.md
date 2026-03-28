@@ -19,6 +19,10 @@ Primary code target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_
   - removed dead/unused helper functions from arena runtime file,
   - hardened HUD info line formatting to avoid truncation-prone composition,
   - restored code to normal baseline behavior after isolation experiments.
+- Runtime stability hotfix completed:
+  - fixed oversized launch sprite corruption,
+  - fixed arena flashing spikes,
+  - fixed gameplay freeze occurring around ~12s.
 
 ## 1. Architecture Goal
 Implement `rules.md` end-to-end as an explainable strategy game loop where every launch decision is based on:

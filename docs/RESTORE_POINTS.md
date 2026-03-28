@@ -2,9 +2,18 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-phase2-complete`
+- Dated tag: `golden-e8-drone-hunter-20260327-stability-fix`
 - Date: `2026-03-27`
 - Baseline summary:
+  - Fixed critical runtime instability:
+    - intermittent 20x-30x launch sprite corruption below icon deck,
+    - rapid arena flashing,
+    - gameplay freeze around ~12s.
+  - Stability guards now active:
+    - image dimension sanity fallback for hunter/attack sprites,
+    - hardened zoom clamps,
+    - arena-only movement bounds,
+    - reduced heavy effect rendering load.
   - Full active-target HUD telemetry integrated:
     - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
   - Rules-engine Phase 2 completed:
@@ -20,12 +29,12 @@
     - removed dead/unused helper functions,
     - tightened HUD info formatting safety.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2371584 bytes`
-  - `verified 2369544 bytes`
+  - `wrote 2322432 bytes`
+  - `verified 2320728 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-phase2-complete`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-stability-fix`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

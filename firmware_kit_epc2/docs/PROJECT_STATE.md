@@ -35,9 +35,14 @@
   - dead/unused helper functions removed,
   - HUD line formatting hardened,
   - workspace restored to normal gameplay baseline.
+- Runtime stability hotfix applied for launch-time corruption:
+  - hunter ground clamp moved to arena floor (prevents sprites dropping into icon deck),
+  - render-time dimension sanity checks for hunter/attacker image objects,
+  - base/depth zoom clamping hardened,
+  - city fire render cap to reduce frame spikes and flashing.
 
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2371584 bytes`
-  - `verified 2369544 bytes`
+  - `wrote 2322432 bytes`
+  - `verified 2320728 bytes`

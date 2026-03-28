@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Phase 2 complete baseline validated; normal baseline restored; code-quality cleanup review completed.
+- State: Stable runtime baseline validated on hardware; oversized launch sprite + flashing + ~12s freeze fixed.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2371584 bytes`
-  - `verified 2369544 bytes`
+  - `wrote 2322432 bytes`
+  - `verified 2320728 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -34,6 +34,10 @@
 - Code hygiene improvements:
   - Removed unused/dead helper functions from arena runtime.
   - Hardened HUD info text composition to avoid truncation-prone formatting.
+  - Added runtime image-dimension guards and zoom clamps to prevent invalid giant sprites.
+  - Clamped hunter/attacker movement to arena bounds to prevent icon-bar/deck bleed-through.
+  - Reduced render pressure by capping simultaneous fire renders and removing heavy shadow load.
+  - Removed attacker respawn foreground forcing that contributed to redraw flashing.
 
 ## Environment notes
 - EdgeProtect combine-sign step remains unavailable in this environment.
