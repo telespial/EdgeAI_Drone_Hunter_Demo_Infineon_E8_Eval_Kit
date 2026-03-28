@@ -26,6 +26,10 @@
   - added minimum visible launch window before intercept resolution,
   - tightened hunter zoom and ground clamp to prevent oversized bottom-edge artifacts.
 - CIWS uses gameplay arc range scaling (`CIWS_RANGE_FRAC`) instead of map-km hard cutoff, restoring visible engagements.
+- Phase 3 threat-prioritization engine is now fully wired:
+  - weighted threat score includes target-value and lane-pressure multipliers,
+  - 16-site lane-pressure model with decay + adjacent-lane spillover,
+  - deterministic active-target priority ranking from live threat score.
 - Persistent city-fire model from leak impacts, with scaling pressure.
 - CIWS near-front short-range gating + tracer visual range alignment.
 - Per-target runtime model fields implemented:
@@ -52,5 +56,5 @@
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2371584 bytes`
-  - `verified 2370368 bytes`
+  - `wrote 2375680 bytes`
+  - `verified 2371784 bytes`

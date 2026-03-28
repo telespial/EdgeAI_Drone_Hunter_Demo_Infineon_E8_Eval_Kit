@@ -2,7 +2,7 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-hunter-visibility-fix`
+- Dated tag: `golden-e8-drone-hunter-20260327-phase3-complete`
 - Date: `2026-03-27`
 - Baseline summary:
   - Attack drone render path fixed:
@@ -18,14 +18,19 @@
   - CIWS engagement restored:
     - gameplay-visible sweep range uses `CIWS_RANGE_FRAC` screen scaling,
     - no longer effectively suppressed by map-km hard-cutoff conversion.
+  - Phase 3 completed:
+    - weighted threat score formula implemented,
+    - target-value modifier implemented,
+    - 16-site lane-pressure model with decay + adjacent spillover implemented,
+    - deterministic active-target priority ordering implemented.
   - Existing stability guards and telemetry remain active.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2371584 bytes`
-  - `verified 2370368 bytes`
+  - `wrote 2375680 bytes`
+  - `verified 2371784 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-hunter-visibility-fix`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-phase3-complete`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

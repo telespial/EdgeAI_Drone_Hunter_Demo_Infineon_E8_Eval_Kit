@@ -7,8 +7,8 @@
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2371584 bytes`
-  - `verified 2370368 bytes`
+  - `wrote 2375680 bytes`
+  - `verified 2371784 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -39,6 +39,13 @@
   - Added commit hold reason telemetry counters:
     - detect/class/confidence/corridor/LOS.
   - Reduced icon-bar flashing by throttling deck UI updates during CIWS firing.
+- Phase 3 completion details:
+  - Added weighted dynamic threat formula:
+    - `Payload x Proximity/Urgency x Survivability x Confidence x TargetValueModifier x LanePressure`.
+  - Added per-target `target_value_mod` and lane-pressure weighting.
+  - Added lane-pressure model over 16 launch sites with decay + adjacent-lane spillover.
+  - Added deterministic active-target priority ordering from computed threat score.
+  - HUD telemetry now includes `TV` (target value) and `LP` (lane pressure) per active track.
 - HUD now includes full live threat telemetry for active tracks:
   - type, speed, altitude, range-to-core, ETA, threat score, recommended counter.
 - Code hygiene improvements:

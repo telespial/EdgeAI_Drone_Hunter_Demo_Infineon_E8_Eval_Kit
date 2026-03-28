@@ -40,3 +40,11 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2371584 bytes`
   - `verified 2370368 bytes`
+- 2026-03-27 | Completed Phase 3 threat score + prioritization engine:
+  - added weighted threat formula with target-value modifier and lane-pressure multiplier,
+  - added 16-site lane-pressure model (decay + adjacent-lane spillover),
+  - added deterministic priority ordering over active hostiles by threat score,
+  - added HUD telemetry fields for `TV` and `LP`.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2375680 bytes`
+  - `verified 2371784 bytes`

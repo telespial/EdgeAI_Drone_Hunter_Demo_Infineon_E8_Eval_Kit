@@ -47,6 +47,7 @@
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
 #define CITY_FIRE_RENDER_MAX      (24)
+#define LANE_SITE_COUNT           (16)
 #define HUD_H                     (72)
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
@@ -266,6 +267,10 @@ typedef struct
     float k_range_to_core[KILLER_COUNT];
     float k_eta_to_goal[KILLER_COUNT];
     int k_priority_rank[KILLER_COUNT];
+    int k_spawn_site[KILLER_COUNT];
+    float k_target_value_mod[KILLER_COUNT];
+    float k_lane_pressure[KILLER_COUNT];
+    float lane_pressure[LANE_SITE_COUNT];
     hunter_type_t k_recommended_counter[KILLER_COUNT];
     int k_detect_ok[KILLER_COUNT];
     int k_class_ok[KILLER_COUNT];
@@ -316,6 +321,7 @@ typedef struct
 
 static drone_hunter_scene_t g_scene;
 static float clampf(float v, float lo, float hi);
+static float dist2(float ax, float ay, float bx, float by);
 static void update_hunter_deck_ui(drone_hunter_scene_t *s);
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side);
 
@@ -359,6 +365,35 @@ static int lane_from_fraction(float t)
         return 2;
     }
     return 3;
+}
+
+static int lane_site_edge(int site)
+{
+    return (site / 4) & 0x3;
+}
+
+static int lane_site_lane(int site)
+{
+    return site & 0x3;
+}
+
+static float target_value_modifier(const drone_hunter_scene_t *s, float gx, float gy, float core_x, float core_y)
+{
+    float ax = (float)s->arena_x + ((float)s->arena_w * 0.36f);
+    float ay = (float)s->arena_y + ((float)s->arena_h * 0.68f);
+    float bx = core_x;
+    float by = (float)s->arena_y + ((float)s->arena_h * 0.74f);
+    float cx = (float)s->arena_x + ((float)s->arena_w * 0.66f);
+    float cy = (float)s->arena_y + ((float)s->arena_h * 0.70f);
+    float d0 = sqrtf(dist2(gx, gy, ax, ay));
+    float d1 = sqrtf(dist2(gx, gy, bx, by));
+    float d2 = sqrtf(dist2(gx, gy, cx, cy));
+    float dmin = fminf(d0, fminf(d1, d2));
+    float diag = sqrtf(((float)s->arena_w * (float)s->arena_w) + ((float)s->arena_h * (float)s->arena_h));
+    float near_asset = 1.0f - clampf(dmin / clampf(diag, 1.0f, 8000.0f), 0.0f, 1.0f);
+    float y_norm = clampf((gy - (float)s->arena_y) / clampf((float)s->arena_h, 1.0f, 4000.0f), 0.0f, 1.0f);
+    float v = 1.0f + (near_asset * 0.90f) + (y_norm * 0.25f);
+    return clampf(v, 0.80f, 2.40f);
 }
 
 static int choose_spawn_site(drone_hunter_scene_t *s, int k, float goal_x, float goal_y)
@@ -756,7 +791,43 @@ static const char *commit_reason_name(int reason)
 
 static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float core_y)
 {
+    int i;
     int k;
+
+    for (i = 0; i < LANE_SITE_COUNT; ++i)
+    {
+        s->lane_pressure[i] = clampf((s->lane_pressure[i] * 0.985f) - 0.004f, 0.0f, 8.0f);
+    }
+    for (k = 0; k < KILLER_COUNT; ++k)
+    {
+        if (s->killer_active[k])
+        {
+            int site = s->k_spawn_site[k];
+            int edge;
+            int lane;
+            float add;
+
+            if (site < 0 || site >= LANE_SITE_COUNT)
+            {
+                site = choose_spawn_site(s, k, s->k_goal_x[k], s->k_goal_y[k]);
+            }
+            edge = lane_site_edge(site);
+            lane = lane_site_lane(site);
+            add = 0.12f + (s->k_payload_score[k] * 0.16f) + (s->k_survivability[k] * 0.10f);
+            s->lane_pressure[site] = clampf(s->lane_pressure[site] + add, 0.0f, 8.0f);
+            if (lane > 0)
+            {
+                int left_site = (edge * 4) + (lane - 1);
+                s->lane_pressure[left_site] = clampf(s->lane_pressure[left_site] + (add * 0.32f), 0.0f, 8.0f);
+            }
+            if (lane < 3)
+            {
+                int right_site = (edge * 4) + (lane + 1);
+                s->lane_pressure[right_site] = clampf(s->lane_pressure[right_site] + (add * 0.32f), 0.0f, 8.0f);
+            }
+        }
+    }
+
     for (k = 0; k < KILLER_COUNT; ++k)
     {
         if (!s->killer_active[k])
@@ -766,6 +837,8 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
             s->k_range_to_core[k] = 0.0f;
             s->k_eta_to_goal[k] = 0.0f;
             s->k_priority_rank[k] = 0;
+            s->k_target_value_mod[k] = 0.0f;
+            s->k_lane_pressure[k] = 0.0f;
             s->k_recommended_counter[k] = HUNTER_STING_II;
             s->k_detect_ok[k] = 0;
             s->k_class_ok[k] = 0;
@@ -785,6 +858,15 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
         s->k_eta_to_goal[k] = sqrtf(dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k])) /
                               clampf(attack_speed_score(s, k), 0.3f, 4.0f);
         s->k_recommended_counter[k] = recommended_hunter_for_target(s, k);
+        s->k_target_value_mod[k] = target_value_modifier(s, s->k_goal_x[k], s->k_goal_y[k], core_x, core_y);
+        if (s->k_spawn_site[k] >= 0 && s->k_spawn_site[k] < LANE_SITE_COUNT)
+        {
+            s->k_lane_pressure[k] = s->lane_pressure[s->k_spawn_site[k]];
+        }
+        else
+        {
+            s->k_lane_pressure[k] = 0.0f;
+        }
         s->k_priority_rank[k] = 1;
         {
             float far_grid = 1.0f - clampf((s->ky[k] - (float)s->arena_y) / clampf((float)s->arena_h, 1.0f, 4000.0f), 0.0f, 1.0f);
@@ -809,6 +891,16 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
         {
             int emergency = (s->k_eta_to_goal[k] <= 1.2f);
             float urgency = clampf((2.8f - s->k_eta_to_goal[k]) / 2.8f, 0.0f, 1.0f);
+            float confidence = clampf((s->k_detect_conf[k] + s->k_class_conf[k]) * 0.5f, 0.10f, 1.0f);
+            float lane_mult = 1.0f + (clampf(s->k_lane_pressure[k], 0.0f, 4.0f) * 0.12f);
+
+            s->k_threat_score[k] = s->k_payload_score[k] *
+                                   (1.0f + urgency * 1.30f) *
+                                   s->k_survivability[k] *
+                                   confidence *
+                                   s->k_target_value_mod[k] *
+                                   lane_mult;
+
             s->k_commit_conf[k] = clampf((s->k_detect_conf[k] * 0.40f) +
                                          (s->k_class_conf[k] * 0.35f) +
                                          (s->k_track_history[k] * 0.15f) +
@@ -841,15 +933,36 @@ static void refresh_target_metrics(drone_hunter_scene_t *s, float core_x, float 
 
     if (s->killer_active[0] && s->killer_active[1])
     {
-        if (s->k_threat_score[0] >= s->k_threat_score[1])
+        int active_idx[KILLER_COUNT];
+        int n = 0;
+        for (k = 0; k < KILLER_COUNT; ++k)
         {
-            s->k_priority_rank[0] = 1;
-            s->k_priority_rank[1] = 2;
+            if (s->killer_active[k])
+            {
+                active_idx[n++] = k;
+            }
         }
-        else
+        for (i = 0; i < n; ++i)
         {
-            s->k_priority_rank[0] = 2;
-            s->k_priority_rank[1] = 1;
+            int j;
+            int best = i;
+            for (j = i + 1; j < n; ++j)
+            {
+                if (s->k_threat_score[active_idx[j]] > s->k_threat_score[active_idx[best]])
+                {
+                    best = j;
+                }
+            }
+            if (best != i)
+            {
+                int tmp = active_idx[i];
+                active_idx[i] = active_idx[best];
+                active_idx[best] = tmp;
+            }
+        }
+        for (i = 0; i < n; ++i)
+        {
+            s->k_priority_rank[active_idx[i]] = i + 1;
         }
 
         /* Corridor/deconfliction: if both threats are nearly co-linear from core, hold lower-priority lane. */
@@ -1471,6 +1584,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
         int site = (side >= 0 && side < 16) ? side : choose_spawn_site(s, k, s->k_goal_x[k], s->k_goal_y[k]);
         edge = (site / 4) & 0x3;
         lane = site & 0x3;
+        s->k_spawn_site[k] = site;
     }
     lane_t = ((float)lane + 0.5f) * 0.25f; /* 0.125, 0.375, 0.625, 0.875 */
 
@@ -1631,6 +1745,9 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_range_to_core[i] = 0.0f;
         s->k_eta_to_goal[i] = 0.0f;
         s->k_priority_rank[i] = 0;
+        s->k_spawn_site[i] = 0;
+        s->k_target_value_mod[i] = 0.0f;
+        s->k_lane_pressure[i] = 0.0f;
         s->k_recommended_counter[i] = HUNTER_STING_II;
         s->k_detect_ok[i] = 0;
         s->k_class_ok[i] = 0;
@@ -1641,6 +1758,10 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_noise[i] = 0.0f;
         s->k_commit_conf[i] = 0.0f;
         s->k_commit_reason[i] = COMMIT_REASON_NO_TARGET;
+    }
+    for (i = 0; i < LANE_SITE_COUNT; ++i)
+    {
+        s->lane_pressure[i] = 0.0f;
     }
 
     reset_hunters(s);
@@ -2309,7 +2430,7 @@ static void update_hud(drone_hunter_scene_t *s)
         {
             int k0 = active_idx[0];
             (void)snprintf(tline0, sizeof(tline0),
-                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s D%.0f C%.0f M%.0f %s",
+                           "P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f TV%.2f LP%.1f REC:%s D%.0f C%.0f M%.0f %s",
                            s->k_priority_rank[k0],
                            target_type_name(s, k0),
                            s->k_speed_est[k0],
@@ -2317,6 +2438,8 @@ static void update_hud(drone_hunter_scene_t *s)
                            s->k_range_to_core[k0] * km_per_px,
                            s->k_eta_to_goal[k0],
                            s->k_threat_score[k0],
+                           s->k_target_value_mod[k0],
+                           s->k_lane_pressure[k0],
                            hunter_type_short_name(s->k_recommended_counter[k0]),
                            s->k_detect_conf[k0] * 100.0f,
                            s->k_class_conf[k0] * 100.0f,
@@ -2332,7 +2455,7 @@ static void update_hud(drone_hunter_scene_t *s)
         {
             int k1 = active_idx[1];
             (void)snprintf(tline1, sizeof(tline1),
-                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f REC:%s D%.0f C%.0f M%.0f %s",
+                           " | P%d %s V%.0f A%.1f R%.1f ETA%.1f T%.1f TV%.2f LP%.1f REC:%s D%.0f C%.0f M%.0f %s",
                            s->k_priority_rank[k1],
                            target_type_name(s, k1),
                            s->k_speed_est[k1],
@@ -2340,6 +2463,8 @@ static void update_hud(drone_hunter_scene_t *s)
                            s->k_range_to_core[k1] * km_per_px,
                            s->k_eta_to_goal[k1],
                            s->k_threat_score[k1],
+                           s->k_target_value_mod[k1],
+                           s->k_lane_pressure[k1],
                            hunter_type_short_name(s->k_recommended_counter[k1]),
                            s->k_detect_conf[k1] * 100.0f,
                            s->k_class_conf[k1] * 100.0f,

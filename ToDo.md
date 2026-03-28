@@ -79,7 +79,7 @@ Status: Complete
 ---
 
 ## Phase 3 - Threat Score + Prioritization Engine
-Status: In progress (seed in place)
+Status: Complete
 
 ### Objectives
 - Implement full weighted threat scoring from `rules.md`.
@@ -283,8 +283,7 @@ Status: Ongoing
 ---
 
 ## Immediate Next Sprint (execution order)
-1. Begin Phase 3 full threat-priority queue with lane-pressure weighting.
-2. Complete Phase 4 matchup matrix with explicit penalties and overkill prevention.
-3. Complete Phase 6 CIWS heat/lock telemetry in HUD.
-4. Add Phase 8 explainability reasons in round-time text.
-5. Reflash and validate on hardware before next tag promotion.
+1. Complete Phase 4 matchup matrix with explicit penalties and overkill prevention.
+2. Complete Phase 6 CIWS heat/lock telemetry in HUD.
+3. Add Phase 8 explainability reasons in round-time text.
+4. Reflash and validate on hardware before next tag promotion.
