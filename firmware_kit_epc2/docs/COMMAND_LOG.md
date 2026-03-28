@@ -330,3 +330,9 @@
   - refreshed `README.md`, `docs/STATUS.md`, `docs/OPS_RUNBOOK.md`, `docs/TODO.md`, `ToDo.md`, and `docs/HARDWARE_SETUP.md` to current baseline.
 - 2026-03-28 | Restore-point docs updated:
   - set new dated golden/failsafe target names in `docs/RESTORE_POINTS.md` for depth-scaled class-FX baseline.
+- 2026-03-28 | Docs + restore hardening release:
+  - rewrote root README for GitHub-facing project overview and verified recovery path,
+  - cleaned and condensed TODO into phase matrix + focused Phase 14/15 execution scope,
+  - refreshed STATUS/PROJECT_STATE/RESTORE docs with latest validated 3-image programming signatures,
+  - created and pushed golden tag `golden-2026-03-28-docs-release`,
+  - intentionally left failsafe tags unchanged.

@@ -1,95 +1,70 @@
-# EdgeAI Drone Hunter Demo - Infineon E8 Eval Kit
+# EdgeAI Drone Hunter (PSoC Edge E84 / KIT_PSE84_EVAL_EPC2)
 
-Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch LCD.
+A real-time attacker-vs-defender drone interception game/demo running on Infineon PSoC Edge E84 with a 4.3-inch Waveshare display.
 
-## Current baseline (2026-03-28)
-- Two-player gameplay model: `Hunter` vs `Attacker` points.
-- Attack goals distributed across the playable city area (not bottom-pinned).
-- Leaked attack drones impact city targets and trigger explosions.
-- Persistent city fires remain after leaks and grow as defender performance drops.
-- Dual CIWS emplacements with sweep-arc behavior and finite per-gun ammo.
-- CIWS now tuned as last-ditch defense with effective/hard-cutoff range behavior and overuse penalties.
-- CIWS ammo now visibly decrements by burst-sized trigger consumption (left/right counters).
-  - current burn-rate setting is `CIWS_AMMO_PER_TRIGGER = 24` (4x prior value).
-- CIWS doctrine finalization now active:
-  - per-gun lock-quality modeling,
-  - stronger misuse penalties via extra cooldown/reaction delay under bad geometry,
-  - live per-gun ammo/heat/lock telemetry in HUD,
-  - per gun starting ammo = `2 x 1550` rounds (`3,100`),
-  - effective/hard range tuned to `1.5 km` / `5.0 km`.
-- Attack classes use rendered image assets:
-  - `Shahed`-style bright yellow fixed-wing
-  - red VB140-like fixed-wing
-  - orange DJI-style X-wing
-- Hunter inventory deck + stock counters remain active.
-- Hunter launches now originate from 8 hidden city sectors with nearest-target + nearest-stock fallback.
-- Missed/failed hunters now continue descending off bottom screen instead of bouncing at deck boundary.
-- Phase 5 attacker strategy layer is active with 16-site spawn control:
-  - `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`.
-- On-device control:
-  - `Mode` button click = cycle match mode,
-  - `Mode` button long-press = cycle attacker strategy.
-- Continuous gameplay with phase HUD retained.
-- Phase 10 wave pacing advanced:
-  - rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
-  - composition-driven difficulty and mid-wave strategy shifts in `AUTO`.
-- Phase 7 completed:
-  - defender HUD panel now includes stock/endurance/availability, envelope fit, CIWS lock, and CIWS cooldown telemetry.
-- Phase 11 completed:
-  - round-end now uses inventory exhaustion mode:
-    - defender loss when defense inventory/layer is exhausted,
-    - defender win when attacker inventory is exhausted.
-- Phase 8 completed:
-  - explicit wrong-choice penalties (range/altitude/overkill/CIWS misuse/manual low-confidence),
-  - live `WHY` failure explainability cues in HUD.
-- Phase 9 completed:
-  - optional advanced IFF mode toggle (long-press Phalanx deck item),
-  - blue-on-blue enabled only under strict combined-failure gate,
-  - collateral + recovery telemetry wired (`FF`, `COL`, recovery timer).
-- HUD score/menu polish:
-  - dedicated left/right score labels with control tags and zero-padded counters,
-  - shortened top-right pill `SET   |   HELP` with split-touch Settings/Help popup behavior.
-- Hunter kill visual feedback:
-  - class-specific blast profiles:
-    - Shahed: giant orange explosion,
-    - red fixed-wing: medium white circular explosion,
-    - orange DJI X-wing: small bright white circular explosion.
-  - explosion anchor now uses rendered target center for both hunter and CIWS kills.
-  - explosion size now scales with scene depth (larger near screen bottom, smaller toward top).
-- Phase 14 specification added (planned):
-  - `ALGO` is baseline attacker+defender function logic,
-  - `EDGEAI` is an embedded intelligence layer that improves ALGO via trained/adaptive reasoning.
-- Phase 13 completed:
-  - hunters continuously re-steer while committed,
-  - swept-hit collision checks reduce fly-past misses,
-  - reacquire path and telemetry counters (`SH`, `RQ`, `OS`) are active,
-  - guidance calibration pass added class-aware lead/speed tuning + near-intercept overshoot damping,
-  - terminal miss WHY messaging added for target-loss/no-reacquire and evasion misses.
-- Display flicker mitigation applied:
-  - HUD text updates are rate-limited to reduce occasional redraw shimmer.
-- CIWS strategy refinement:
-  - constrained accidental CIWS-on-hunter risk window is defined in rules,
-  - fratricide event consumes hunter supply while attacker kill outcome remains uncertain.
+This repo now includes a verified golden recovery workflow and documented board restore path.
 
-## Rules spec
-- Canonical rules are documented in `rules.md`.
+## Hardware + Target
+- Board: `KIT_PSE84_EVAL_EPC2` (`PSE846GPS2DBZC4A`)
+- Display path: `W4P3INCH_DISP`
+- Main gameplay runtime: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
-## Build + Flash (validated path)
+## What Is Implemented
+- Full gameplay loop with attacker/defender scoring
+- Attack classes and class-specific kill FX
+- CIWS doctrine with finite ammo, lock/heat penalties, effective/hard range behavior
+- Mission/wave progression and inventory exhaustion end mode
+- Explainability telemetry (`WHY`) for failures and bad choices
+- Hunter guidance hardening (continuous steer, swept-hit checks, reacquire path)
+- Flicker mitigation on HUD refresh path
+- Golden recovery + board restore documentation
+
+## Phase Status
+- Complete: Phases `1` through `13`
+- Planned: Phases `14` and `15`
+- Canonical phase tracker: [`ToDo.md`](./ToDo.md)
+
+## Build
 ```bash
 export CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7
 export CY_COMPILER_GCC_ARM_DIR=/home/user/.local/opt/xpack-arm-none-eabi-gcc-14.2.1-1.1
 
 make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8
+```
+
+## Flash (Standard)
+```bash
 make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1
 ```
 
-Latest flash confirmation:
-- `wrote 2408448 bytes`
-- `verified 2404648 bytes`
+## Flash (Known-Good Recovery Sequence)
+The known-good restore sequence programs all required images in order:
+1. `proj_cm33_s_signed.hex`
+2. `proj_cm33_ns_shifted.hex`
+3. `proj_cm55.hex`
 
-Memory snapshot from latest programmed image:
-- External SMIF flash usage: `2,404,648 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
-- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,360 bytes` (`~4.59x` too large).
+Use the packaged script:
+```bash
+bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
+```
 
-## Restore points
-See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.
+## Current Golden/Failsafe Policy
+- Golden: advances to latest verified project milestone
+- Failsafe: remains pinned to the current validated runtime baseline until explicitly changed
+- Details: [`docs/RESTORE_POINTS.md`](./docs/RESTORE_POINTS.md)
+
+## Memory Snapshot (Current Runtime Baseline)
+- External SMIF used (CM55 image): `2,408,448 bytes`
+- External SMIF verified: `2,406,412 bytes`
+- External capacity: `134,217,728 bytes`
+
+## Documentation Index
+- Project status: [`docs/STATUS.md`](./docs/STATUS.md)
+- Current state: [`docs/PROJECT_STATE.md`](./docs/PROJECT_STATE.md)
+- Restore points: [`docs/RESTORE_POINTS.md`](./docs/RESTORE_POINTS.md)
+- Command history: [`docs/COMMAND_LOG.md`](./docs/COMMAND_LOG.md)
+- Roadmap/TODO: [`ToDo.md`](./ToDo.md)
+
+## Notes
+- EdgeProtect combine-sign tooling may be unavailable in some shells; use the validated build/flash flow documented in `docs`.
+- If board appears blank after partial programming, run the full 3-image recovery script above.
