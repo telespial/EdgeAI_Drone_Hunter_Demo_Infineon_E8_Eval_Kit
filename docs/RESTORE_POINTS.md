@@ -1,18 +1,19 @@
 # RESTORE_POINTS
 
-## Golden restore point (updated)
-- Tag: `golden-2026-03-28-docs-release`
+## Golden restore point (new)
+- Tag: `golden-2026-03-28-phase14-validated`
 - Date: `2026-03-28`
 - Purpose:
-  - lock in documentation cleanup + recovery procedure hardening,
-  - capture known-good board restore workflow.
+  - capture Phase 14 completion,
+  - capture the validated board flash signatures,
+  - publish updated docs/README and roadmap status.
 
-## Failsafe restore point (unchanged)
+## Failsafe restore point (new)
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-plus-exhaustion-and-ciws-doctrine`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase14-validated`
 - Policy:
-  - intentionally not moved during this docs-only golden update,
-  - remains pinned to current validated runtime build line.
+  - pinned to the latest known-good runtime baseline that can be restored directly,
+  - moved together with this Phase 14 validated release.
 
 ## Verified recovery programming sequence
 Program in this order:
@@ -23,12 +24,12 @@ Program in this order:
 Successful verification signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2408448 bytes` / `verified 2406412 bytes`
+- `wrote 2408448 bytes` / `verified 2407264 bytes`
 
 ## Restore commands
 ```bash
 git fetch --tags
-git checkout golden-2026-03-28-docs-release
+git checkout golden-2026-03-28-phase14-validated
 # or failsafe baseline
 # git checkout failsafe-e8-drone-hunter
 ```

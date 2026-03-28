@@ -60,6 +60,11 @@
 #define ARENA_MARGIN_X            (24)
 #define ATTACK_SPRITE_STABLE_ONLY (0)
 #define HUD_REFRESH_SEC           (0.10f)
+#define H_LOCK_PERSIST_ALGO_SEC   (0.62f)
+#define H_LOCK_PERSIST_EDGE_SEC   (0.42f)
+#define H_SWITCH_COOLDOWN_ALGO    (0.54f)
+#define H_SWITCH_COOLDOWN_EDGE    (0.34f)
+#define ATTACK_EVADE_RADIUS_FRAC  (0.23f)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_WHITE  (1)
@@ -264,6 +269,8 @@ typedef struct
     float h_launch_penalty[HUNTER_COUNT];
     float h_last_target_d2[HUNTER_COUNT];
     float h_overshoot_cooldown[HUNTER_COUNT];
+    float h_lock_persist_t[HUNTER_COUNT];
+    float h_switch_cooldown_t[HUNTER_COUNT];
 
     float kx[KILLER_COUNT];
     float ky[KILLER_COUNT];
@@ -345,6 +352,12 @@ typedef struct
     int h_swept_hit_events;
     int h_reacquire_events;
     int h_overshoot_events;
+    int h_opportunistic_switch_events;
+    int attacker_evasion_events;
+    int attacker_goal_detonations;
+    int attacker_algo_ticks;
+    int attacker_edgeai_overrides;
+    int attacker_edgeai_fallbacks;
     int fail_range_mismatch;
     int fail_altitude_mismatch;
     int fail_overkill;
@@ -408,6 +421,7 @@ typedef struct
 static drone_hunter_scene_t g_scene;
 static float clampf(float v, float lo, float hi);
 static float dist2(float ax, float ay, float bx, float by);
+static float threat_required_score(const drone_hunter_scene_t *s, int k);
 static void update_hunter_deck_ui(drone_hunter_scene_t *s);
 static void respawn_killer(drone_hunter_scene_t *s, int k, int side);
 static void set_killer_hidden(drone_hunter_scene_t *s, int k);
@@ -822,6 +836,21 @@ static float wrap_angle_pi(float a)
         a += 2.0f * PI_F;
     }
     return a;
+}
+
+static int normalize_vec2(float *x, float *y)
+{
+    float m2 = (*x * *x) + (*y * *y);
+    if (m2 <= 1.0e-6f)
+    {
+        return 0;
+    }
+    {
+        float inv = 1.0f / sqrtf(m2);
+        *x *= inv;
+        *y *= inv;
+    }
+    return 1;
 }
 
 static int iff_tracks_merged(const drone_hunter_scene_t *s, float core_x, float core_y)
@@ -1399,6 +1428,88 @@ static int choose_hunter_reacquire_target(const drone_hunter_scene_t *s, int h, 
         score = (s->k_threat_score[k] * 0.68f) +
                 (proximity_q * 0.24f) +
                 (s->k_commit_conf[k] * 0.08f);
+        if (score > best_score)
+        {
+            best_score = score;
+            best = k;
+        }
+    }
+    return best;
+}
+
+static int choose_hunter_opportunistic_target(const drone_hunter_scene_t *s, int h, int committed, const hunter_profile_t *p)
+{
+    int k;
+    int best = -1;
+    float best_score = -1.0e30f;
+    controller_t ctrl = s->team_ctrl[h];
+    float speed = sqrtf((s->hvx[h] * s->hvx[h]) + (s->hvy[h] * s->hvy[h]));
+    float heading = (speed > 0.05f) ? atan2f(s->hvy[h], s->hvx[h]) : s->h_heading[h];
+    float lookahead = clampf(speed * 18.0f, 12.0f, 56.0f);
+    float seg_bx = s->hx[h] + (cosf(heading) * lookahead);
+    float seg_by = s->hy[h] + (sinf(heading) * lookahead);
+    float eta_locked = 999.0f;
+    float cap = hunter_capability_score(s->h_type[h]);
+    float req_locked = threat_required_score(s, committed);
+    float p_locked = clampf(0.34f + ((cap - req_locked) * 0.22f) - s->h_launch_penalty[h], 0.05f, 0.95f);
+    float path_gate = p->kill_radius * ((ctrl == CTRL_EDGEAI) ? 2.7f : 2.2f);
+    float easy_gate = (ctrl == CTRL_EDGEAI) ? 0.60f : 0.72f;
+    float eta_gain_gate = (ctrl == CTRL_EDGEAI) ? -0.10f : 0.25f;
+    float commit_urgency = s->k_eta_to_goal[committed];
+
+    if ((committed < 0) || !s->killer_active[committed] || s->k_dying[committed])
+    {
+        return -1;
+    }
+    speed = clampf(speed, 0.45f, 4.0f);
+    eta_locked = sqrtf(dist2(s->hx[h], s->hy[h], s->kx[committed], s->ky[committed])) / speed;
+
+    for (k = 0; k < KILLER_COUNT; ++k)
+    {
+        float eta_alt;
+        float eta_gain;
+        float req_alt;
+        float p_alt;
+        float d2_path;
+        float ang_alt;
+        float turn_need;
+        float score;
+        int in_path;
+        int easy;
+        int low_abandon_risk;
+        if ((k == committed) || !s->killer_active[k] || s->k_dying[k])
+        {
+            continue;
+        }
+        if (target_has_assigned_hunter(s, k))
+        {
+            continue;
+        }
+        eta_alt = sqrtf(dist2(s->hx[h], s->hy[h], s->kx[k], s->ky[k])) / speed;
+        eta_gain = eta_locked - eta_alt;
+        req_alt = threat_required_score(s, k);
+        p_alt = clampf(0.34f + ((cap - req_alt) * 0.22f) - s->h_launch_penalty[h], 0.05f, 0.95f);
+        d2_path = segment_point_dist2(s->hx[h], s->hy[h], seg_bx, seg_by, s->kx[k], s->ky[k]);
+        in_path = (d2_path < (path_gate * path_gate));
+        easy = (p_alt >= easy_gate);
+        low_abandon_risk = (commit_urgency > 2.0f) || in_path || (p_alt > (p_locked + 0.12f));
+        if (!low_abandon_risk)
+        {
+            continue;
+        }
+        if (!in_path && !(easy && (eta_gain > eta_gain_gate)))
+        {
+            continue;
+        }
+        ang_alt = atan2f(s->ky[k] - s->hy[h], s->kx[k] - s->hx[h]);
+        turn_need = fabsf(wrap_angle_pi(ang_alt - heading));
+        score = 0.0f;
+        score += (in_path ? 1.25f : 0.0f);
+        score += (easy ? 0.68f : 0.0f);
+        score += eta_gain * 0.52f;
+        score += (p_alt - p_locked) * 1.20f;
+        score += s->k_threat_score[k] * 0.26f;
+        score -= turn_need * 0.55f;
         if (score > best_score)
         {
             best_score = score;
@@ -2660,6 +2771,8 @@ static void reset_hunters(drone_hunter_scene_t *s)
         s->h_launch_penalty[i] = 0.0f;
         s->h_last_target_d2[i] = 0.0f;
         s->h_overshoot_cooldown[i] = 0.0f;
+        s->h_lock_persist_t[i] = 0.0f;
+        s->h_switch_cooldown_t[i] = 0.0f;
         apply_hunter_profile(s, i);
     }
 }
@@ -2779,6 +2892,12 @@ static void reset_round(drone_hunter_scene_t *s)
     s->h_swept_hit_events = 0;
     s->h_reacquire_events = 0;
     s->h_overshoot_events = 0;
+    s->h_opportunistic_switch_events = 0;
+    s->attacker_evasion_events = 0;
+    s->attacker_goal_detonations = 0;
+    s->attacker_algo_ticks = 0;
+    s->attacker_edgeai_overrides = 0;
+    s->attacker_edgeai_fallbacks = 0;
     s->fail_range_mismatch = 0;
     s->fail_altitude_mismatch = 0;
     s->fail_overkill = 0;
@@ -3055,16 +3174,120 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         float d = sqrtf((dir_x * dir_x) + (dir_y * dir_y));
         float noise_x = sinf(s->t * (2.0f + 0.4f * (float)k) + (float)k);
         float noise_y = cosf(s->t * (1.7f + 0.2f * (float)k) + (float)k);
+        float evade_x = 0.0f;
+        float evade_y = 0.0f;
+        float goal_x = 0.0f;
+        float goal_y = 0.0f;
+        float algo_x;
+        float algo_y;
+        float move_x;
+        float move_y;
+        float evade_weight = 0.0f;
+        int hh;
+        int use_edge = (s->team_ctrl[1] == CTRL_EDGEAI);
+        float evade_r = clampf((float)s->arena_w * ATTACK_EVADE_RADIUS_FRAC, 26.0f, 130.0f);
+        float evade_r2 = evade_r * evade_r;
 
         if (d > 1.0f)
         {
             dir_x /= d;
             dir_y /= d;
         }
+        goal_x = dir_x;
+        goal_y = dir_y;
+        (void)normalize_vec2(&goal_x, &goal_y);
+
+        for (hh = 0; hh < HUNTER_COUNT; ++hh)
+        {
+            float hx;
+            float hy;
+            float dx;
+            float dy;
+            float hd2;
+            float hd;
+            float away_x;
+            float away_y;
+            float pressure;
+            if (!s->hunter_loaded[hh] || (s->h_falling[hh] != 0))
+            {
+                continue;
+            }
+            hx = s->hx[hh];
+            hy = s->hy[hh];
+            dx = s->kx[k] - hx;
+            dy = s->ky[k] - hy;
+            hd2 = (dx * dx) + (dy * dy);
+            if (hd2 > evade_r2)
+            {
+                continue;
+            }
+            hd = sqrtf(clampf(hd2, 0.0001f, 1.0e9f));
+            away_x = dx / hd;
+            away_y = dy / hd;
+            pressure = 1.0f - clampf(hd / evade_r, 0.0f, 1.0f);
+            evade_x += away_x * (0.88f + (pressure * 0.62f));
+            evade_y += away_y * (0.88f + (pressure * 0.62f));
+            if (use_edge)
+            {
+                float hx_future = hx + (s->hvx[hh] * 12.0f);
+                float hy_future = hy + (s->hvy[hh] * 12.0f);
+                float fx = s->kx[k] - hx_future;
+                float fy = s->ky[k] - hy_future;
+                float fd2 = (fx * fx) + (fy * fy);
+                float fd = sqrtf(clampf(fd2, 0.0001f, 1.0e9f));
+                evade_x += (fx / fd) * (pressure * 0.55f);
+                evade_y += (fy / fd) * (pressure * 0.55f);
+            }
+            evade_weight += pressure;
+        }
+        if (normalize_vec2(&evade_x, &evade_y))
+        {
+            float evasive_mix = clampf(0.35f + (evade_weight * 0.95f), 0.0f, 1.45f);
+            algo_x = (goal_x * (1.15f - (evasive_mix * 0.25f))) + (evade_x * evasive_mix);
+            algo_y = (goal_y * (1.15f - (evasive_mix * 0.25f))) + (evade_y * evasive_mix);
+            if (!normalize_vec2(&algo_x, &algo_y))
+            {
+                algo_x = goal_x;
+                algo_y = goal_y;
+            }
+            if (evade_weight > 0.45f)
+            {
+                s->attacker_evasion_events++;
+            }
+        }
+        else
+        {
+            algo_x = goal_x;
+            algo_y = goal_y;
+        }
+        move_x = algo_x;
+        move_y = algo_y;
+        s->attacker_algo_ticks++;
+        if (use_edge)
+        {
+            float edge_x = algo_x;
+            float edge_y = algo_y;
+            float lane_mix = (s->attack_strategy_live == ATTACK_STRATEGY_FLANK_PRESSURE) ? 0.20f : 0.10f;
+            float lane_bias = (((k + s->wave_idx) & 0x1) == 0) ? -1.0f : 1.0f;
+            edge_x += -algo_y * lane_mix * lane_bias;
+            edge_y += algo_x * lane_mix * lane_bias;
+            edge_x += evade_x * clampf(evade_weight * 0.62f, 0.0f, 1.10f);
+            edge_y += evade_y * clampf(evade_weight * 0.62f, 0.0f, 1.10f);
+            if (normalize_vec2(&edge_x, &edge_y))
+            {
+                move_x = edge_x;
+                move_y = edge_y;
+                s->attacker_edgeai_overrides++;
+            }
+            else
+            {
+                s->attacker_edgeai_fallbacks++;
+            }
+        }
 
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
-            float desired = atan2f(dir_y, dir_x) + (noise_y * 0.35f);
+            float desired = atan2f(move_y, move_x) + (noise_y * 0.35f);
             float delta = desired - s->k_heading[k];
             float turn_limit = (phase == 2) ? 0.038f : 0.030f;
             float speed = attack_speed_score(s, k) * phase_speed_gain;
@@ -3086,8 +3309,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         else
         {
             float speed = (attack_speed_score(s, k) * 0.72f) * phase_speed_gain;
-            s->kvx[k] = (s->kvx[k] * 0.84f) + ((dir_x * speed) * 0.14f) + (noise_x * 0.05f);
-            s->kvy[k] = (s->kvy[k] * 0.84f) + ((dir_y * speed) * 0.14f) + (noise_y * 0.05f);
+            s->kvx[k] = (s->kvx[k] * 0.84f) + ((move_x * speed) * 0.14f) + (noise_x * 0.05f);
+            s->kvy[k] = (s->kvy[k] * 0.84f) + ((move_y * speed) * 0.14f) + (noise_y * 0.05f);
         }
 
         s->kx[k] += s->kvx[k];
@@ -3157,6 +3380,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             s->attack_leaked++;
             s->attacker_points++;
+            s->attacker_goal_detonations++;
             s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
         s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
@@ -3401,6 +3625,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_target_idx[h] = target;
         s->h_target_serial[h] = s->k_serial[target];
         s->h_reselect_sec[h] = 0.20f; /* minimum visible flight time before intercept resolve */
+        s->h_lock_persist_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_LOCK_PERSIST_EDGE_SEC : H_LOCK_PERSIST_ALGO_SEC;
+        s->h_switch_cooldown_t[h] = 0.0f;
         s->h_launch_penalty[h] = 0.0f;
         s->h_last_target_d2[h] = 0.0f;
         s->h_overshoot_cooldown[h] = 0.0f;
@@ -3470,6 +3696,14 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     }
 
     p = &g_hunter_profiles[(int)s->h_type[h]];
+    if (s->h_lock_persist_t[h] > 0.0f)
+    {
+        s->h_lock_persist_t[h] = clampf(s->h_lock_persist_t[h] - DT_SEC, 0.0f, 2.0f);
+    }
+    if (s->h_switch_cooldown_t[h] > 0.0f)
+    {
+        s->h_switch_cooldown_t[h] = clampf(s->h_switch_cooldown_t[h] - DT_SEC, 0.0f, 2.0f);
+    }
     if (s->h_overshoot_cooldown[h] > 0.0f)
     {
         s->h_overshoot_cooldown[h] = clampf(s->h_overshoot_cooldown[h] - DT_SEC, 0.0f, 2.0f);
@@ -3497,6 +3731,22 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             !s->k_dying[committed_pre] &&
             (s->k_serial[committed_pre] == s->h_target_serial[h]))
         {
+            if ((s->h_reselect_sec[h] <= 0.0f) &&
+                (s->h_lock_persist_t[h] <= 0.0f) &&
+                (s->h_switch_cooldown_t[h] <= 0.0f))
+            {
+                int opportunistic = choose_hunter_opportunistic_target(s, h, committed_pre, p);
+                if (opportunistic >= 0)
+                {
+                    s->h_target_idx[h] = opportunistic;
+                    s->h_target_serial[h] = s->k_serial[opportunistic];
+                    s->h_reselect_sec[h] = 0.10f;
+                    s->h_switch_cooldown_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_SWITCH_COOLDOWN_EDGE : H_SWITCH_COOLDOWN_ALGO;
+                    s->h_lock_persist_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_LOCK_PERSIST_EDGE_SEC : H_LOCK_PERSIST_ALGO_SEC;
+                    s->h_opportunistic_switch_events++;
+                    committed_pre = opportunistic;
+                }
+            }
             steer_hunter_toward_target(s, h, committed_pre, p);
         }
     }
@@ -3555,6 +3805,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 s->h_target_idx[h] = reacquire;
                 s->h_target_serial[h] = s->k_serial[reacquire];
                 s->h_reselect_sec[h] = 0.08f;
+                s->h_lock_persist_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_LOCK_PERSIST_EDGE_SEC : H_LOCK_PERSIST_ALGO_SEC;
+                s->h_switch_cooldown_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_SWITCH_COOLDOWN_EDGE : H_SWITCH_COOLDOWN_ALGO;
                 s->h_last_target_d2[h] = 0.0f;
                 s->h_reacquire_events++;
                 note_failure(s, "Hunter reacquire: switched to nearby active threat", NULL);
@@ -3629,6 +3881,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                         s->h_target_serial[h] = 0;
                         s->h_reselect_sec[h] = 0.10f;
                         s->h_last_target_d2[h] = 0.0f;
+                        s->h_lock_persist_t[h] = 0.0f;
+                        s->h_switch_cooldown_t[h] = 0.0f;
                         s->hvx[h] = 0.0f;
                         s->hvy[h] = 0.0f;
                         s->hx[h] = hunter_regroup_x(s, h, core_x);
@@ -3686,6 +3940,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     s->h_target_serial[h] = 0;
                     s->h_reselect_sec[h] = 0.10f;
                     s->h_last_target_d2[h] = 0.0f;
+                    s->h_lock_persist_t[h] = 0.0f;
+                    s->h_switch_cooldown_t[h] = 0.0f;
                     s->hvx[h] = 0.0f;
                     s->hvy[h] = 0.0f;
                     s->hx[h] = hunter_regroup_x(s, h, core_x);
@@ -3706,6 +3962,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     }
                     s->h_falling[h] = 1;
                     s->h_last_target_d2[h] = 0.0f;
+                    s->h_lock_persist_t[h] = 0.0f;
+                    s->h_switch_cooldown_t[h] = 0.0f;
                     if (s->hvy[h] < 0.0f)
                     {
                         s->hvy[h] *= 0.30f;
@@ -3727,6 +3985,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_reselect_sec[h] = 0.0f;
         s->h_last_target_d2[h] = 0.0f;
         s->h_overshoot_cooldown[h] = 0.0f;
+        s->h_lock_persist_t[h] = 0.0f;
+        s->h_switch_cooldown_t[h] = 0.0f;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;
@@ -3746,6 +4006,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_reselect_sec[h] = 0.0f;
         s->h_last_target_d2[h] = 0.0f;
         s->h_overshoot_cooldown[h] = 0.0f;
+        s->h_lock_persist_t[h] = 0.0f;
+        s->h_switch_cooldown_t[h] = 0.0f;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;
@@ -3765,6 +4027,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_reselect_sec[h] = 0.0f;
         s->h_last_target_d2[h] = 0.0f;
         s->h_overshoot_cooldown[h] = 0.0f;
+        s->h_lock_persist_t[h] = 0.0f;
+        s->h_switch_cooldown_t[h] = 0.0f;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;

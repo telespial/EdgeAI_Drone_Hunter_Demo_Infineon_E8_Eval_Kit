@@ -1,5 +1,16 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 14 completion build path repaired and validated:
+  - used `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55`,
+  - rebuilt `drone_hunter_arena.c` with Phase 14 movement doctrine changes,
+  - relinked fresh `proj_cm55.elf` and regenerated `build/project_hex/proj_cm55.hex`.
+- 2026-03-28 | Phase 14 validated flash pass (full 3-image recovery sequence):
+  - board: `PSE846GPS2DBZC4A` via KitProg3,
+  - OpenOCD results:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2408448 bytes` / `verified 2407264 bytes`
+    - `** Resetting Target **`
 - 2026-03-28 | Round-end doctrine update in `drone_hunter_arena.c`:
   - switched from strategic early-end conditions to inventory exhaustion mode,
   - defender loss now occurs when defense inventory/layer is exhausted,

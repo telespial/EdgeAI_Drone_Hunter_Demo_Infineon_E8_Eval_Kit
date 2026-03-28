@@ -5,8 +5,8 @@ Canonical rules source: `rules.md`
 Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
 ## Program Status Snapshot
-- Completed: Phases `1` to `13`
-- Planned: Phases `14` and `15`
+- Completed in code: Phases `1` to `14`
+- Planned: Phase `15`
 - Hardware baseline: restored and validated with full 3-image programming sequence (`cm33_s_signed`, `cm33_ns_shifted`, `cm55`).
 
 ## Phase Matrix
@@ -25,12 +25,12 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 | 11 | Win/Loss and Collateral Rules | Complete |
 | 12 | Verification + Calibration + Restore Governance | Complete |
 | 13 | Hunter Guidance + Intercept Geometry Hardening | Complete |
-| 14 | 360 Movement Doctrine + Dynamic Intercept Decisions | Planned |
+| 14 | 360 Movement Doctrine + Dynamic Intercept Decisions | Complete (built and flashed on board) |
 | 15 | Cleanup + Settings + HUD Simplification + Flash Safety | Planned |
 
 ---
 
-## Phase 14 - Planned Scope
+## Phase 14 - Implemented Scope
 ### Goal
 Implement true all-direction tactical movement and decision arbitration between baseline ALGO and adaptive EDGEAI behavior.
 
@@ -54,6 +54,17 @@ Implement true all-direction tactical movement and decision arbitration between 
 3. M14.3 hunter opportunistic switch gate + lock persistence policy.
 4. M14.4 EDGEAI path with NPU acceleration + deterministic fallback.
 5. M14.5 on-device profiling/tuning and closure criteria.
+
+### Implementation notes (2026-03-28)
+- Added attacker ALGO baseline movement arbitration using goal vector + hunter-avoidance vector.
+- Added attacker EDGEAI override path with predictive hunter avoidance and deterministic ALGO fallback.
+- Added Phase-14 telemetry counters:
+  - `attacker_algo_ticks`, `attacker_edgeai_overrides`, `attacker_edgeai_fallbacks`,
+  - `attacker_evasion_events`, `attacker_goal_detonations`,
+  - `h_opportunistic_switch_events`.
+- Added hunter lock-persistence and switch-cooldown timers with opportunistic target switching gates:
+  - switch only when path/easy-target conditions satisfy abandon-risk constraints.
+- Attack drones still detonate only at assigned goal coordinates on arrival.
 
 ---
 
@@ -82,7 +93,32 @@ Finish UX/settings cleanup and repository hygiene, while preserving reliable fla
 ---
 
 ## Immediate Execution Order
-1. Implement Phase 14 runtime behavior and telemetry gates.
-2. Validate Phase 14 on board and document closure criteria/results.
-3. Execute Phase 15 settings/HUD cleanup and final UX polish.
-4. Re-validate flash safety and publish next golden restore point.
+1. Execute Phase 15 settings/HUD cleanup and final UX polish.
+2. Re-validate flash safety after Phase 15 and publish next golden/failsafe update.
+3. Start Phase 16 audio layer implementation.
+
+---
+
+## Phase 16 - Audio Layer (City + Combat Soundscape)
+### Goal
+Add an immersive and readable audio layer for gameplay awareness and atmosphere.
+
+### Required outcomes
+- City ambience/noise bed (wind/urban background).
+- Air-raid and warning sirens tied to threat pressure and wave intensity.
+- Drone audio cues:
+  - inbound attacker drone presence and proximity scaling,
+  - hunter drone launch/flight cues.
+- Combat audio cues:
+  - explosion variants by class/scale,
+  - CIWS/gun burst audio with burst-size differentiation.
+- Mix behavior:
+  - prevent clipping during heavy action,
+  - prioritize critical cues (sirens, near impacts, active gunfire) over ambience.
+
+### Milestones
+1. M16.1 audio event model and trigger mapping from gameplay states.
+2. M16.2 core SFX hooks (guns, explosions, drone movement, launches).
+3. M16.3 adaptive siren/ambience layer tied to mission pressure.
+4. M16.4 volume ducking/priority mix and on-device tuning.
+5. M16.5 settings integration (master/effects/ambience) and validation.
