@@ -50,7 +50,7 @@
 #define HUD_H                     (72)
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
-#define ATTACK_SPRITE_STABLE_ONLY (1)
+#define ATTACK_SPRITE_STABLE_ONLY (0)
 
 #define COMMIT_REASON_READY       (0)
 #define COMMIT_REASON_DETECT_LOW  (1)
@@ -484,21 +484,21 @@ static int ciws_target_in_sweep(float gun_x, float gun_y,
 }
 
 static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y,
-                        float sweep_rad, float *cooldown_sec, int *ammo)
+                        float sweep_rad, float range_px, float *cooldown_sec, int *ammo)
 {
     float dir_x = cosf(sweep_rad);
     float dir_y = sinf(sweep_rad);
-    float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
-    float d_km = sqrtf(dist2(gun_x, gun_y, s->kx[k], s->ky[k])) * km_per_px;
+    float d_px = sqrtf(dist2(gun_x, gun_y, s->kx[k], s->ky[k]));
+    float effective_px = range_px * 0.55f;
     float p_ciws = (s->k_tier[k] == 0) ? 0.88f : ((s->k_tier[k] == 1) ? 0.74f : 0.58f);
     float roll = 0.5f + (0.5f * sinf((s->t * 3.7f) + (float)(k * 5 + s->wave_idx)));
     float heat_penalty = (*cooldown_sec > 0.015f) ? ((*cooldown_sec - 0.015f) * 12.0f) : 0.0f;
 
     p_ciws -= heat_penalty;
-    if (d_km > PHALANX_EFFECTIVE_KM)
+    if (d_px > effective_px)
     {
         /* Outside effective range but inside hard cutoff: mostly wastes ammo. */
-        p_ciws *= 0.08f;
+        p_ciws *= 0.22f;
     }
     p_ciws = clampf(p_ciws, 0.02f, 0.95f);
 
@@ -506,7 +506,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     {
         return 0;
     }
-    if (d_km > PHALANX_HARD_CUTOFF_KM)
+    if (d_px > range_px)
     {
         return 0;
     }
@@ -1239,36 +1239,33 @@ static void assign_mode(drone_hunter_scene_t *s, match_mode_t m)
     }
 }
 
+static const lv_image_dsc_t *attack_image_src(const drone_hunter_scene_t *s, int k)
+{
+    int variant = (s->k_serial[k] + k) % 3;
+    if (variant < 0)
+    {
+        variant += 3;
+    }
+
+    switch (variant)
+    {
+        case 0:  return &attack_shahed_yellow;
+        case 1:  return &attack_vb140_like_red;
+        default: return &attack_dji_x_orange;
+    }
+}
+
 static void style_target(drone_hunter_scene_t *s, int k)
 {
     const lv_image_dsc_t *src;
     uint16_t zoom = (s->k_tier[k] >= 2) ? 205 : ((s->k_tier[k] == 1) ? 188 : 172);
 
 #if ATTACK_SPRITE_STABLE_ONLY
-    (void)s;
     /* Stability guard: keep a known-good attack sprite source. */
-    src = &img_hunter_odin_win_hit;
+    src = attack_image_src(s, k);
     zoom = 176;
 #else
-
-    if (s->ktype[k] == TARGET_FIXED_WING)
-    {
-        if (s->threat_faction == THREAT_FACTION_RUSSIA)
-        {
-            /* Shahed 136 style attack drone: bright yellow */
-            src = &attack_shahed_yellow;
-        }
-        else
-        {
-            /* VB140-like attack drone (distinct design): bright red */
-            src = &attack_vb140_like_red;
-        }
-    }
-    else
-    {
-        /* DJI-style X-wing quad attack drone: bright orange */
-        src = &attack_dji_x_orange;
-    }
+    src = attack_image_src(s, k);
 #endif
 
     lv_image_set_src(s->killers[k], src);
@@ -1278,7 +1275,7 @@ static void style_target(drone_hunter_scene_t *s, int k)
         if ((iw <= 0) || (ih <= 0) || (iw > 220) || (ih > 220))
         {
             /* Defensive fallback for corrupted/unsupported image descriptors. */
-            lv_image_set_src(s->killers[k], &img_hunter_odin_win_hit);
+            lv_image_set_src(s->killers[k], attack_image_src(s, k));
             zoom = 170;
         }
     }
@@ -1678,8 +1675,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     float ciws_y = (float)(s->arena_y + s->arena_h - 49);
     float ciws_left_x = (float)(s->arena_x + 18);
     float ciws_left_y = (float)(s->arena_y + s->arena_h - 49);
-    float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
-    float ciws_range = PHALANX_HARD_CUTOFF_KM / km_per_px;
+    float ciws_range = (float)s->arena_w * CIWS_RANGE_FRAC;
     float ciws_block_top_y = (float)s->arena_y + ((float)s->arena_h * (1.0f - CIWS_TOP_GRID_BLOCK_FRAC));
     float ciws_max_vertical = (float)s->arena_h * CIWS_MAX_VERTICAL_FRAC;
     float sweep_step = CIWS_SWEEP_SPEED_RAD * DT_SEC;
@@ -1792,7 +1788,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             ((ciws_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, &s->ciws_cooldown_sec, &s->ciws_ammo_right))
+            if (ciws_fire_at(s, k, ciws_x, ciws_y, s->ciws_sweep_right_rad, ciws_range, &s->ciws_cooldown_sec, &s->ciws_ammo_right))
             {
                 continue;
             }
@@ -1805,7 +1801,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             ((ciws_left_y - s->ky[k]) <= ciws_max_vertical) &&
             ciws_target_in_sweep(ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, s->kx[k], s->ky[k]))
         {
-            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, &s->ciws_cooldown_left_sec, &s->ciws_ammo_left))
+            if (ciws_fire_at(s, k, ciws_left_x, ciws_left_y, s->ciws_sweep_left_rad, ciws_range, &s->ciws_cooldown_left_sec, &s->ciws_ammo_left))
             {
                 continue;
             }
@@ -1906,7 +1902,11 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     s->commit_hold_conf++;
                     break;
             }
-            return;
+            /* Keep demo playable: launch anyway for urgent or high-threat tracks. */
+            if ((s->k_eta_to_goal[target] > 3.2f) && (s->k_threat_score[target] < 1.25f))
+            {
+                return;
+            }
         }
         s->commit_launched++;
     }
@@ -2197,11 +2197,14 @@ static void update_positions(drone_hunter_scene_t *s)
 
     for (k = 0; k < KILLER_COUNT; ++k)
     {
+        const lv_image_dsc_t *src = attack_image_src(s, k);
+
         if (!s->killer_active[k])
         {
             lv_obj_add_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
             continue;
         }
+        lv_image_set_src(s->killers[k], src);
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
             update_fixed_wing_orientation(s, k);
@@ -2219,7 +2222,7 @@ static void update_positions(drone_hunter_scene_t *s)
             int32_t kh = lv_obj_get_height(s->killers[k]);
             if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
             {
-                lv_image_set_src(s->killers[k], &img_hunter_odin_win_hit);
+                lv_image_set_src(s->killers[k], src);
                 s->k_base_zoom[k] = 176;
                 zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 130.0f, 300.0f);
             }
@@ -2781,7 +2784,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     {
         s->killers[i] = lv_image_create(s->arena);
         lv_obj_remove_style_all(s->killers[i]);
-        lv_image_set_src(s->killers[i], &img_hunter_odin_win_hit);
+        lv_image_set_src(s->killers[i], &attack_shahed_yellow);
         lv_obj_set_style_transform_zoom(s->killers[i], 185, 0);
 
         s->killer_wing[i] = lv_obj_create(s->killers[i]);

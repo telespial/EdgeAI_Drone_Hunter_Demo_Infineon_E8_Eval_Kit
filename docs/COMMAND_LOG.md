@@ -25,3 +25,10 @@
   - `wrote 2371584 bytes`
   - `verified 2369544 bytes`
 - 2026-03-27 | Promoted this exact state as golden + failsafe restore point (phase2-complete).
+- 2026-03-27 | Fixed attacker sprite runtime path to generated attack renders only (removed ODIN attacker fallback).
+- 2026-03-27 | Fixed no-defense regression:
+  - Hunter launch commit gate now has urgency fallback for high-threat/low-ETA tracks.
+  - CIWS range switched to gameplay screen-scale arc (`CIWS_RANGE_FRAC`) so guns engage reliably.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2371584 bytes`
+  - `verified 2370160 bytes`

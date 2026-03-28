@@ -18,6 +18,9 @@
 - `rules.md`
 
 ## Current behavior in code
+- Attack drone runtime rendering is locked to generated attack sprites (ODIN no longer used in attacker path).
+- Hunter launch path includes urgency fallback so defense still launches when strict commit confidence is temporarily low.
+- CIWS uses gameplay arc range scaling (`CIWS_RANGE_FRAC`) instead of map-km hard cutoff, restoring visible engagements.
 - Persistent city-fire model from leak impacts, with scaling pressure.
 - CIWS near-front short-range gating + tracer visual range alignment.
 - Per-target runtime model fields implemented:
@@ -44,5 +47,5 @@
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2322432 bytes`
-  - `verified 2320728 bytes`
+  - `wrote 2371584 bytes`
+  - `verified 2370160 bytes`

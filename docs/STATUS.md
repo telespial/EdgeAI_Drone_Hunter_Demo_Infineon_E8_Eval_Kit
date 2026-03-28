@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; oversized launch sprite + flashing + ~12s freeze fixed.
+- State: Stable runtime baseline validated on hardware; attacker sprite path fixed + hunter defense and CIWS engagement restored.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2322432 bytes`
-  - `verified 2320728 bytes`
+  - `wrote 2371584 bytes`
+  - `verified 2370160 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -16,8 +16,13 @@
 - Splash + lineup + `START ARENA` flow retained.
 - Attack targets distributed across playable city area.
 - Leak impacts produce persistent, flame-like fire patches.
-- CIWS constrained to near-front, short-range envelope (cannot effectively reach far/top grids).
+- CIWS now uses gameplay-visible sweep range (~75% screen width) and engages reliably in arc.
 - Hunter vs Attacker scoring active.
+- Attack drones now forced to generated attack render set at runtime (ODIN fallback removed):
+  - `attack_shahed_yellow`
+  - `attack_vb140_like_red`
+  - `attack_dji_x_orange`
+- Hunter launch logic now includes urgency fallback when commit gate confidence is low, preventing no-defense stalls.
 - Rules-engine progression active:
   - detect/classify/commit confidence,
   - dynamic threat score,
