@@ -7,8 +7,8 @@
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2379776 bytes`
-  - `verified 2378312 bytes`
+  - `wrote 2400256 bytes`
+  - `verified 2396432 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -25,6 +25,16 @@
   - heat growth is now stronger when firing with poor lock quality.
 - HUD now includes live CIWS doctrine state per gun:
   - ammo, heat, and lock quality telemetry.
+- Top HUD control pill updated:
+  - shortened to `SET   |   HELP`,
+  - left/right half touch opens Settings/Help popup respectively.
+- Hunter-kill visual feedback updated:
+  - successful hunter intercept now emits a bright white circular flash at kill point,
+  - hunter and attacker still disappear immediately on kill.
+- Score HUD made explicit and always-visible:
+  - dedicated hunter/attacker score labels with zero-padded counters,
+  - control mode shown in label (`ALGO` / `EDGEAI` / `HUMAN`),
+  - center core counter retained.
 - Phase 8 wrong-choice consequence system is active:
   - explicit penalties for range mismatch, altitude mismatch, overkill allocation, CIWS misuse, and low-confidence manual override.
   - HUD explainability now reports latest causal reason (`WHY`) plus aggregate failure counters.

@@ -26,6 +26,18 @@
 - Phase 8 wrong-choice consequence system is implemented:
   - explicit penalties for range mismatch, altitude mismatch, overkill allocation, CIWS misuse, and low-confidence override,
   - HUD explainability cues added (`WHY`) with aggregate failure counters.
+- HUD control/menu polish is implemented:
+  - top-right pill reduced and relabeled `SET   |   HELP`,
+  - split touch behavior by pill half:
+    - left half opens settings popup,
+    - right half opens help popup.
+- Hunter kill flash is implemented:
+  - white circular flash ring shown at attacker kill location on hunter success,
+  - both drones disappear immediately after successful intercept.
+- Scoreboard presentation is implemented as dedicated labels:
+  - `HUNTER(<CTRL>): 0000` (left),
+  - `ATTACKER(<CTRL>): 0000` (right),
+  - `CORE` centered.
 - Phase 6 CIWS doctrine finalization is implemented:
   - per-gun lock quality computed from geometry/lead conditions,
   - poor lock and out-of-effective-envelope firing now consume extra reaction budget (cooldown penalties),
@@ -84,5 +96,5 @@
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2379776 bytes`
-  - `verified 2378312 bytes`
+  - `wrote 2400256 bytes`
+  - `verified 2396432 bytes`

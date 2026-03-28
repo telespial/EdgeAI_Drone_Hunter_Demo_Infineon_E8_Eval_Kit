@@ -34,6 +34,11 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
   - optional advanced IFF mode toggle (long-press Phalanx deck item),
   - blue-on-blue enabled only under strict combined-failure gate,
   - collateral + recovery telemetry wired (`FF`, `COL`, recovery timer).
+- HUD score/menu polish:
+  - dedicated left/right score labels with control tags and zero-padded counters,
+  - shortened top-right pill `SET   |   HELP` with split-touch Settings/Help popup behavior.
+- Hunter kill visual feedback:
+  - bright white circular flash at kill location when a hunter destroys an attacker.
 
 ## Rules spec
 - Canonical rules are documented in `rules.md`.
@@ -48,8 +53,8 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 Latest flash confirmation:
-- `wrote 2379776 bytes`
-- `verified 2378312 bytes`
+- `wrote 2400256 bytes`
+- `verified 2396432 bytes`
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

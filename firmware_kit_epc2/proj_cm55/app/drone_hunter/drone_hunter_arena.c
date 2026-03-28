@@ -31,6 +31,7 @@
 #define ROUND_WIN_MARGIN          (10000)
 #define FX_INTERCEPT_SEC          (0.42f)
 #define FX_SPAWN_SEC              (0.36f)
+#define FX_KILL_SEC               (0.32f)
 #define FX_CORE_HIT_SEC           (0.40f)
 #define MAP_SIZE_KM               (120.0f)
 #define PHALANX_EFFECTIVE_KM      (2.0f)
@@ -176,10 +177,13 @@ typedef struct
 
     lv_obj_t *fx_intercept[KILLER_COUNT];
     lv_obj_t *fx_spawn[KILLER_COUNT];
+    lv_obj_t *fx_kill[KILLER_COUNT];
     lv_obj_t *city_fire[CITY_FIRE_MAX];
 
     lv_obj_t *hud_mode;
+    lv_obj_t *hud_hunter_score;
     lv_obj_t *hud_score;
+    lv_obj_t *hud_attacker_score;
     lv_obj_t *hud_info;
     lv_obj_t *hud_wave;
     lv_obj_t *hud_elapsed;
@@ -194,6 +198,10 @@ typedef struct
 
     lv_obj_t *mode_btn;
     lv_obj_t *mode_btn_label;
+    lv_obj_t *quick_menu;
+    lv_obj_t *quick_menu_title;
+    lv_obj_t *quick_menu_body;
+    lv_obj_t *quick_menu_close;
 
     lv_obj_t *overlay;
     lv_obj_t *overlay_title;
@@ -244,6 +252,9 @@ typedef struct
     float fx_intercept_y[KILLER_COUNT];
     float fx_spawn_x[KILLER_COUNT];
     float fx_spawn_y[KILLER_COUNT];
+    float fx_kill_t[KILLER_COUNT];
+    float fx_kill_x[KILLER_COUNT];
+    float fx_kill_y[KILLER_COUNT];
     float fx_core_hit_t;
     float ciws_cooldown_sec;
     float ciws_cooldown_left_sec;
@@ -367,6 +378,7 @@ static void note_failure(drone_hunter_scene_t *s, const char *txt, int *counter)
 static void deck_pick_cb(lv_event_t *e);
 static void target_pick_cb(lv_event_t *e);
 static void iff_toggle_cb(lv_event_t *e);
+static void quick_menu_close_cb(lv_event_t *e);
 
 static void add_city_fire(drone_hunter_scene_t *s, float x, float y)
 {
@@ -804,6 +816,11 @@ static const char *ctrl_name(controller_t c)
     return (c == CTRL_EDGEAI) ? "EdgeAI" : "Algo";
 }
 
+static const char *ctrl_name_compact(controller_t c)
+{
+    return (c == CTRL_EDGEAI) ? "EDGEAI" : "ALGO";
+}
+
 static const char *mode_name(match_mode_t m)
 {
     switch (m)
@@ -819,10 +836,7 @@ static void update_mode_button_label(drone_hunter_scene_t *s)
 {
     if (s->mode_btn_label != NULL)
     {
-        lv_label_set_text_fmt(s->mode_btn_label,
-                              "Mode: %s | Attack: %s",
-                              mode_name(s->mode),
-                              attack_strategy_short_name(s->attack_strategy_select));
+        lv_label_set_text(s->mode_btn_label, "SET   |   HELP");
     }
 }
 
@@ -2176,6 +2190,36 @@ static void show_overlay(drone_hunter_scene_t *s, const char *title, const char 
     lv_obj_clear_flag(s->overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
+static void hide_quick_menu(drone_hunter_scene_t *s)
+{
+    if (s->quick_menu != NULL)
+    {
+        lv_obj_add_flag(s->quick_menu, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body)
+{
+    if (s->quick_menu == NULL)
+    {
+        return;
+    }
+    lv_label_set_text(s->quick_menu_title, title);
+    lv_label_set_text(s->quick_menu_body, body);
+    lv_obj_clear_flag(s->quick_menu, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(s->quick_menu);
+}
+
+static void quick_menu_close_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    {
+        return;
+    }
+    hide_quick_menu(s);
+}
+
 static void reset_round(drone_hunter_scene_t *s)
 {
     int i;
@@ -2259,6 +2303,7 @@ static void reset_round(drone_hunter_scene_t *s)
     {
         s->fx_intercept_t[i] = 0.0f;
         s->fx_spawn_t[i] = 0.0f;
+        s->fx_kill_t[i] = 0.0f;
         s->killer_active[i] = 0;
         s->k_tier[i] = 0;
         s->k_missed_by_hunter[i] = 0;
@@ -2300,6 +2345,7 @@ static void reset_round(drone_hunter_scene_t *s)
     update_mode_button_label(s);
 
     hide_overlay(s);
+    hide_quick_menu(s);
 }
 
 static void restart_cb(lv_event_t *e)
@@ -2312,22 +2358,50 @@ static void mode_cb(lv_event_t *e)
 {
     drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_LONG_PRESSED)
-    {
-        s->attack_strategy_select = (attack_strategy_t)((s->attack_strategy_select + 1) % ATTACK_STRATEGY_COUNT);
-        update_mode_button_label(s);
-        reset_round(s);
-        return;
-    }
+    lv_obj_t *btn = lv_event_get_target(e);
+    lv_indev_t *indev;
+    lv_point_t p;
+    lv_area_t a;
+    int left_half = 1;
+    char body[320];
 
     if (code != LV_EVENT_CLICKED)
     {
         return;
     }
 
-    assign_mode(s, (match_mode_t)((s->mode + 1) % MODE_COUNT));
-    reset_round(s);
+    lv_obj_get_coords(btn, &a);
+    indev = lv_indev_get_act();
+    if (indev != NULL)
+    {
+        lv_indev_get_point(indev, &p);
+        left_half = (p.x <= ((a.x1 + a.x2) / 2));
+    }
+
+    if (left_half)
+    {
+        (void)snprintf(body, sizeof(body),
+                       "Mode: %s\n"
+                       "Attack strategy: %s\n"
+                       "IFF: %s\n"
+                       "CIWS ammo L:%d R:%d\n"
+                       "Tip: Long-press Phalanx icon to toggle advanced IFF.",
+                       mode_name(s->mode),
+                       attack_strategy_short_name(s->attack_strategy_select),
+                       s->iff_advanced_mode ? "ADVANCED" : "LOCKED",
+                       s->ciws_ammo_left, s->ciws_ammo_right);
+        show_quick_menu(s, "Settings", body);
+    }
+    else
+    {
+        (void)snprintf(body, sizeof(body),
+                       "Left half: open Settings\n"
+                       "Right half: open Help\n"
+                       "Tap drone icon: select hunter\n"
+                       "Tap attack drone: set priority target\n"
+                       "Press START ARENA to run gameplay.");
+        show_quick_menu(s, "Help", body);
+    }
 }
 
 static void deck_pick_cb(lv_event_t *e)
@@ -2562,9 +2636,9 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->attacker_points++;
             s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
-            s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
-            s->fx_intercept_x[k] = s->k_goal_x[k];
-            s->fx_intercept_y[k] = s->k_goal_y[k];
+        s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
+        s->fx_intercept_x[k] = s->k_goal_x[k];
+        s->fx_intercept_y[k] = s->k_goal_y[k];
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k]);
             add_city_fire(s, s->k_goal_x[k] - 8.0f, s->k_goal_y[k] + 6.0f);
             add_city_fire(s, s->k_goal_x[k] + 9.0f, s->k_goal_y[k] + 5.0f);
@@ -2925,6 +2999,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             if (roll <= p_kill)
             {
                 int pts = (s->ktype[committed] == TARGET_FIXED_WING) ? p->points_fixed : p->points_fpv;
+                float hit_x = s->kx[committed];
+                float hit_y = s->ky[committed];
                 s->team_score[h] += pts;
                 s->attack_destroyed++;
                 s->defense_kills++;
@@ -2932,6 +3008,9 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
 
                 /* Successful intercept: both hunter and attack drone disappear immediately. */
                 set_killer_hidden(s, committed);
+                s->fx_kill_t[committed] = FX_KILL_SEC;
+                s->fx_kill_x[committed] = hit_x;
+                s->fx_kill_y[committed] = hit_y;
                 s->hunter_loaded[h] = 0;
                 s->h_falling[h] = 0;
                 s->h_target_idx[h] = -1;
@@ -3038,7 +3117,47 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             lv_obj_add_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
         }
-        lv_obj_add_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
+        if (s->fx_spawn_t[k] > 0.0f)
+        {
+            float life = clampf(s->fx_spawn_t[k] / FX_SPAWN_SEC, 0.0f, 1.0f);
+            float grow = 1.0f - life;
+            int32_t size = 20 + (int32_t)(grow * 50.0f);
+            lv_opa_t ring_opa = (lv_opa_t)(70 + (int32_t)(life * 165.0f));
+
+            lv_obj_clear_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_size(s->fx_spawn[k], size, size);
+            lv_obj_set_style_radius(s->fx_spawn[k], LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_opa(s->fx_spawn[k], LV_OPA_TRANSP, 0);
+            lv_obj_set_style_border_width(s->fx_spawn[k], 3, 0);
+            lv_obj_set_style_border_color(s->fx_spawn[k], lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_border_opa(s->fx_spawn[k], ring_opa, 0);
+            set_obj_center(s->fx_spawn[k], s->fx_spawn_x[k], s->fx_spawn_y[k]);
+        }
+        else
+        {
+            lv_obj_add_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (s->fx_kill_t[k] > 0.0f)
+        {
+            float life = clampf(s->fx_kill_t[k] / FX_KILL_SEC, 0.0f, 1.0f);
+            float grow = 1.0f - life;
+            int32_t size = 20 + (int32_t)(grow * 56.0f);
+            lv_opa_t ring_opa = (lv_opa_t)(90 + (int32_t)(life * 165.0f));
+
+            lv_obj_clear_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_size(s->fx_kill[k], size, size);
+            lv_obj_set_style_radius(s->fx_kill[k], LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_opa(s->fx_kill[k], LV_OPA_TRANSP, 0);
+            lv_obj_set_style_border_width(s->fx_kill[k], 4, 0);
+            lv_obj_set_style_border_color(s->fx_kill[k], lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_border_opa(s->fx_kill[k], ring_opa, 0);
+            set_obj_center(s->fx_kill[k], s->fx_kill_x[k], s->fx_kill_y[k]);
+            lv_obj_move_foreground(s->fx_kill[k]);
+        }
+        else
+        {
+            lv_obj_add_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
@@ -3238,6 +3357,13 @@ static void update_hud(drone_hunter_scene_t *s)
     int hunters_air = 0;
     int h;
     int k;
+    const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
+    const char *attacker_ctrl = ctrl_name_compact(s->team_ctrl[1]);
+
+    if ((s->manual_selected_hunter >= 0) || (s->manual_selected_target >= 0))
+    {
+        hunter_ctrl = "HUMAN";
+    }
 
     for (k = 0; k < KILLER_COUNT; ++k)
     {
@@ -3259,14 +3385,19 @@ static void update_hud(drone_hunter_scene_t *s)
         }
     }
 
-    lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  IFF %s %s%s",
+    lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  H:%04d A:%04d  |  IFF %s %s%s",
                           mode_name(s->mode), arena_phase_name(phase),
+                          s->hunter_points, s->attacker_points,
                           s->iff_advanced_mode ? "ADV" : "LOCK",
                           s->iff_degraded ? "DEG" : "NOM",
                           s->iff_merged_tracks ? " MERGED" : "");
-    lv_label_set_text_fmt(s->hud_score,
-                          "HUNTER %d  |  ATTACKER %d  |  CORE %d",
-                          s->hunter_points, s->attacker_points, s->core_hp);
+    lv_label_set_text_fmt(s->hud_hunter_score,
+                          "HUNTER(%s): %04d",
+                          hunter_ctrl, s->hunter_points);
+    lv_label_set_text_fmt(s->hud_score, "CORE %03d", s->core_hp);
+    lv_label_set_text_fmt(s->hud_attacker_score,
+                          "ATTACKER(%s): %04d",
+                          attacker_ctrl, s->attacker_points);
     lv_label_set_text_fmt(s->hud_wave,
                           "WAVE %d  |  STRAT %s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
                           s->wave_idx,
@@ -3404,6 +3535,7 @@ static void anim_cb(lv_timer_t *timer)
         {
             s->fx_intercept_t[k] = clampf(s->fx_intercept_t[k] - DT_SEC, 0.0f, FX_INTERCEPT_SEC);
             s->fx_spawn_t[k] = clampf(s->fx_spawn_t[k] - DT_SEC, 0.0f, FX_SPAWN_SEC);
+            s->fx_kill_t[k] = clampf(s->fx_kill_t[k] - DT_SEC, 0.0f, FX_KILL_SEC);
         }
         for (k = 0; k < CIWS_TRACER_COUNT; ++k)
         {
@@ -3596,16 +3728,31 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         s->hud_mode = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_mode, lv_color_hex(0x93C5FD), 0);
         lv_obj_set_style_text_font(s->hud_mode, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_mode, (sw - 16) - 210);
+        lv_obj_set_width(s->hud_mode, (sw - 16) - 150);
         lv_label_set_long_mode(s->hud_mode, LV_LABEL_LONG_CLIP);
         lv_obj_align(s->hud_mode, LV_ALIGN_TOP_LEFT, 8, 3);
 
+        s->hud_hunter_score = lv_label_create(hud);
+        lv_obj_set_style_text_color(s->hud_hunter_score, lv_color_hex(0x86EFAC), 0);
+        lv_obj_set_style_text_font(s->hud_hunter_score, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_hunter_score, ((sw - 16) / 2) - 30);
+        lv_label_set_long_mode(s->hud_hunter_score, LV_LABEL_LONG_CLIP);
+        lv_obj_align(s->hud_hunter_score, LV_ALIGN_TOP_LEFT, 8, 19);
+
         s->hud_score = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_score, lv_color_hex(0xFBBF24), 0);
+        lv_obj_set_style_text_color(s->hud_score, lv_color_hex(0xE5E7EB), 0);
         lv_obj_set_style_text_font(s->hud_score, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_score, (sw - 16) - 16);
+        lv_obj_set_width(s->hud_score, 120);
         lv_label_set_long_mode(s->hud_score, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_score, LV_ALIGN_TOP_LEFT, 8, 35);
+        lv_obj_align(s->hud_score, LV_ALIGN_TOP_MID, 0, 19);
+
+        s->hud_attacker_score = lv_label_create(hud);
+        lv_obj_set_style_text_color(s->hud_attacker_score, lv_color_hex(0xFCA5A5), 0);
+        lv_obj_set_style_text_font(s->hud_attacker_score, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(s->hud_attacker_score, ((sw - 16) / 2) - 30);
+        lv_label_set_long_mode(s->hud_attacker_score, LV_LABEL_LONG_CLIP);
+        lv_obj_set_style_text_align(s->hud_attacker_score, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_align(s->hud_attacker_score, LV_ALIGN_TOP_RIGHT, -8, 19);
 
         s->hud_info = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_info, lv_color_hex(0x67E8F9), 0);
@@ -3619,20 +3766,19 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_text_font(s->hud_wave, &lv_font_montserrat_12, 0);
         lv_obj_set_width(s->hud_wave, (sw - 16) - 16);
         lv_label_set_long_mode(s->hud_wave, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_wave, LV_ALIGN_TOP_LEFT, 8, 19);
+        lv_obj_align(s->hud_wave, LV_ALIGN_TOP_LEFT, 8, 35);
 
         s->hud_elapsed = lv_label_create(hud);
         lv_obj_set_style_text_color(s->hud_elapsed, lv_color_hex(0xFBBF24), 0);
         lv_obj_set_style_text_font(s->hud_elapsed, &lv_font_montserrat_12, 0);
-        lv_obj_align(s->hud_elapsed, LV_ALIGN_TOP_RIGHT, -8, 35);
+        lv_obj_align(s->hud_elapsed, LV_ALIGN_TOP_RIGHT, -8, 51);
 
         s->mode_btn = lv_btn_create(hud);
-        lv_obj_set_size(s->mode_btn, 190, 26);
+        lv_obj_set_size(s->mode_btn, 122, 26);
         lv_obj_align(s->mode_btn, LV_ALIGN_TOP_RIGHT, -8, 4);
         lv_obj_set_style_bg_color(s->mode_btn, lv_color_hex(0x0EA5E9), 0);
         lv_obj_set_style_bg_opa(s->mode_btn, LV_OPA_80, 0);
         lv_obj_add_event_cb(s->mode_btn, mode_cb, LV_EVENT_CLICKED, s);
-        lv_obj_add_event_cb(s->mode_btn, mode_cb, LV_EVENT_LONG_PRESSED, s);
 
         s->mode_btn_label = lv_label_create(s->mode_btn);
         lv_obj_set_style_text_color(s->mode_btn_label, lv_color_hex(0xFFFFFF), 0);
@@ -3836,6 +3982,11 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_remove_style_all(s->fx_spawn[i]);
         lv_obj_set_style_bg_opa(s->fx_spawn[i], LV_OPA_0, 0);
         lv_obj_add_flag(s->fx_spawn[i], LV_OBJ_FLAG_HIDDEN);
+
+        s->fx_kill[i] = lv_obj_create(s->arena);
+        lv_obj_remove_style_all(s->fx_kill[i]);
+        lv_obj_set_style_bg_opa(s->fx_kill[i], LV_OPA_0, 0);
+        lv_obj_add_flag(s->fx_kill[i], LV_OBJ_FLAG_HIDDEN);
     }
     for (i = 0; i < CITY_FIRE_MAX; ++i)
     {
@@ -3916,6 +4067,43 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_bg_color(s->hunter_prop_lower[i], lv_color_hex(0x111827), 0);
         lv_obj_set_style_bg_opa(s->hunter_prop_lower[i], LV_OPA_COVER, 0);
         lv_obj_add_flag(s->hunter_prop_lower[i], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    s->quick_menu = lv_obj_create(s->arena);
+    lv_obj_remove_style_all(s->quick_menu);
+    lv_obj_set_size(s->quick_menu, sw - 110, 150);
+    lv_obj_align(s->quick_menu, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(s->quick_menu, lv_color_hex(0x0B1220), 0);
+    lv_obj_set_style_bg_opa(s->quick_menu, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(s->quick_menu, lv_color_hex(0x22D3EE), 0);
+    lv_obj_set_style_border_width(s->quick_menu, 2, 0);
+    lv_obj_add_flag(s->quick_menu, LV_OBJ_FLAG_HIDDEN);
+
+    s->quick_menu_title = lv_label_create(s->quick_menu);
+    lv_obj_set_style_text_color(s->quick_menu_title, lv_color_hex(0xE2E8F0), 0);
+    lv_obj_set_style_text_font(s->quick_menu_title, &lv_font_montserrat_16, 0);
+    lv_obj_align(s->quick_menu_title, LV_ALIGN_TOP_LEFT, 12, 8);
+    lv_label_set_text(s->quick_menu_title, "Menu");
+
+    s->quick_menu_body = lv_label_create(s->quick_menu);
+    lv_obj_set_width(s->quick_menu_body, sw - 150);
+    lv_obj_set_style_text_color(s->quick_menu_body, lv_color_hex(0x93C5FD), 0);
+    lv_obj_set_style_text_font(s->quick_menu_body, &lv_font_montserrat_12, 0);
+    lv_label_set_long_mode(s->quick_menu_body, LV_LABEL_LONG_WRAP);
+    lv_obj_align(s->quick_menu_body, LV_ALIGN_TOP_LEFT, 12, 36);
+    lv_label_set_text(s->quick_menu_body, "");
+
+    s->quick_menu_close = lv_btn_create(s->quick_menu);
+    lv_obj_set_size(s->quick_menu_close, 70, 28);
+    lv_obj_align(s->quick_menu_close, LV_ALIGN_TOP_RIGHT, -8, 8);
+    lv_obj_set_style_bg_color(s->quick_menu_close, lv_color_hex(0x2563EB), 0);
+    lv_obj_set_style_bg_opa(s->quick_menu_close, LV_OPA_COVER, 0);
+    lv_obj_add_event_cb(s->quick_menu_close, quick_menu_close_cb, LV_EVENT_CLICKED, s);
+    {
+        lv_obj_t *close_lbl = lv_label_create(s->quick_menu_close);
+        lv_label_set_text(close_lbl, "CLOSE");
+        lv_obj_set_style_text_color(close_lbl, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_center(close_lbl);
     }
 
     s->overlay = lv_obj_create(s->arena);

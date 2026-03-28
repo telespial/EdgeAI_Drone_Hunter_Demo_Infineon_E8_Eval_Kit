@@ -104,3 +104,19 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2379776 bytes`
   - `verified 2378312 bytes`
+- 2026-03-27 | Added top-right quick-access menu pill behavior:
+  - shortened pill label to `SET   |   HELP`,
+  - split-tap behavior implemented:
+    - left side opens Settings popup,
+    - right side opens Help popup.
+- 2026-03-27 | Added dedicated hunter-kill flash channel:
+  - bright white circular kill flash now renders at attacker kill point,
+  - effect decoupled from spawn FX to prevent overwrite by immediate respawn.
+- 2026-03-27 | HUD scoreboard visibility pass:
+  - explicit left/right zero-padded score labels:
+    - `HUNTER(<CTRL>): 0000`,
+    - `ATTACKER(<CTRL>): 0000`,
+  - center `CORE` label retained.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2400256 bytes`
+  - `verified 2396432 bytes`

@@ -2,9 +2,18 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-phase9-iff-advanced`
+- Dated tag: `golden-e8-drone-hunter-20260327-score-pill-killflash`
 - Date: `2026-03-27`
 - Baseline summary:
+  - HUD score visibility update:
+    - dedicated hunter/attacker score labels are rendered in fixed left/right positions,
+    - zero-padded score format retained with control mode tags.
+  - Top-right control pill update:
+    - shortened and relabeled `SET   |   HELP`,
+    - left/right half touch opens Settings/Help popups.
+  - Hunter kill-feedback update:
+    - bright white circular flash appears at attack-drone kill point,
+    - kill flash separated from spawn FX path to prevent overwrite.
   - Phase 8 completed:
     - explicit wrong-choice penalties now drive predictable losses for:
       - range mismatch,
@@ -24,8 +33,8 @@
     - CIWS doctrine + lock/heat/ammo telemetry,
     - stable generated attack render path.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2379776 bytes`
-  - `verified 2378312 bytes`
+  - `wrote 2400256 bytes`
+  - `verified 2396432 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
