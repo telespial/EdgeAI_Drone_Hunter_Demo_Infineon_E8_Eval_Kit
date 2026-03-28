@@ -380,6 +380,43 @@ Status: Planned
 
 ---
 
+## Phase 15 - Cleanup + Settings + Flash Safety
+Status: Planned
+
+### Objectives
+- Clean project scope artifacts, simplify HUD readability, finalize settings controls, and enforce flash/build hygiene to prevent old-image programming regressions.
+
+### Tasks
+- Repo content hygiene:
+- Scan all folders in this project and clean up unrelated text/files/artifacts.
+- Check `codemaster` and subfolders for leaks of unrelated `README`, `start_here`, and other framework docs.
+- HUD simplification:
+- Remove busy/confusing top HUD text box content.
+- Replace with simple graphical score system: `ATTACKER` (left) and `DEFENDER` (right).
+- Render score numerals as Apple-Glass-style `XXXX` digits (asset/style implementation required).
+- FX polish:
+- Render more realistic fire in multiple forms and sizes.
+- Settings popup controls (touch):
+- `ATTACKER`: `ALGO/EDGEAI`
+- `DEFENDER`: `ALGO/EDGEAI/HUMAN`
+- `NPU`: `ON/OFF`
+- Difficulty: `EASY/MED/HARD`
+- `SPEED++`: global motion scaling (faster simulation)
+- Flash/build safety and gameplay regression checks:
+- Ensure flashing always uses latest built image (not stale/old artifact path).
+- Add/keep bounce fix: hunters must not rebound off lower blue deck/HUD boundary.
+- Enforce floor-contact behavior: immediately despawn/regroup hunter on any lower-boundary contact regardless of fall state.
+
+### Exit criteria
+- Workspace/doc cleanup complete with no unrelated framework residue in project folders.
+- HUD is reduced to clear ATTACKER/DEFENDER score presentation with styled numerals.
+- Settings popup exposes all requested controls and applies behavior at runtime.
+- Fire visuals show multi-form, size-varied realistic effect set.
+- Flash flow is proven to program latest build artifact with explicit path verification.
+- No lower-boundary hunter bounce events remain.
+
+---
+
 ## Immediate Next Sprint (execution order)
 1. Start Phase 14 movement doctrine + dynamic intercept decision layer.
 2. Re-profile memory/latency after Phase 14 implementation and retune thresholds.
