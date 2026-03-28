@@ -1,5 +1,7 @@
 # EdgeAI Drone Hunter (PSoC Edge E84 / KIT_PSE84_EVAL_EPC2)
 
+![Drone Hunter](https://github.com/user-attachments/assets/26f93aa3-4248-4bb2-9a74-70144fa8b4e0)
+
 A real-time attacker-vs-defender drone interception game/demo running on Infineon PSoC Edge E84 with a 4.3-inch Waveshare display.
 
 This repo now includes a verified golden recovery workflow and documented board restore path.
