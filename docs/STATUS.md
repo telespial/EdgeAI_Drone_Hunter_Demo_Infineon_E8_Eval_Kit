@@ -1,26 +1,28 @@
 # STATUS
 
 - Date: 2026-03-28
-- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11/12 are complete. Phases 13 and 14 are planned for guidance/movement doctrine hardening.
+- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11/12 are complete. Phase 13 is now in progress (hunter guidance + intercept hardening), and Phase 14 remains planned.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Latest confirmed flash result:
-  - `wrote 2404352 bytes`
-  - `verified 2403032 bytes`
+  - `wrote 2408448 bytes`
+  - `verified 2404672 bytes`
 - Build quality confirmation:
-  - using correct SDK path works for flashing:
+  - using correct SDK path works for build + flashing:
     - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
-    - `qprogram_proj ... MTB_SIGN_COMBINE__SKIP_CHECK=1` succeeds.
-  - build still fails in this shell because GCC package is not resolved by the current Modus setup.
+    - `CY_COMPILER_GCC_ARM_DIR=/home/user/.local/opt/xpack-arm-none-eabi-gcc-14.2.1-1.1`
+    - `build_proj` and `qprogram_proj ... MTB_SIGN_COMBINE__SKIP_CHECK=1` succeed.
+  - expected environment limitation remains:
+    - `EdgeProtect Secure Suite not found. Combine-Sign step not executed.`
 
 ## Memory footprint
 - External SMIF programmed image (`verified`):
-  - `2,403,032 / 134,217,728` bytes used (`1.79%`),
-  - `131,814,696` bytes remaining (`98.21%`).
+  - `2,404,672 / 134,217,728` bytes used (`1.79%`),
+  - `131,813,056` bytes remaining (`98.21%`).
 - Internal RRAM fit check (512 KB):
-  - current image would exceed internal-only capacity by `1,878,744` bytes (`~4.58x` too large).
+  - current image would exceed internal-only capacity by `1,880,384` bytes (`~4.59x` too large).
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -46,6 +48,14 @@
 - Strategy update:
   - CIWS friendly-fire doctrine now includes constrained hunter-fratricide risk windows.
   - Penalty model: hunter supply can be consumed while attacker kill outcome remains uncertain.
+
+## Phase 13 status (2026-03-28)
+- In progress in runtime code:
+  - continuous hunter re-steering while committed (turn-rate limited),
+  - swept-hit interception checks to reduce frame-step tunneling misses,
+  - target-loss reacquire path before forced miss/fall behavior,
+  - telemetry counters added for swept-hit, reacquire, and overshoot events.
+- Hardware flash baseline updated with this implementation.
 
 ## Explosion/FX baseline (2026-03-28)
 - Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.

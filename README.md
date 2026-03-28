@@ -54,6 +54,10 @@ Drone Hunter demo firmware for `KIT_PSE84_EVAL_EPC2` on the Waveshare 4.3-inch L
 - Phase 14 specification added (planned):
   - `ALGO` is baseline attacker+defender function logic,
   - `EDGEAI` is an embedded intelligence layer that improves ALGO via trained/adaptive reasoning.
+- Phase 13 is now in progress:
+  - hunters continuously re-steer while committed,
+  - swept-hit collision checks reduce fly-past misses,
+  - reacquire path and telemetry counters (`SH`, `RQ`, `OS`) are active.
 - CIWS strategy refinement:
   - constrained accidental CIWS-on-hunter risk window is defined in rules,
   - fratricide event consumes hunter supply while attacker kill outcome remains uncertain.
@@ -71,12 +75,12 @@ make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPL
 ```
 
 Latest flash confirmation:
-- `wrote 2404352 bytes`
-- `verified 2403032 bytes`
+- `wrote 2408448 bytes`
+- `verified 2404672 bytes`
 
 Memory snapshot from latest programmed image:
-- External SMIF flash usage: `2,403,032 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
-- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,878,744 bytes` (`~4.58x` too large).
+- External SMIF flash usage: `2,404,672 / 134,217,728 bytes` (`1.79%` used, `98.21%` free).
+- Internal RRAM equivalent fit check: image would exceed 512 KB internal capacity by `1,880,384 bytes` (`~4.59x` too large).
 
 ## Restore points
 See `docs/RESTORE_POINTS.md` for current golden and failsafe tags.

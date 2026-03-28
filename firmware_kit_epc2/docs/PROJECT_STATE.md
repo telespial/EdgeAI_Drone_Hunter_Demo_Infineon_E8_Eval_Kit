@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-27
+- Last Updated: 2026-03-28
 - Repo Root: /home/user/projects/embedded/codemaster/projects/Infineon/PSOC_EDGE_E8_EVAL/projects/EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
 - Build Target: `firmware_kit_epc2/proj_cm55`
 - Build Command: `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
@@ -18,6 +18,62 @@
 - `rules.md`
 
 ## Current behavior in code
+- Shahed destruction visual fix:
+  - hunter kills on Shahed targets now trigger a visible explosion sequence before despawn,
+  - killed Shahed briefly enters a short dying state (blast + fade) before respawn,
+  - dying targets are excluded from retargeting/commit selection during the effect window.
+  - blast visibility was further increased for on-device readability:
+    - much larger impact radii for intercept/kill FX,
+    - brighter fill/border opacity and thicker rings,
+    - longer Shahed death hold duration for clearer blast readability.
+  - explosion center anchoring fix:
+    - kill FX now anchors to rendered target object center at intercept time (not stale logical track center),
+    - improves visual centering of ring/blast on Shahed sprite body.
+  - visual-center anchoring refinement:
+    - kill FX now uses transformed object bounding-box center in arena coordinates,
+    - addresses offset caused by runtime transform/zoom differences between logical track and rendered sprite.
+  - CIWS kill-anchor parity fix:
+    - CIWS kill path now emits kill/intercept FX from rendered target center before despawn/respawn,
+    - eliminates off-target explosions caused by respawn-only visual feedback on gun kills.
+  - Per-class blast profile mapping is now explicit:
+    - Shahed-class: giant orange explosion,
+    - Strike-X (DJI X-wing): small bright white circular explosion,
+    - Strike-Prop (red fixed-wing): medium white circular explosion.
+  - Explosion perspective scaling is now active:
+    - all drone explosion FX (intercept ring, spawn burst ring, kill ring/fill) scale with Y-depth,
+    - bottom of screen (closest) renders larger effects, top of screen (farther) renders smaller effects.
+- Phase 10 wave-structure progression advanced:
+  - explicit wave archetypes now rotate by wave (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
+  - per-archetype composition now scales target mix/tier pressure (not count-only growth),
+  - mission milestones are now explicit (`OPENING`, `ESCALATE`, `CRISIS`, `SATURATE`) and feed wave scaling,
+  - auto strategy mode now performs primary and late-wave strategic shifts (55% and late pressure trigger),
+  - HUD wave row shows milestone and shift markers (`*` and `+`).
+- Phase 4 hunter assignment and fallback hardening:
+  - no-fit fallback now switches to recommended counter or highest-stock hunter class,
+  - no-stock fallback now attempts recommended/highest-stock replacement before launch hold,
+  - launch-sector depletion and fallback events now emit explicit `WHY` reason messages.
+- Phase 7 HUD/UX completion:
+  - defender panel telemetry is now surfaced in runtime HUD:
+    - endurance proxy, stock/airborne availability,
+    - CIWS lock and cooldown state,
+    - envelope fit hint and FF lockout mode.
+- Phase 11 win/loss + collateral completion:
+  - re-enabled strategic mission end evaluation (previous demo no-end bypass removed),
+  - defender win requires asset intact + defense layer remaining + collateral below threshold,
+  - defender loss triggers on asset destruction, early CIWS exhaustion plus leaks, or collateral/critical-node threshold breach,
+  - round-end overlay now shows causal summary metrics.
+- Phase 14 doctrine semantics are now explicit in rules/docs:
+  - `ALGO` is baseline attacker+defender function logic,
+  - `EDGEAI` is adaptive embedded intelligence that improves ALGO using trained/adaptive reasoning.
+- Phase 13 hunter guidance/intercept hardening is now in progress:
+  - committed hunters are continuously re-steered each tick with turn-rate limits,
+  - swept-hit geometry checks are active to reduce one-frame fly-through misses,
+  - target-loss handling now attempts bounded reacquire before forced miss/fall,
+  - telemetry counters added for swept-hit (`SH`), reacquire (`RQ`), and overshoot (`OS`) events.
+- Strategy refinement:
+  - CIWS accidental hunter-kill rule now includes explicit penalty semantics:
+    - hunter inventory can be consumed by fratricide,
+    - attacking drone may still survive the same burst event.
 - Phase 9 IFF advanced mode is implemented:
   - optional advanced toggle via long-press on Phalanx deck item,
   - blue-on-blue path only opens under strict combined gate:
@@ -98,3 +154,131 @@
 - OpenOCD results:
   - `wrote 2400256 bytes`
   - `verified 2396432 bytes`
+
+## Build confirmation (2026-03-28)
+- Rebuild completed for `proj_cm55` after wave-archetype update.
+- Build reached compile/link/hex generation successfully.
+- Expected environment limitation remains:
+  - `Error: EdgeProtect Secure Suite not found. Combine-Sign step not executed.`
+
+## Flash confirmation (2026-03-28)
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2400256 bytes`
+  - `verified 2398272 bytes`
+
+## Build + Flash confirmation (2026-03-28, Shahed explosion fix)
+- Rebuild completed for `proj_cm55` after Shahed kill-FX update.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2400256 bytes`
+  - `verified 2398944 bytes`
+
+## Build + Flash confirmation (2026-03-28, Shahed blast visibility boost)
+- Rebuild completed for `proj_cm55` after Shahed blast-size/opacity tuning.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2399336 bytes`
+
+## Build + Flash confirmation (2026-03-28, Shahed blast center anchoring fix)
+- Rebuild completed for `proj_cm55` after kill-FX center anchoring update.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2399496 bytes`
+
+## Build + Flash confirmation (2026-03-28, transformed visual-center anchoring)
+- Rebuild completed for `proj_cm55` after transformed visual-center anchor update.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2399472 bytes`
+
+## Build + Flash confirmation (2026-03-28, CIWS kill-anchor parity fix)
+- Rebuild completed for `proj_cm55` after CIWS kill-FX anchor update.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2399760 bytes`
+
+## Build + Flash confirmation (2026-03-28, per-class blast profile mapping)
+- Rebuild completed for `proj_cm55` after blast-style mapping update across hunter + CIWS kill paths.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2400112 bytes`
+
+## Build + Flash confirmation (2026-03-28, revised white profile mapping)
+- Rebuild completed for `proj_cm55` after profile remap:
+  - red fixed-wing -> medium white circular explosion,
+  - X-wing (DJI) -> small bright white circular explosion.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2400160 bytes`
+
+## Build + Flash confirmation (2026-03-28, depth-scaled explosion FX)
+- Rebuild completed for `proj_cm55` after depth scaling was applied to explosion effects.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
+
+## Build confirmation (2026-03-28, Phase 4/10 completion pass)
+- Local rebuild attempt command:
+  - `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Result in this shell environment:
+  - failed early with `Unable to find any of the available CY_TOOLS_PATHS`.
+- Impact:
+  - code/doc updates completed, but compile/flash verification must run in the provisioned build environment used for prior board flashes.
+
+## Flash confirmation (2026-03-28, corrected SDK path)
+- Environment used:
+  - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
+- Program command completed on board `PSE846GPS2DBZC4A`:
+  - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
+- Note:
+  - `build_proj` in current shell still reports GCC package resolution issue.
+
+## Memory snapshot (2026-03-28)
+- Programmed image (`verified`): `2,404,672` bytes.
+- External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
+- Usage:
+  - used: `1.79%`
+  - free: `98.21%` (`131,813,056` bytes).
+- Internal-only fit check (512 KB RRAM):
+  - image exceeds capacity by `1,880,384` bytes (`~4.59x` larger than internal capacity).
+
+## Build + Flash confirmation (2026-03-28, Phase 12 closure pass)
+- Build command completed through compile/link/hex generation:
+  - `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Expected environment limitation remained:
+  - `EdgeProtect Secure Suite not found. Combine-Sign step not executed.`
+- Program command completed on board `PSE846GPS2DBZC4A`:
+  - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
+- OpenOCD results:
+  - `wrote 2404352 bytes`
+  - `verified 2403032 bytes`
+
+## Build + Flash confirmation (2026-03-28, Phase 13 start pass)
+- Build command completed through compile/link/hex generation:
+  - `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+- Expected environment limitation remained:
+  - `EdgeProtect Secure Suite not found. Combine-Sign step not executed.`
+- Program command completed on board `PSE846GPS2DBZC4A`:
+  - `make -C firmware_kit_epc2/proj_cm55 qprogram_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP MTB_SIGN_COMBINE__SKIP_CHECK=1`
+- OpenOCD results:
+  - `wrote 2408448 bytes`
+  - `verified 2404672 bytes`

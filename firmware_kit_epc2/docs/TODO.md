@@ -97,7 +97,7 @@ Status: Complete
 ---
 
 ## Phase 4 - Hunter Assignment + Matchup Matrix
-Status: Not started
+Status: Complete
 
 ### Objectives
 - Make defender selection follow matchup doctrine and envelope constraints.
@@ -154,6 +154,8 @@ Status: Complete
   - ammo L/R,
   - heat L/R,
   - lock quality.
+- Include constrained CIWS fratricide strategy rule in advanced/failure windows:
+  - hunter crossing + degraded IFF + poor lock/track merge can produce accidental hunter kill.
 
 ### Exit criteria
 - Player can clearly see why CIWS succeeds/fails and when to avoid firing.
@@ -161,7 +163,7 @@ Status: Complete
 ---
 
 ## Phase 7 - HUD/UX Completion (Rules Section 13)
-Status: Partially started
+Status: Complete
 
 ### Objectives
 - Make decision support complete and readable.
@@ -212,6 +214,11 @@ Status: Complete
 - Add advanced mode toggle.
 - Enable friendly-fire only if multi-condition gate is met:
   - IFF degraded + merged tracks + manual override + low confidence.
+- Extend friendly-fire model to include CIWS-on-hunter accidental kills:
+  - only when hunter crosses active CIWS fire lane under degraded/merged low-lock conditions.
+  - penalty model:
+    - hunter supply is decremented (wasted friendly interceptor),
+    - attacking drone may or may not be destroyed in the same burst event.
 - Add collateral outcomes and recovery messaging.
 
 ### Exit criteria
@@ -220,7 +227,7 @@ Status: Complete
 ---
 
 ## Phase 10 - Mission/Wave Structure and Difficulty
-Status: In progress
+Status: Complete
 
 ### Objectives
 - Build coherent campaign pacing from hundreds to thousands of threats.
@@ -240,7 +247,7 @@ Status: In progress
 ---
 
 ## Phase 11 - Win/Loss and Collateral Rules
-Status: Partially started
+Status: Complete
 
 ### Objectives
 - Align completion conditions with `rules.md`.
@@ -262,7 +269,7 @@ Status: Partially started
 ---
 
 ## Phase 12 - Verification + Calibration + Restore Governance
-Status: Ongoing
+Status: Complete
 
 ### Objectives
 - Keep iteration safe and reproducible.
@@ -282,8 +289,99 @@ Status: Ongoing
 
 ---
 
+## Phase 13 - Hunter Guidance + Intercept Geometry Hardening
+Status: In Progress
+
+### Objectives
+- Eliminate straight-line fly-past behavior by making hunter intercepts continuously guided and hit-safe at frame boundaries.
+
+### Tasks
+- Add continuous terminal homing while hunter is committed:
+  - re-steer velocity each tick toward predicted intercept point (not one-time launch vector only),
+  - cap turn rate per hunter class to preserve role differentiation.
+- Add swept-hit detection to prevent tunneling:
+  - evaluate line-segment movement against target kill radius each tick,
+  - preserve existing probability gate and failure accounting.
+- Harden target handoff/loss handling:
+  - reacquire when valid replacement exists inside envelope,
+  - otherwise force explicit miss state with clear WHY reason.
+- Add telemetry for validation:
+  - log overshoot count, swept-hit count, reacquire count.
+- Rebalance per-class speed/kill-radius only after guidance is stable.
+
+### Progress update (2026-03-28)
+- Implemented in `drone_hunter_arena.c`:
+  - continuous hunter re-steering while committed,
+  - turn-rate limiting in steering helpers,
+  - swept-hit segment-vs-radius collision gate,
+  - reacquire path for lost targets before miss/fall,
+  - telemetry counters surfaced in HUD (`SH`, `RQ`, `OS`).
+- Remaining to close Phase 13:
+  - hardware validation/tuning pass for miss-rate reduction and role-balance,
+  - per-class speed/kill-radius recalibration if needed.
+
+### Exit criteria
+- Hunters no longer pass through viable targets due to one-frame overshoot.
+- Intercepts are visually centered on actual target position with no off-track despawns.
+- Hardware validation confirms reduced miss-rate without breaking Phase 8 consequence model.
+
+---
+
+## Phase 14 - 360 Movement Doctrine + Dynamic Intercept Decisions
+Status: Planned
+
+### Objectives
+- Enable full-direction movement for both hunter and attack drones with explicit behavior doctrine:
+  - attack drones evade hunters but only detonate at their preset launch target coordinates,
+  - hunter drones preserve primary lock while allowing controlled opportunistic intercepts on easier/path-conflict threats.
+
+### Tasks
+- Add all-direction steering model for both sides:
+  - replace mostly ballistic movement with bounded acceleration/turn-rate steering,
+  - allow positive/negative X/Y maneuver updates each tick (not lane-only drift).
+- Implement attacker objective doctrine:
+  - each attacker stores immutable launch target coordinates,
+  - attacker uses evasive steering against nearby hunters,
+  - attacker explodes only if it reaches target radius around its own preset coordinates,
+  - attacker destroyed by hunter/CIWS does not count as city-impact detonation.
+- Implement hunter objective doctrine:
+  - keep primary locked target as default objective,
+  - add opportunistic intercept gate for "easy/path-conflict" targets:
+    - short time-to-intercept advantage,
+    - low turn demand,
+    - high kill confidence,
+    - low risk of abandoning primary threat.
+- Add controller-specific behavior profiles:
+  - `ALGO` (baseline engine for both attacker and defender): conservative retargeting, stronger lock persistence, deterministic evasion/intercept heuristics.
+  - `EDGEAI` (embedded intelligence layer): improves ALGO behavior using trained/adaptive reasoning for predictive retargeting, evasive pathing, and context-aware switching.
+- Add explainability telemetry:
+  - lock retained vs opportunistic switch counts,
+  - attacker evade maneuvers count,
+  - target-reached detonations vs in-flight kills.
+- Implement control-core + NPU architecture:
+  - `ALGO` and `EDGEAI` run on the same control core (single decision brain per side),
+  - `EDGEAI` may offload heavy inference kernels to U55/NPU for performance,
+  - define strict per-tick handoff contract for feature input + action output.
+- Add runtime arbitration and fallback policy:
+  - CPU ALGO always produces a valid action each tick,
+  - if EDGEAI result arrives in time and passes sanity constraints, it can override/adjust ALGO output,
+  - on timeout/error/invalid output, system stays ALGO-only for that tick (no stall).
+- Define integration milestones:
+  - M14.1: intra-core handoff schema + telemetry counters,
+  - M14.2: attacker evasion model consuming ALGO decisions,
+  - M14.3: hunter opportunistic-switch gate + lock persistence policy,
+  - M14.4: EDGEAI NPU-accelerated path enabled with safe ALGO fallback,
+  - M14.5: hardware profiling (latency, miss-rate, stability) and tuning.
+
+### Exit criteria
+- Attack drones maneuver in all directions but only detonate at their assigned target coordinates.
+- Hunters can maneuver in all directions and make explainable opportunistic kills without random lock thrashing.
+- Behavior differences between `ALGO` and `EDGEAI` are visible and stable in HUD/WHY telemetry.
+- ALGO and EDGEAI remain co-located on one control core with deterministic fallback to ALGO on any EDGEAI/NPU failure.
+
+---
+
 ## Immediate Next Sprint (execution order)
-1. Complete Phase 4 matchup matrix with explicit penalties and overkill prevention.
-2. Complete Phase 6 CIWS heat/lock telemetry in HUD.
-3. Add Phase 8 explainability reasons in round-time text.
-4. Reflash and validate on hardware before next tag promotion.
+1. Continue Phase 13 hardware validation + tuning and close remaining calibrations.
+2. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
+3. Re-profile memory/latency after Phase 13/14 implementation and retune thresholds.

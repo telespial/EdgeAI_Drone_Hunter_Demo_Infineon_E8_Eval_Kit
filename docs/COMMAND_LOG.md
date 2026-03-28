@@ -1,5 +1,19 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 13 start implementation in `drone_hunter_arena.c`:
+  - added continuous hunter guidance re-steer while committed (turn-rate limited),
+  - added swept-hit segment collision checks to reduce one-frame overshoot misses,
+  - added target-loss reacquire flow before forced miss/fall,
+  - added HUD telemetry counters for swept-hit/reacquire/overshoot (`SH`, `RQ`, `OS`).
+- 2026-03-28 | Phase 13 start build + flash pass:
+  - build command completed through compile/link/hex generation; expected combine-sign warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2408448 bytes`
+    - `verified 2404672 bytes`
+- 2026-03-28 | Documentation/restore synchronization for Phase 13 start:
+  - updated `README.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, `docs/TODO.md`, and `docs/RESTORE_POINTS.md`,
+  - mirrored documentation updates into `firmware_kit_epc2/docs/`.
 - 2026-03-28 | CIWS strategy penalty refinement:
   - clarified that CIWS hunter-fratricide event consumes hunter supply,
   - clarified attacker outcome uncertainty in same event (attack drone may survive or be destroyed).

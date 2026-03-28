@@ -1,5 +1,83 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 13 start implementation in `drone_hunter_arena.c`:
+  - added continuous hunter guidance re-steer while committed (turn-rate limited),
+  - added swept-hit segment collision checks to reduce one-frame overshoot misses,
+  - added target-loss reacquire flow before forced miss/fall,
+  - added HUD telemetry counters for swept-hit/reacquire/overshoot (`SH`, `RQ`, `OS`).
+- 2026-03-28 | Phase 13 start build + flash pass:
+  - build command completed through compile/link/hex generation; expected combine-sign warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2408448 bytes`
+    - `verified 2404672 bytes`
+- 2026-03-28 | Documentation/restore synchronization for Phase 13 start:
+  - updated `README.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, `docs/TODO.md`, and `docs/RESTORE_POINTS.md`,
+  - mirrored documentation updates into `firmware_kit_epc2/docs/`.
+- 2026-03-28 | CIWS strategy penalty refinement:
+  - clarified that CIWS hunter-fratricide event consumes hunter supply,
+  - clarified attacker outcome uncertainty in same event (attack drone may survive or be destroyed).
+- 2026-03-28 | Restore-point doc refresh:
+  - moved dated golden/failsafe identifiers to phase12+CIWS-fratricide-rule baseline naming in `docs/RESTORE_POINTS.md`.
+- 2026-03-28 | Strategy expansion: CIWS can accidentally destroy hunter drones under constrained failure conditions:
+  - added canonical rule in `rules.md` (degraded IFF + poor lock/track merge + firing-lane overlap gate),
+  - mirrored scope in Phase 6/9 roadmap tasks (`docs/TODO.md` and `ToDo.md`).
+- 2026-03-28 | Completed Phase 12 (verification/calibration/restore governance):
+  - updated roadmap status to mark Phase 12 complete in both `docs/TODO.md` and `ToDo.md`,
+  - refreshed status/state/restore docs with latest flashed image metrics and memory accounting,
+  - prepared new golden/failsafe dated restore identifiers for this closure baseline.
+- 2026-03-28 | Phase 12 closure build + flash pass:
+  - build command reached compile/link/hex generation; expected combine-sign environment warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2404352 bytes`
+    - `verified 2403032 bytes`
+- 2026-03-28 | Phase 14 architecture refinement:
+  - updated doctrine so `ALGO` and `EDGEAI` are co-located on the same control core,
+  - `EDGEAI` may use U55/NPU acceleration for performance,
+  - fallback remains deterministic ALGO-only on EDGEAI/NPU failure.
+- 2026-03-28 | Docs synchronization and memory accounting pass:
+  - updated `README.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, and `docs/RESTORE_POINTS.md` to reflect:
+    - Phase 7/11 completion baseline,
+    - Phase 14 ALGO-vs-EDGEAI semantics,
+    - corrected SDK path usage for successful flashing,
+    - external/internal memory footprint report.
+- 2026-03-28 | Phase 14 controller semantics clarified:
+  - `ALGO` is now explicitly defined as the baseline attacker+defender function set.
+  - `EDGEAI` is now explicitly defined as an embedded intelligence layer that improves ALGO using trained/adaptive reasoning.
+- 2026-03-28 | Corrected SDK/tool path and re-ran programming:
+  - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
+  - `qprogram_proj` succeeded on board `PSE846GPS2DBZC4A`.
+  - OpenOCD results:
+    - `wrote 2404352 bytes`
+    - `verified 2400360 bytes`
+  - `build_proj` in same shell still reports missing GCC package wiring.
+- 2026-03-28 | Completed Phase 7 + Phase 11 implementation in `drone_hunter_arena.c`:
+  - Phase 7: HUD now exposes defender decision-support telemetry:
+    - endurance proxy, stock/airborne availability,
+    - CIWS lock and cooldown state,
+    - envelope fit hint and FF lockout mode.
+  - Phase 11: strategic mission-end logic re-enabled and expanded:
+    - defender win/loss conditions now evaluate asset survival, defense-layer remaining, CIWS exhaustion timing, and collateral threshold,
+    - round-end overlay now reports causal summary metrics (`W/CORE/LEAK/KILL/STOCK/CIWS`),
+    - overlay subtitle wrapping enabled for readable multi-line summaries.
+- 2026-03-28 | Added Phase 14 specification and expanded canonical movement doctrine:
+  - created Phase 14 "360 Movement Doctrine + Dynamic Intercept Decisions" in `docs/TODO.md` and `ToDo.md`,
+  - expanded `rules.md` with objective rules:
+    - attackers evade hunters but detonate only at assigned launch target coordinates,
+    - hunters retain primary lock unless opportunistic-switch gate conditions are satisfied,
+    - explicit ALGO vs EDGEAI behavior split and telemetry requirements.
+- 2026-03-28 | Completed Phase 4 + Phase 10 closure pass in `drone_hunter_arena.c`:
+  - Phase 4: added explicit no-fit/no-stock fallback logic and WHY reason reporting for fallback + launch-sector depletion,
+  - Phase 10: added mission milestones (`OPENING`, `ESCALATE`, `CRISIS`, `SATURATE`) and late-wave strategy shift layer in AUTO mode,
+  - HUD wave row now shows milestone plus dual shift markers (`*` primary, `+` late).
+- 2026-03-28 | Build attempt after Phase 4/10 closure pass:
+  - command: `make -C firmware_kit_epc2/proj_cm55 build_proj TOOLCHAIN=GCC_ARM CONFIG_DISPLAY=W4P3INCH_DISP -j8`
+  - result: failed early in current shell with `Unable to find any of the available CY_TOOLS_PATHS`.
+- 2026-03-28 | Added explicit roadmap phase for hunter guidance hardening:
+  - introduced Phase 13 "Hunter Guidance + Intercept Geometry Hardening" in both `docs/TODO.md` and `ToDo.md`,
+  - moved Phase 13 to top of immediate next sprint queue,
+  - updated `docs/STATUS.md` state line to reflect Phase 13 priority.
 - 2026-03-25 | Imported firmware baseline and established Drone Hunter app flow.
 - 2026-03-25..2026-03-26 | Iterated splash/carousel and gameplay baseline.
 - 2026-03-27 | Stabilized dual-CIWS layout, transparency, and sweep/tracer behavior.
@@ -120,3 +198,95 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2400256 bytes`
   - `verified 2396432 bytes`
+- 2026-03-28 | Advanced Phase 10 wave pacing model in `drone_hunter_arena.c`:
+  - added rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
+  - added archetype-based target composition/tier scaling (difficulty by behavior, not count alone),
+  - added auto-mode mid-wave strategy shift trigger (~55% progress),
+  - added HUD archetype telemetry + strategy-shift marker.
+- 2026-03-28 | Rebuild executed (`build_proj`) after wave-archetype update:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after wave-archetype update:
+  - `wrote 2400256 bytes`
+  - `verified 2398272 bytes`
+- 2026-03-28 | Shahed kill visual behavior fix in `drone_hunter_arena.c`:
+  - added explicit Shahed destroy sequence (explosion + short dying hold) before despawn,
+  - excluded dying targets from hunter retarget/manual selection and threat pipeline,
+  - preserved immediate behavior for non-Shahed kill path.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed explosion fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed explosion fix:
+  - `wrote 2400256 bytes`
+  - `verified 2398944 bytes`
+- 2026-03-28 | Shahed blast visibility boost in `drone_hunter_arena.c`:
+  - increased Shahed death blast scale, brightness, border width, and hold duration,
+  - moved intercept blast foreground and enlarged kill-ring fill to improve readability at gun-impact point,
+  - tuned effect so blast is clearly larger relative to Shahed sprite size.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed blast visibility boost:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed blast visibility boost:
+  - `wrote 2404352 bytes`
+  - `verified 2399336 bytes`
+- 2026-03-28 | Shahed blast center anchoring fix in `drone_hunter_arena.c`:
+  - added rendered-object center helper and anchored kill FX to live target object center,
+  - ensured intercept blast origin tracks visible Shahed center at kill time.
+- 2026-03-28 | Rebuild executed (`build_proj`) after Shahed blast center anchoring fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after Shahed blast center anchoring fix:
+  - `wrote 2404352 bytes`
+  - `verified 2399496 bytes`
+- 2026-03-28 | Refined explosion anchor to transformed visual center:
+  - added helper to compute rendered object center from transformed coordinates relative to arena,
+  - kill FX now anchors from transformed sprite center instead of logical track center.
+- 2026-03-28 | Rebuild executed (`build_proj`) after transformed visual-center anchoring:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after transformed visual-center anchoring:
+  - `wrote 2404352 bytes`
+  - `verified 2399472 bytes`
+- 2026-03-28 | CIWS kill-impact FX anchoring fix in `drone_hunter_arena.c`:
+  - CIWS kill path now captures rendered target center and emits kill/intercept FX before respawn,
+  - aligns gun-kill blast visuals with actual destroyed target location.
+- 2026-03-28 | Rebuild executed (`build_proj`) after CIWS kill-anchor parity fix:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after CIWS kill-anchor parity fix:
+  - `wrote 2404352 bytes`
+  - `verified 2399760 bytes`
+- 2026-03-28 | Added explicit per-class blast profile mapping in `drone_hunter_arena.c`:
+  - Shahed -> giant orange explosion,
+  - Strike-X (DJI) -> medium orange explosion,
+  - red Strike-Prop fixed-wing -> small white ring.
+- 2026-03-28 | Applied mapping consistently for both hunter-kill and CIWS-kill paths with rendered-center anchoring.
+- 2026-03-28 | Rebuild executed (`build_proj`) after per-class blast mapping:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after per-class blast mapping:
+  - `wrote 2404352 bytes`
+  - `verified 2400112 bytes`
+- 2026-03-28 | Revised class-to-blast mapping in `drone_hunter_arena.c`:
+  - red fixed-wing Strike-Prop now uses medium white circular explosion,
+  - X-wing (DJI/Strike-X) now uses small bright white circular explosion,
+  - Shahed remains giant orange explosion.
+- 2026-03-28 | Rebuild executed (`build_proj`) after revised white blast mapping:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after revised white blast mapping:
+  - `wrote 2404352 bytes`
+  - `verified 2400160 bytes`
+- 2026-03-28 | Applied perspective depth scaling to drone explosion FX in `drone_hunter_arena.c`:
+  - intercept, spawn, and kill explosion sizes now scale by `depth_zoom_factor_for_y`,
+  - near-bottom impacts render larger; far/top impacts render smaller.
+- 2026-03-28 | Rebuild executed (`build_proj`) after depth-scaled explosion update:
+  - compile/link/hex generation completed,
+  - combine-sign step failed as expected in this environment (`EdgeProtect Secure Suite not found`).
+- 2026-03-28 | Flash executed (`qprogram_proj`) after depth-scaled explosion update:
+  - `wrote 2404352 bytes`
+  - `verified 2400360 bytes`
+- 2026-03-28 | Documentation synchronization pass:
+  - refreshed `README.md`, `docs/STATUS.md`, `docs/OPS_RUNBOOK.md`, `docs/TODO.md`, `ToDo.md`, and `docs/HARDWARE_SETUP.md` to current baseline.
+- 2026-03-28 | Restore-point docs updated:
+  - set new dated golden/failsafe target names in `docs/RESTORE_POINTS.md` for depth-scaled class-FX baseline.

@@ -2,9 +2,14 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260328-phase12-plus-ciws-hunter-fratricide-rule`
+- Dated tag: `golden-e8-drone-hunter-20260328-phase13-start-guidance-swept-hit`
 - Date: `2026-03-28`
 - Baseline summary:
+  - Phase 13 start baseline:
+    - continuous hunter guidance re-steer is active,
+    - swept-hit collision checks are active,
+    - target-loss reacquire path is active,
+    - HUD telemetry counters added (`SH`, `RQ`, `OS`).
   - Phase 10 wave pacing baseline retained:
     - rotating wave archetypes (`SHAHED`, `X-SWARM`, `MIXED`, `TERM-SAT`),
     - composition-driven scaling,
@@ -28,15 +33,15 @@
   - Explosion perspective scaling baseline:
     - kill/intercept/spawn FX size scales with depth (larger near bottom, smaller near top).
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2404352 bytes`
-  - `verified 2403032 bytes`
+  - `wrote 2408448 bytes`
+  - `verified 2404672 bytes`
 - Memory snapshot:
-  - external SMIF usage: `2,403,032 / 134,217,728` bytes (`1.79%` used),
-  - remaining external SMIF: `131,814,696` bytes (`98.21%` free).
+  - external SMIF usage: `2,404,672 / 134,217,728` bytes (`1.79%` used),
+  - remaining external SMIF: `131,813,056` bytes (`98.21%` free).
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260328-phase12-plus-ciws-hunter-fratricide-rule`
+- Dated tag: `failsafe-e8-drone-hunter-20260328-phase13-start-guidance-swept-hit`
 - Date: `2026-03-28`
 - Policy: failsafe is aligned to current golden baseline.
 

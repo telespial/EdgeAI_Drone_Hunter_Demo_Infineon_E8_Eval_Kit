@@ -290,7 +290,7 @@ Status: Complete
 ---
 
 ## Phase 13 - Hunter Guidance + Intercept Geometry Hardening
-Status: Planned
+Status: In Progress
 
 ### Objectives
 - Eliminate straight-line fly-past behavior by making hunter intercepts continuously guided and hit-safe at frame boundaries.
@@ -308,6 +308,17 @@ Status: Planned
 - Add telemetry for validation:
   - log overshoot count, swept-hit count, reacquire count.
 - Rebalance per-class speed/kill-radius only after guidance is stable.
+
+### Progress update (2026-03-28)
+- Implemented in `drone_hunter_arena.c`:
+  - continuous hunter re-steering while committed,
+  - turn-rate limiting in steering helpers,
+  - swept-hit segment-vs-radius collision gate,
+  - reacquire path for lost targets before miss/fall,
+  - telemetry counters surfaced in HUD (`SH`, `RQ`, `OS`).
+- Remaining to close Phase 13:
+  - hardware validation/tuning pass for miss-rate reduction and role-balance,
+  - per-class speed/kill-radius recalibration if needed.
 
 ### Exit criteria
 - Hunters no longer pass through viable targets due to one-frame overshoot.
@@ -371,6 +382,6 @@ Status: Planned
 ---
 
 ## Immediate Next Sprint (execution order)
-1. Start Phase 13 hunter guidance/intercept hardening (continuous homing + swept-hit detection).
+1. Continue Phase 13 hardware validation + tuning and close remaining calibrations.
 2. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
 3. Re-profile memory/latency after Phase 13/14 implementation and retune thresholds.
