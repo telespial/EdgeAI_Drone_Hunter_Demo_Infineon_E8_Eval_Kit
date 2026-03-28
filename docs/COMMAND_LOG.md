@@ -1,5 +1,19 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Phase 13 completion calibration in `drone_hunter_arena.c`:
+  - added class-aware guidance speed/lead multipliers for launch + pursuit steering,
+  - added near-intercept overshoot damping to reduce fly-past behavior,
+  - rebalanced per-class kill-radius values post-guidance stabilization,
+  - added explicit WHY messaging for target-loss/no-reacquire and terminal-evade misses.
+- 2026-03-28 | Phase 13 completion build + flash pass:
+  - build command completed through compile/link/hex generation; expected combine-sign warning remained,
+  - flash command succeeded on board `PSE846GPS2DBZC4A`,
+  - OpenOCD results:
+    - `wrote 2408448 bytes`
+    - `verified 2405104 bytes`
+- 2026-03-28 | Roadmap/status closure for Phase 13:
+  - marked Phase 13 as complete in `docs/TODO.md`, `docs/STATUS.md`, and `docs/PROJECT_STATE.md`,
+  - updated restore metadata in `docs/RESTORE_POINTS.md` for phase13-complete baseline.
 - 2026-03-28 | Documentation + restore-point refresh after flicker hotfix:
   - aligned latest verified flash metrics to flicker-hotfix image (`verified 2404608`),
   - updated memory accounting in `README.md`, `docs/STATUS.md`, and `docs/PROJECT_STATE.md`,

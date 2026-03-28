@@ -1088,14 +1088,14 @@ static const char *arena_phase_name(int phase)
 
 static const hunter_profile_t g_hunter_profiles[HUNTER_TYPE_COUNT] =
 {
-    {"Sting-II",      2.20f, 0.020f, 0.66f, 1.55f, 14.0f, 1, 3, 32, 20, 18, 7, 15, 4, 10, 5, 0xD1D5DB, 0x9CA3AF, "Sting-II is tuned for rapid intercepts against fast threats. It reaches speed quickly and keeps a stable nose-in pursuit path."},
-    {"Bagnet",        1.68f, 0.016f, 0.72f, 1.10f, 13.0f, 2, 2, 30, 20, 16, 7, 14, 4,  9, 5, 0xD4D4D8, 0xA1A1AA, "Bagnet is a close-range hunter built for tight FPV engagements. It favors control and positioning over pure top speed."},
-    {"Skyfall P1",    2.50f, 0.023f, 0.62f, 1.70f, 13.0f, 1, 3, 34, 20, 20, 6, 15, 3, 10, 4, 0xE5E7EB, 0x9CA3AF, "Skyfall P1 is optimized for predictive lead pursuit. It is one of the fastest options in the lineup for fixed-wing intercepts."},
-    {"Octopus-100",   1.98f, 0.018f, 0.70f, 1.30f, 14.0f, 2, 2, 32, 20, 17, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Octopus-100 is a balanced multirotor platform for mixed threat environments. It trades extremes for consistent all-round behavior."},
-    {"ODIN Win_Hit",  2.05f, 0.019f, 0.68f, 1.25f, 15.0f, 2, 2, 33, 21, 18, 8, 15, 4, 10, 5, 0xCBD5E1, 0x94A3B8, "ODIN Win_Hit emphasizes stable tracking and reliable direct-hit geometry. It performs well when holding line and avoiding overshoot."},
-    {"VB140",         1.10f, 0.015f, 0.75f, 1.05f, 16.0f, 3, 1, 36, 18, 20, 6, 18, 3,  8, 4, 0xE7E5E4, 0xA8A29E, "VB140 uses a larger frame for close interception pressure. It is resilient in dense engagements and favors high-contact scoring."},
-    {"Tytan",         1.50f, 0.021f, 0.64f, 1.50f, 14.0f, 1, 3, 34, 20, 19, 7, 15, 4, 10, 5, 0xE5E7EB, 0x9CA3AF, "Tytan is an aggressive fixed-wing hunter with strong approach speed. It is suited for decisive first-pass intercept attempts."},
-    {"Merops",        1.86f, 0.018f, 0.69f, 1.20f, 15.0f, 2, 2, 35, 20, 19, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Merops is a general-purpose interceptor for variable weather and threat mixes. It balances predictability, control, and endurance."}
+    {"Sting-II",      2.20f, 0.020f, 0.66f, 1.55f, 14.8f, 1, 3, 32, 20, 18, 7, 15, 4, 10, 5, 0xD1D5DB, 0x9CA3AF, "Sting-II is tuned for rapid intercepts against fast threats. It reaches speed quickly and keeps a stable nose-in pursuit path."},
+    {"Bagnet",        1.68f, 0.016f, 0.72f, 1.10f, 13.8f, 2, 2, 30, 20, 16, 7, 14, 4,  9, 5, 0xD4D4D8, 0xA1A1AA, "Bagnet is a close-range hunter built for tight FPV engagements. It favors control and positioning over pure top speed."},
+    {"Skyfall P1",    2.50f, 0.023f, 0.62f, 1.70f, 14.2f, 1, 3, 34, 20, 20, 6, 15, 3, 10, 4, 0xE5E7EB, 0x9CA3AF, "Skyfall P1 is optimized for predictive lead pursuit. It is one of the fastest options in the lineup for fixed-wing intercepts."},
+    {"Octopus-100",   1.98f, 0.018f, 0.70f, 1.30f, 14.5f, 2, 2, 32, 20, 17, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Octopus-100 is a balanced multirotor platform for mixed threat environments. It trades extremes for consistent all-round behavior."},
+    {"ODIN Win_Hit",  2.05f, 0.019f, 0.68f, 1.25f, 15.4f, 2, 2, 33, 21, 18, 8, 15, 4, 10, 5, 0xCBD5E1, 0x94A3B8, "ODIN Win_Hit emphasizes stable tracking and reliable direct-hit geometry. It performs well when holding line and avoiding overshoot."},
+    {"VB140",         1.10f, 0.015f, 0.75f, 1.05f, 16.4f, 3, 1, 36, 18, 20, 6, 18, 3,  8, 4, 0xE7E5E4, 0xA8A29E, "VB140 uses a larger frame for close interception pressure. It is resilient in dense engagements and favors high-contact scoring."},
+    {"Tytan",         1.50f, 0.021f, 0.64f, 1.50f, 14.6f, 1, 3, 34, 20, 19, 7, 15, 4, 10, 5, 0xE5E7EB, 0x9CA3AF, "Tytan is an aggressive fixed-wing hunter with strong approach speed. It is suited for decisive first-pass intercept attempts."},
+    {"Merops",        1.86f, 0.018f, 0.69f, 1.20f, 15.2f, 2, 2, 35, 20, 19, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Merops is a general-purpose interceptor for variable weather and threat mixes. It balances predictability, control, and endurance."}
 };
 
 static const lv_image_dsc_t *hunter_image_src(hunter_type_t type)
@@ -1294,30 +1294,76 @@ static float hunter_turn_rate_limit(hunter_type_t h, controller_t ctrl)
     return clampf(base, 0.030f, 0.090f);
 }
 
+static float hunter_guidance_speed_mult(hunter_type_t h, controller_t ctrl)
+{
+    float base = (ctrl == CTRL_EDGEAI) ? 1.90f : 1.72f;
+    switch (h)
+    {
+        case HUNTER_STING_II:
+        case HUNTER_SKYFALL_P1:
+            base += 0.08f;
+            break;
+        case HUNTER_BAGNET:
+        case HUNTER_MEROPS:
+            base += 0.02f;
+            break;
+        case HUNTER_VB140_FLAMINGO:
+            base -= 0.10f;
+            break;
+        default:
+            break;
+    }
+    return clampf(base, 1.52f, 2.05f);
+}
+
+static float hunter_guidance_lead_frames(hunter_type_t h, controller_t ctrl, float lead_gain)
+{
+    float lead = 8.0f + (11.0f * lead_gain);
+    switch (h)
+    {
+        case HUNTER_STING_II:
+        case HUNTER_SKYFALL_P1:
+            lead += 1.8f;
+            break;
+        case HUNTER_VB140_FLAMINGO:
+            lead -= 1.4f;
+            break;
+        default:
+            break;
+    }
+    if (ctrl != CTRL_EDGEAI)
+    {
+        lead *= 0.62f;
+    }
+    return clampf(lead, 4.0f, 26.0f);
+}
+
 static void steer_hunter_toward_target(drone_hunter_scene_t *s, int h, int target, const hunter_profile_t *p)
 {
     float tx;
     float ty;
+    float dist_to_pred;
     float desired;
     float current;
     float delta;
     float turn_limit = hunter_turn_rate_limit(s->h_type[h], s->team_ctrl[h]);
     float speed_now = sqrtf((s->hvx[h] * s->hvx[h]) + (s->hvy[h] * s->hvy[h]));
-    float speed_goal = p->speed * ((s->team_ctrl[h] == CTRL_EDGEAI) ? 2.05f : 1.85f);
+    float speed_goal = p->speed * hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]);
     float speed;
-    float lead_frames = 10.0f + (12.0f * p->lead_gain);
-
-    if (s->team_ctrl[h] != CTRL_EDGEAI)
-    {
-        lead_frames *= 0.60f;
-    }
+    float lead_frames = hunter_guidance_lead_frames(s->h_type[h], s->team_ctrl[h], p->lead_gain);
     tx = s->kx[target] + (s->kvx[target] * lead_frames);
     ty = s->ky[target] + (s->kvy[target] * lead_frames);
+    dist_to_pred = sqrtf(dist2(s->hx[h], s->hy[h], tx, ty));
     desired = atan2f(ty - s->hy[h], tx - s->hx[h]);
     current = ((speed_now > 0.02f) ? atan2f(s->hvy[h], s->hvx[h]) : s->h_heading[h]);
     delta = wrap_angle_pi(desired - current);
     delta = clampf(delta, -turn_limit, turn_limit);
     speed = speed_now + ((speed_goal - speed_now) * 0.20f);
+    if (dist_to_pred < (p->kill_radius * 5.0f))
+    {
+        /* Reduce terminal overshoot while preserving turn authority near intercept. */
+        speed *= (dist_to_pred < (p->kill_radius * 3.0f)) ? 0.82f : 0.90f;
+    }
     speed = clampf(speed, 0.35f, speed_goal * 1.08f);
     current += delta;
     s->hvx[h] = cosf(current) * speed;
@@ -1343,6 +1389,10 @@ static int choose_hunter_reacquire_target(const drone_hunter_scene_t *s, int h, 
             continue;
         }
         d2 = dist2(s->hx[h], s->hy[h], s->kx[k], s->ky[k]);
+        if (d2 > ((float)s->arena_w * 0.65f * (float)s->arena_w * 0.65f))
+        {
+            continue;
+        }
         proximity_q = 1.0f - clampf(sqrtf(d2) / clampf((float)s->arena_w, 20.0f, 4000.0f), 0.0f, 1.0f);
         score = (s->k_threat_score[k] * 0.68f) +
                 (proximity_q * 0.24f) +
@@ -3394,15 +3444,17 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         p = &g_hunter_profiles[(int)s->h_type[h]];
         if (s->team_ctrl[h] == CTRL_EDGEAI)
         {
-            tx = s->kx[target] + (s->kvx[target] * (18.0f * p->lead_gain));
-            ty = s->ky[target] + (s->kvy[target] * (18.0f * p->lead_gain));
-            launch_speed = p->speed * 2.05f;
+            float lead_frames = hunter_guidance_lead_frames(s->h_type[h], s->team_ctrl[h], p->lead_gain);
+            tx = s->kx[target] + (s->kvx[target] * lead_frames);
+            ty = s->ky[target] + (s->kvy[target] * lead_frames);
+            launch_speed = p->speed * hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]);
         }
         else
         {
-            tx = s->kx[target];
-            ty = s->ky[target];
-            launch_speed = p->speed * 1.85f;
+            float lead_frames = hunter_guidance_lead_frames(s->h_type[h], s->team_ctrl[h], p->lead_gain);
+            tx = s->kx[target] + (s->kvx[target] * lead_frames);
+            ty = s->ky[target] + (s->kvy[target] * lead_frames);
+            launch_speed = p->speed * hunter_guidance_speed_mult(s->h_type[h], s->team_ctrl[h]);
         }
         dx = tx - s->hx[h];
         dy = ty - s->hy[h];
@@ -3508,6 +3560,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
             else
             {
                 s->defense_misses++;
+                note_failure(s, "Hunter miss: target lost and no viable reacquire", NULL);
                 s->h_falling[h] = 1;
                 s->h_last_target_d2[h] = 0.0f;
                 if (s->hvy[h] < 0.0f)
@@ -3645,6 +3698,10 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 {
                     s->defense_misses++;
                     s->k_missed_by_hunter[committed] = 1;
+                    if ((s->defense_misses % 4) == 0)
+                    {
+                        note_failure(s, "Hunter miss: target evaded in terminal window", NULL);
+                    }
                     s->h_falling[h] = 1;
                     s->h_last_target_d2[h] = 0.0f;
                     if (s->hvy[h] < 0.0f)

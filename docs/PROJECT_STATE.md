@@ -65,11 +65,16 @@
 - Phase 14 doctrine semantics are now explicit in rules/docs:
   - `ALGO` is baseline attacker+defender function logic,
   - `EDGEAI` is adaptive embedded intelligence that improves ALGO using trained/adaptive reasoning.
-- Phase 13 hunter guidance/intercept hardening is now in progress:
+- Phase 13 hunter guidance/intercept hardening is now complete:
   - committed hunters are continuously re-steered each tick with turn-rate limits,
   - swept-hit geometry checks are active to reduce one-frame fly-through misses,
   - target-loss handling now attempts bounded reacquire before forced miss/fall,
   - telemetry counters added for swept-hit (`SH`), reacquire (`RQ`), and overshoot (`OS`) events.
+- Phase 13 completion calibration is now implemented:
+  - class-aware guidance lead/speed multipliers added for launch + pursuit steering,
+  - near-intercept overshoot damping added to reduce fly-past behavior in terminal window,
+  - per-class kill radius values rebalanced after guidance stabilization,
+  - explicit WHY messages added for unreacquired target-loss misses and terminal evade misses.
 - Display stability hotfix:
   - HUD text refresh is now rate-limited to reduce occasional panel flicker,
   - `hud_elapsed` line now uses single-write composition per refresh pass.
@@ -256,13 +261,13 @@
   - `build_proj` in current shell still reports GCC package resolution issue.
 
 ## Memory snapshot (2026-03-28)
-- Programmed image (`verified`): `2,404,608` bytes.
+- Programmed image (`verified`): `2,405,104` bytes.
 - External SMIF capacity (`0x60000000..0x67FFFFFF`): `134,217,728` bytes.
 - Usage:
   - used: `1.79%`
-  - free: `98.21%` (`131,813,120` bytes).
+  - free: `98.21%` (`131,812,624` bytes).
 - Internal-only fit check (512 KB RRAM):
-  - image exceeds capacity by `1,880,320` bytes (`~4.59x` larger than internal capacity).
+  - image exceeds capacity by `1,880,816` bytes (`~4.59x` larger than internal capacity).
 
 ## Build + Flash confirmation (2026-03-28, Phase 12 closure pass)
 - Build command completed through compile/link/hex generation:
@@ -293,3 +298,11 @@
 - OpenOCD results:
   - `wrote 2408448 bytes`
   - `verified 2404608 bytes`
+
+## Build + Flash confirmation (2026-03-28, Phase 13 completion pass)
+- Rebuild completed for `proj_cm55` after guidance calibration + miss explainability updates.
+- Build reached compile/link/hex generation successfully (combine-sign environment limitation unchanged).
+- Program command completed on board `PSE846GPS2DBZC4A`.
+- OpenOCD results:
+  - `wrote 2408448 bytes`
+  - `verified 2405104 bytes`

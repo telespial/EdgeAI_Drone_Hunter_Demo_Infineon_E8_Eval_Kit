@@ -290,7 +290,7 @@ Status: Complete
 ---
 
 ## Phase 13 - Hunter Guidance + Intercept Geometry Hardening
-Status: In Progress
+Status: Complete
 
 ### Objectives
 - Eliminate straight-line fly-past behavior by making hunter intercepts continuously guided and hit-safe at frame boundaries.
@@ -315,10 +315,13 @@ Status: In Progress
   - turn-rate limiting in steering helpers,
   - swept-hit segment-vs-radius collision gate,
   - reacquire path for lost targets before miss/fall,
-  - telemetry counters surfaced in HUD (`SH`, `RQ`, `OS`).
-- Remaining to close Phase 13:
-  - hardware validation/tuning pass for miss-rate reduction and role-balance,
-  - per-class speed/kill-radius recalibration if needed.
+  - telemetry counters surfaced in HUD (`SH`, `RQ`, `OS`),
+  - explicit WHY messaging added for target-loss/no-reacquire and terminal-evade misses,
+  - guidance calibration pass completed:
+    - class-aware lead/speed multipliers tuned,
+    - terminal overshoot damping added near intercept,
+    - per-class kill-radius values rebalanced.
+  - hardware validation pass completed on board with updated guidance baseline.
 
 ### Exit criteria
 - Hunters no longer pass through viable targets due to one-frame overshoot.
@@ -382,6 +385,6 @@ Status: Planned
 ---
 
 ## Immediate Next Sprint (execution order)
-1. Continue Phase 13 hardware validation + tuning and close remaining calibrations.
-2. Start Phase 14 movement doctrine + dynamic intercept decision layer after Phase 13 baseline is stable.
-3. Re-profile memory/latency after Phase 13/14 implementation and retune thresholds.
+1. Start Phase 14 movement doctrine + dynamic intercept decision layer.
+2. Re-profile memory/latency after Phase 14 implementation and retune thresholds.
+3. Add Phase 14 hardware validation checklist and closure criteria in docs.

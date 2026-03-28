@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-28
-- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11/12 are complete. Phase 13 is now in progress (hunter guidance + intercept hardening), and Phase 14 remains planned.
+- State: Stable runtime baseline validated on hardware; Phases 1/2/3/4/5/6/7/8/9/10/11/12/13 are complete. Phase 14 remains planned.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Latest confirmed flash result:
   - `wrote 2408448 bytes`
-  - `verified 2404608 bytes`
+  - `verified 2405104 bytes`
 - Build quality confirmation:
   - using correct SDK path works for build + flashing:
     - `CY_TOOLS_PATHS=/home/user/toolchains/infineon/ModusToolbox_local/opt/Tools/ModusToolbox/tools_3.7`
@@ -19,10 +19,10 @@
 
 ## Memory footprint
 - External SMIF programmed image (`verified`):
-  - `2,404,608 / 134,217,728` bytes used (`1.79%`),
-  - `131,813,120` bytes remaining (`98.21%`).
+  - `2,405,104 / 134,217,728` bytes used (`1.79%`),
+  - `131,812,624` bytes remaining (`98.21%`).
 - Internal RRAM fit check (512 KB):
-  - current image would exceed internal-only capacity by `1,880,320` bytes (`~4.59x` too large).
+  - current image would exceed internal-only capacity by `1,880,816` bytes (`~4.59x` too large).
 
 ## UX/Gameplay baseline
 - Splash + lineup + `START ARENA` flow retained.
@@ -52,15 +52,16 @@
   - HUD refresh is now throttled to reduce occasional screen flicker from high-frequency text redraw.
 
 ## Phase 13 status (2026-03-28)
-- In progress in runtime code:
+- Completed in runtime code:
   - continuous hunter re-steering while committed (turn-rate limited),
   - swept-hit interception checks to reduce frame-step tunneling misses,
   - target-loss reacquire path before forced miss/fall behavior,
-  - telemetry counters added for swept-hit, reacquire, and overshoot events.
-- Hardware flash baseline updated with this implementation.
-- Latest hotfix flash result:
+  - telemetry counters added for swept-hit, reacquire, and overshoot events,
+  - terminal guidance tuning pass completed (lead/speed calibration + near-intercept overshoot damping),
+  - explicit WHY messaging added for target-loss/no-reacquire and terminal-evade misses.
+- Hardware flash baseline updated with Phase 13 completion build:
   - `wrote 2408448 bytes`
-  - `verified 2404608 bytes`
+  - `verified 2405104 bytes`
 
 ## Explosion/FX baseline (2026-03-28)
 - Explosion anchoring now uses rendered target center for both hunter kills and CIWS kills.
