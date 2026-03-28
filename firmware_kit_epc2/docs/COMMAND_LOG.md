@@ -71,3 +71,13 @@
 - 2026-03-27 | Rebuild + flash validated:
   - `wrote 2375680 bytes`
   - `verified 2374456 bytes`
+- 2026-03-27 | Completed Phase 5 attacker strategy layer over 16 launch sites:
+  - strategy profiles added: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
+  - edge launches remain evenly rotated,
+  - lane selection now follows live attacker strategy profile.
+- 2026-03-27 | Added attacker strategy user control:
+  - mode button long-press cycles attacker strategy and restarts round,
+  - mode button label and wave HUD row now show active strategy.
+- 2026-03-27 | Rebuild + flash validated:
+  - `wrote 2379776 bytes`
+  - `verified 2374944 bytes`

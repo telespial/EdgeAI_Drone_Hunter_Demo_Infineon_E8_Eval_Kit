@@ -2,9 +2,16 @@
 
 ## Golden restore point
 - Rolling tag: `golden-e8-drone-hunter`
-- Dated tag: `golden-e8-drone-hunter-20260327-sector-launch-ciws-ammo-fall-offscreen`
+- Dated tag: `golden-e8-drone-hunter-20260327-phase5-attacker-strategy-layer`
 - Date: `2026-03-27`
 - Baseline summary:
+  - Phase 5 attacker strategy layer completed:
+    - attacker profiles implemented: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
+    - profile-based lane selection over 16 launch sites,
+    - even edge launch rotation preserved across left/right/top/bottom.
+  - Strategy control and telemetry wired:
+    - mode button long-press cycles attacker strategy and resets round,
+    - mode button label + wave HUD line show active strategy (`STRAT`).
   - 8-sector hunter launch allocator added:
     - hidden city sectors with balanced stock,
     - nearest-target sector selection with nearest-stock fallback.
@@ -41,12 +48,12 @@
     - tracer persistence increased for visibility,
     - practical stream distance bounded to gun-to-~75% screen width envelope.
 - Flash confirmation (`proj_cm55 qprogram_proj`):
-  - `wrote 2375680 bytes`
-  - `verified 2374456 bytes`
+  - `wrote 2379776 bytes`
+  - `verified 2374944 bytes`
 
 ## Failsafe restore point
 - Rolling tag: `failsafe-e8-drone-hunter`
-- Dated tag: `failsafe-e8-drone-hunter-20260327-sector-launch-ciws-ammo-fall-offscreen`
+- Dated tag: `failsafe-e8-drone-hunter-20260327-phase5-attacker-strategy-layer`
 - Date: `2026-03-27`
 - Policy: failsafe is aligned to current golden baseline.
 

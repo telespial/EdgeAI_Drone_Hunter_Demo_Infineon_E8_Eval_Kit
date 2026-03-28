@@ -91,6 +91,16 @@ typedef enum
 
 typedef enum
 {
+    ATTACK_STRATEGY_AUTO = 0,
+    ATTACK_STRATEGY_CENTER_PRESSURE,
+    ATTACK_STRATEGY_FLANK_PRESSURE,
+    ATTACK_STRATEGY_MIXED_LURE_STRIKE,
+    ATTACK_STRATEGY_TERMINAL_SATURATION,
+    ATTACK_STRATEGY_COUNT
+} attack_strategy_t;
+
+typedef enum
+{
     HUNTER_STING_II = 0,
     HUNTER_BAGNET,
     HUNTER_SKYFALL_P1,
@@ -304,6 +314,8 @@ typedef struct
     int wave_idx;
     int wave_target_total;
     threat_faction_t threat_faction;
+    attack_strategy_t attack_strategy_select;
+    attack_strategy_t attack_strategy_live;
     int defense_kills;
     int defense_misses;
     int hunter_points;
@@ -383,6 +395,58 @@ static int lane_site_lane(int site)
     return site & 0x3;
 }
 
+static const char *attack_strategy_short_name(attack_strategy_t st)
+{
+    switch (st)
+    {
+        case ATTACK_STRATEGY_CENTER_PRESSURE: return "CENTER";
+        case ATTACK_STRATEGY_FLANK_PRESSURE: return "FLANK";
+        case ATTACK_STRATEGY_MIXED_LURE_STRIKE: return "MIXED";
+        case ATTACK_STRATEGY_TERMINAL_SATURATION: return "TERMINAL";
+        case ATTACK_STRATEGY_AUTO:
+        default: return "AUTO";
+    }
+}
+
+static attack_strategy_t attack_strategy_from_wave(int wave_idx)
+{
+    int phase = (wave_idx - 1) % 4;
+    if (phase < 0)
+    {
+        phase += 4;
+    }
+    return (attack_strategy_t)(ATTACK_STRATEGY_CENTER_PRESSURE + phase);
+}
+
+static int nearest_center_lane(int lane)
+{
+    return (lane <= 1) ? 1 : 2;
+}
+
+static int nearest_flank_lane(int lane)
+{
+    return (lane <= 1) ? 0 : 3;
+}
+
+static int lane_with_max_pressure_on_edge(const drone_hunter_scene_t *s, int edge, int fallback_lane)
+{
+    int lane;
+    int best_lane = fallback_lane;
+    float best_p = -1.0f;
+
+    for (lane = 0; lane < 4; ++lane)
+    {
+        int site = (edge * 4) + lane;
+        float p = s->lane_pressure[site];
+        if (p > best_p)
+        {
+            best_p = p;
+            best_lane = lane;
+        }
+    }
+    return best_lane;
+}
+
 static float target_value_modifier(const drone_hunter_scene_t *s, float gx, float gy, float core_x, float core_y)
 {
     float ax = (float)s->arena_x + ((float)s->arena_w * 0.36f);
@@ -411,15 +475,42 @@ static int choose_spawn_site(drone_hunter_scene_t *s, int k, float goal_x, float
     float arena_max_y = (float)(s->arena_y + s->arena_h);
     float tx = (goal_x - arena_min_x) / ((arena_max_x - arena_min_x > 1.0f) ? (arena_max_x - arena_min_x) : 1.0f);
     float ty = (goal_y - arena_min_y) / ((arena_max_y - arena_min_y > 1.0f) ? (arena_max_y - arena_min_y) : 1.0f);
+    int lane_goal;
     int lane;
+    attack_strategy_t strategy = s->attack_strategy_live;
 
     if (edge == 0 || edge == 1)
     {
-        lane = lane_from_fraction(ty);
+        lane_goal = lane_from_fraction(ty);
     }
     else
     {
-        lane = lane_from_fraction(tx);
+        lane_goal = lane_from_fraction(tx);
+    }
+
+    lane = lane_goal;
+    if (strategy == ATTACK_STRATEGY_CENTER_PRESSURE)
+    {
+        lane = nearest_center_lane(lane_goal);
+    }
+    else if (strategy == ATTACK_STRATEGY_FLANK_PRESSURE)
+    {
+        lane = nearest_flank_lane(lane_goal);
+    }
+    else if (strategy == ATTACK_STRATEGY_MIXED_LURE_STRIKE)
+    {
+        if (((s->killer_spawn_tick + k) & 0x1) == 0)
+        {
+            lane = nearest_flank_lane(lane_goal); /* lure shot */
+        }
+        else
+        {
+            lane = nearest_center_lane(lane_goal); /* strike shot */
+        }
+    }
+    else if (strategy == ATTACK_STRATEGY_TERMINAL_SATURATION)
+    {
+        lane = lane_with_max_pressure_on_edge(s, edge, lane_goal);
     }
 
     return (edge * 4) + lane; /* 0..15 */
@@ -614,6 +705,17 @@ static const char *mode_name(match_mode_t m)
         case MODE_EDGEAI_VS_EDGEAI: return "EdgeAI vs EdgeAI";
         case MODE_ALGO_VS_EDGEAI: return "ALGO vs EdgeAI";
         default: return "?";
+    }
+}
+
+static void update_mode_button_label(drone_hunter_scene_t *s)
+{
+    if (s->mode_btn_label != NULL)
+    {
+        lv_label_set_text_fmt(s->mode_btn_label,
+                              "Mode: %s | Attack: %s",
+                              mode_name(s->mode),
+                              attack_strategy_short_name(s->attack_strategy_select));
     }
 }
 
@@ -1597,11 +1699,7 @@ static void assign_mode(drone_hunter_scene_t *s, match_mode_t m)
         s->team_ctrl[0] = CTRL_ALGO;
         s->team_ctrl[1] = CTRL_EDGEAI;
     }
-
-    if (s->mode_btn_label)
-    {
-        lv_label_set_text_fmt(s->mode_btn_label, "Mode: %s", mode_name(s->mode));
-    }
+    update_mode_button_label(s);
 }
 
 static int attack_variant_idx(const drone_hunter_scene_t *s, int k)
@@ -1904,6 +2002,14 @@ static void start_wave(drone_hunter_scene_t *s, int wave_idx)
     s->attack_destroyed = 0;
     s->attack_leaked = 0;
     s->threat_faction = (wave_idx & 1) ? THREAT_FACTION_RUSSIA : THREAT_FACTION_USA;
+    if (s->attack_strategy_select == ATTACK_STRATEGY_AUTO)
+    {
+        s->attack_strategy_live = attack_strategy_from_wave(wave_idx);
+    }
+    else
+    {
+        s->attack_strategy_live = s->attack_strategy_select;
+    }
 
     respawn_killer(s, 0, -1);
     respawn_killer(s, 1, -1);
@@ -1949,6 +2055,12 @@ static void show_overlay(drone_hunter_scene_t *s, const char *title, const char 
 static void reset_round(drone_hunter_scene_t *s)
 {
     int i;
+
+    if ((s->attack_strategy_select < ATTACK_STRATEGY_AUTO) || (s->attack_strategy_select >= ATTACK_STRATEGY_COUNT))
+    {
+        s->attack_strategy_select = ATTACK_STRATEGY_AUTO;
+    }
+    s->attack_strategy_live = ATTACK_STRATEGY_CENTER_PRESSURE;
 
     s->team_score[0] = 0;
     s->team_score[1] = 0;
@@ -2043,6 +2155,7 @@ static void reset_round(drone_hunter_scene_t *s)
     reset_hunters(s);
     start_wave(s, 1);
     update_hunter_deck_ui(s);
+    update_mode_button_label(s);
 
     hide_overlay(s);
 }
@@ -2056,8 +2169,17 @@ static void restart_cb(lv_event_t *e)
 static void mode_cb(lv_event_t *e)
 {
     drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
 
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    if (code == LV_EVENT_LONG_PRESSED)
+    {
+        s->attack_strategy_select = (attack_strategy_t)((s->attack_strategy_select + 1) % ATTACK_STRATEGY_COUNT);
+        update_mode_button_label(s);
+        reset_round(s);
+        return;
+    }
+
+    if (code != LV_EVENT_CLICKED)
     {
         return;
     }
@@ -2779,9 +2901,10 @@ static void update_hud(drone_hunter_scene_t *s)
                           "HUNTER %d  |  ATTACKER %d  |  KILLS %d  |  MISSES %d",
                           s->hunter_points, s->attacker_points, s->defense_kills, s->defense_misses);
     lv_label_set_text_fmt(s->hud_wave,
-                          "WAVE %d  |  %s  |  NEUTRALIZED %d/%d  |  LEAKED %d",
+                          "WAVE %d  |  %s  |  STRAT %s  |  NEUTRALIZED %d/%d  |  LEAKED %d",
                           s->wave_idx,
                           threat_faction_name(s->threat_faction),
+                          attack_strategy_short_name(s->attack_strategy_live),
                           s->attack_destroyed, s->wave_target_total,
                           s->attack_leaked);
     lv_label_set_text_fmt(s->hud_elapsed,
@@ -3157,6 +3280,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_set_style_bg_color(s->mode_btn, lv_color_hex(0x0EA5E9), 0);
         lv_obj_set_style_bg_opa(s->mode_btn, LV_OPA_80, 0);
         lv_obj_add_event_cb(s->mode_btn, mode_cb, LV_EVENT_CLICKED, s);
+        lv_obj_add_event_cb(s->mode_btn, mode_cb, LV_EVENT_LONG_PRESSED, s);
 
         s->mode_btn_label = lv_label_create(s->mode_btn);
         lv_obj_set_style_text_color(s->mode_btn_label, lv_color_hex(0xFFFFFF), 0);
@@ -3465,6 +3589,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_center(btn_txt);
     }
 
+    s->attack_strategy_select = ATTACK_STRATEGY_AUTO;
+    s->attack_strategy_live = ATTACK_STRATEGY_CENTER_PRESSURE;
     assign_mode(s, MODE_ALGO_VS_EDGEAI);
     reset_round(s);
 

@@ -1,14 +1,14 @@
 # STATUS
 
 - Date: 2026-03-27
-- State: Stable runtime baseline validated on hardware; hunter egress/top-edge behavior and CIWS tracer stream/range tuned on board.
+- State: Stable runtime baseline validated on hardware; Phase 5 attacker strategy layer is now wired and selectable on device.
 
 ## Current validated baseline
 - `proj_cm55` rebuild/program path confirmed.
 - `qprogram_proj` flash confirmed on hardware.
 - Confirmed flash result:
-  - `wrote 2375680 bytes`
-  - `verified 2374456 bytes`
+  - `wrote 2379776 bytes`
+  - `verified 2374944 bytes`
 - Build quality confirmation:
   - `drone_hunter_arena.c` cleanup build has no compiler warnings in local build step.
 
@@ -24,6 +24,14 @@
   - failed/missed hunters continue descending off the bottom of the screen,
   - auto-reset occurs only after off-screen exit.
 - Hunter launch origin now uses 8 hidden city sectors with nearest-target selection and nearest-stock fallback.
+- Phase 5 attacker strategy layer is now active over 16 launch sites:
+  - strategies implemented: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
+  - launch edges remain evenly rotated (left/right/top/bottom),
+  - lane selection is strategy-driven per edge.
+- Player strategy control is now available:
+  - mode button `click`: cycles match mode,
+  - mode button `long-press`: cycles attacker strategy and restarts round.
+- HUD wave row now shows live attacker strategy (`STRAT ...`).
 - Hunter vs Attacker scoring active.
 - Attack drones now forced to generated attack render set at runtime (ODIN fallback removed):
   - `attack_shahed_yellow`

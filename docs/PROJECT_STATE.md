@@ -18,6 +18,14 @@
 - `rules.md`
 
 ## Current behavior in code
+- Phase 5 attacker strategy layer is implemented and active:
+  - profile set: `AUTO`, `CENTER`, `FLANK`, `MIXED`, `TERMINAL`,
+  - 4-edge spawn balancing is retained,
+  - lane selection is strategy-driven on top of 16-site model.
+- On-device strategy selection is wired:
+  - mode button click cycles game mode,
+  - mode button long-press cycles attacker strategy and resets round.
+- HUD wave line includes live strategy telemetry (`STRAT`).
 - Hunter launch origin distribution now uses 8 hidden city sectors:
   - nearest-sector first selection per target,
   - automatic nearest-stock fallback when local sector is depleted.
@@ -63,5 +71,5 @@
 ## Build/Flash confirmation (2026-03-27)
 - Rebuild/program completed on board `PSE846GPS2DBZC4A`.
 - OpenOCD results:
-  - `wrote 2375680 bytes`
-  - `verified 2374456 bytes`
+  - `wrote 2379776 bytes`
+  - `verified 2374944 bytes`
