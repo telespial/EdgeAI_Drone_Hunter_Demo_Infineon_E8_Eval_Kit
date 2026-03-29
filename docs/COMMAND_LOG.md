@@ -1,5 +1,26 @@
 # COMMAND_LOG
 
+- 2026-03-29 | City-fire safe-mode visibility fix in `drone_hunter_arena.c`:
+  - corrected safe-mode fire path so impact fires are no longer force-hidden every frame,
+  - added persistent low-load ground fires tied to attacker successful target hits.
+- 2026-03-29 | Drone class visual mapping + update-effects freeze hardening:
+  - fixed attack-drone visual mapping so sprite/size/blast style are class-locked:
+    - Shahed = largest yellow + giant orange blast,
+    - fixed-wing red = medium + red blast,
+    - X-wing DJI = smallest orange + small white blast,
+  - hardened `DBG:UPDATE_EFFECTS` path by removing repeated debug foreground moves and reducing high-churn safe-mode fire object updates.
+- 2026-03-29 | Build + flash validation for effects hardening + class-size correction:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` from rebuilt `proj_cm55.elf`,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2633728 bytes` / `verified 2628796 bytes`
+    - `** Resetting Target **`
+- 2026-03-29 | Runtime note:
+  - current fire rendering is intentionally in still-image fallback mode for stability monitoring; next tuning pass can restore animated flames once freeze soak confirms stable runtime.
+
 - 2026-03-29 | Strategic attacker sequence + visible debug-stage instrumentation in `drone_hunter_arena.c`:
   - replaced deterministic attacker composition tables with doctrine-weighted stochastic spawn selection,
   - reset round at splash start after entropy mix to avoid boot-time replay patterns,
