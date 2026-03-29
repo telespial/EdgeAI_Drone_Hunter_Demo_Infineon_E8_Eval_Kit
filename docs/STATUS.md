@@ -12,18 +12,19 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2859008 bytes`, `verified 2857120 bytes`
+- `wrote 2859008 bytes`, `verified 2855912 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
 - Settings popup controls are integrated and active:
   - attacker mode, defender mode, NPU toggle, difficulty, speed++.
+- Top HUD text rows and `SET | HELP` button are removed.
 - CIWS structures remain fixed while bullet streams target dynamically.
 - Exhaustion-mode battle ending is active.
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,857,120 bytes`
+- CM55 verified image size (external SMIF): `2,855,912 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

@@ -438,3 +438,18 @@
   - golden: `golden-20260328-phase15-flame-sync-fix-20260328_181554`
   - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-flame-sync-fix-20260328_181554`
   - rolling links `current_golden` and `current_failsafe` updated.
+- 2026-03-28 | Top-HUD cleanup patch in `drone_hunter_arena.c`:
+  - removed top HUD text rows and removed top `SET | HELP` touch button,
+  - added HUD null guards so no label writes occur when top HUD is disabled.
+- 2026-03-28 | Stability correction after HUD removal:
+  - restored arena origin to baseline (`arena_y = HUD_H + 8`) to avoid long-run freeze regression,
+  - retained top-HUD and button removal behavior.
+- 2026-03-28 | Rebuild + flash validation for top-HUD removal + stability correction:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash succeeded (`erase_all; program cm33_s; program cm33_ns; program cm55`),
+  - signatures: `wrote 32768/verified 30456`, `wrote 12288/verified 8732`, `wrote 2859008/verified 2855912`.
+- 2026-03-28 | New restore points created from top-HUD-removed stability baseline:
+  - golden: `golden-20260328-phase15-tophud-removed-stability-20260328_182939`
+  - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-tophud-removed-stability-20260328_182939`
+  - rolling links `current_golden` and `current_failsafe` updated.

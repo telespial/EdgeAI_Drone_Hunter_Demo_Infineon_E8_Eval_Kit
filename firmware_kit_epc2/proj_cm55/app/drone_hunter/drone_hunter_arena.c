@@ -5031,6 +5031,11 @@ static void update_hud(drone_hunter_scene_t *s)
     const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
     const char *attacker_ctrl = ctrl_name_compact(s->team_ctrl[1]);
 
+    if (s->hud_mode == NULL)
+    {
+        return;
+    }
+
     if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
     {
         hunter_ctrl = "HUMAN";
@@ -5425,76 +5430,16 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_size(s->arena_bg, sw, sh);
     lv_obj_move_background(s->arena_bg);
 
-    {
-        lv_obj_t *hud = lv_obj_create(s->arena);
-        lv_obj_remove_style_all(hud);
-        lv_obj_set_size(hud, sw - 16, HUD_H - 4);
-        lv_obj_set_pos(hud, 8, 8);
-        lv_obj_set_style_bg_color(hud, lv_color_hex(0x0F172A), 0);
-        lv_obj_set_style_bg_opa(hud, LV_OPA_80, 0);
-        lv_obj_set_style_border_color(hud, lv_color_hex(0x334155), 0);
-        lv_obj_set_style_border_width(hud, 1, 0);
-
-        s->hud_mode = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_mode, lv_color_hex(0x93C5FD), 0);
-        lv_obj_set_style_text_font(s->hud_mode, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_mode, (sw - 16) - 150);
-        lv_label_set_long_mode(s->hud_mode, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_mode, LV_ALIGN_TOP_LEFT, 8, 3);
-
-        s->hud_hunter_score = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_hunter_score, lv_color_hex(0x86EFAC), 0);
-        lv_obj_set_style_text_font(s->hud_hunter_score, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_hunter_score, ((sw - 16) / 2) - 30);
-        lv_label_set_long_mode(s->hud_hunter_score, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_hunter_score, LV_ALIGN_TOP_LEFT, 8, 19);
-
-        s->hud_score = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_score, lv_color_hex(0xE5E7EB), 0);
-        lv_obj_set_style_text_font(s->hud_score, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_score, 120);
-        lv_label_set_long_mode(s->hud_score, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_score, LV_ALIGN_TOP_MID, 0, 19);
-
-        s->hud_attacker_score = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_attacker_score, lv_color_hex(0xFCA5A5), 0);
-        lv_obj_set_style_text_font(s->hud_attacker_score, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_attacker_score, ((sw - 16) / 2) - 30);
-        lv_label_set_long_mode(s->hud_attacker_score, LV_LABEL_LONG_CLIP);
-        lv_obj_set_style_text_align(s->hud_attacker_score, LV_TEXT_ALIGN_RIGHT, 0);
-        lv_obj_align(s->hud_attacker_score, LV_ALIGN_TOP_RIGHT, -8, 19);
-
-        s->hud_info = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_info, lv_color_hex(0x67E8F9), 0);
-        lv_obj_set_style_text_font(s->hud_info, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_info, (sw - 16) - 16);
-        lv_label_set_long_mode(s->hud_info, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_info, LV_ALIGN_BOTTOM_LEFT, 8, -3);
-
-        s->hud_wave = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_wave, lv_color_hex(0xFCA5A5), 0);
-        lv_obj_set_style_text_font(s->hud_wave, &lv_font_montserrat_12, 0);
-        lv_obj_set_width(s->hud_wave, (sw - 16) - 16);
-        lv_label_set_long_mode(s->hud_wave, LV_LABEL_LONG_CLIP);
-        lv_obj_align(s->hud_wave, LV_ALIGN_TOP_LEFT, 8, 35);
-
-        s->hud_elapsed = lv_label_create(hud);
-        lv_obj_set_style_text_color(s->hud_elapsed, lv_color_hex(0xFBBF24), 0);
-        lv_obj_set_style_text_font(s->hud_elapsed, &lv_font_montserrat_12, 0);
-        lv_obj_align(s->hud_elapsed, LV_ALIGN_TOP_RIGHT, -8, 51);
-
-        s->mode_btn = lv_btn_create(hud);
-        lv_obj_set_size(s->mode_btn, 122, 26);
-        lv_obj_align(s->mode_btn, LV_ALIGN_TOP_RIGHT, -8, 4);
-        lv_obj_set_style_bg_color(s->mode_btn, lv_color_hex(0x0EA5E9), 0);
-        lv_obj_set_style_bg_opa(s->mode_btn, LV_OPA_80, 0);
-        lv_obj_add_event_cb(s->mode_btn, mode_cb, LV_EVENT_CLICKED, s);
-
-        s->mode_btn_label = lv_label_create(s->mode_btn);
-        lv_obj_set_style_text_color(s->mode_btn_label, lv_color_hex(0xFFFFFF), 0);
-        lv_obj_set_style_text_font(s->mode_btn_label, &lv_font_montserrat_12, 0);
-        lv_obj_center(s->mode_btn_label);
-    }
+    /* Top HUD text strip and SET|HELP button intentionally removed per UX request. */
+    s->hud_mode = NULL;
+    s->hud_hunter_score = NULL;
+    s->hud_score = NULL;
+    s->hud_attacker_score = NULL;
+    s->hud_info = NULL;
+    s->hud_wave = NULL;
+    s->hud_elapsed = NULL;
+    s->mode_btn = NULL;
+    s->mode_btn_label = NULL;
 
     s->deck_bar = lv_obj_create(s->arena);
     lv_obj_remove_style_all(s->deck_bar);
