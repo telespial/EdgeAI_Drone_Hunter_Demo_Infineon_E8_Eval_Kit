@@ -206,6 +206,13 @@ typedef struct
     const char *desc;
 } hunter_profile_t;
 
+typedef enum
+{
+    HUNTER_FLIGHT_VERTICAL = 0,
+    HUNTER_FLIGHT_PLANE = 1,
+    HUNTER_FLIGHT_HYBRID = 2
+} hunter_flight_model_t;
+
 typedef struct
 {
     lv_obj_t *screen;
@@ -1032,11 +1039,20 @@ static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
 
 static float wrap_angle_pi(float a)
 {
-    while (a > PI_F)
+    if (!isfinite(a))
+    {
+        return 0.0f;
+    }
+    a = remainderf(a, 2.0f * PI_F);
+    if (!isfinite(a))
+    {
+        return 0.0f;
+    }
+    if (a > PI_F)
     {
         a -= 2.0f * PI_F;
     }
-    while (a < -PI_F)
+    else if (a < -PI_F)
     {
         a += 2.0f * PI_F;
     }
@@ -1670,6 +1686,25 @@ static float hunter_guidance_lead_frames(hunter_type_t h, controller_t ctrl, flo
     return clampf(lead, 4.0f, 26.0f);
 }
 
+static hunter_flight_model_t hunter_flight_model(hunter_type_t h)
+{
+    switch (h)
+    {
+        case HUNTER_STING_II:
+        case HUNTER_BAGNET:
+        case HUNTER_ODIN_WIN_HIT:
+            return HUNTER_FLIGHT_VERTICAL;
+        case HUNTER_SKYFALL_P1:
+        case HUNTER_OCTOPUS_100:
+            return HUNTER_FLIGHT_HYBRID;
+        case HUNTER_VB140_FLAMINGO:
+        case HUNTER_TYTAN:
+        case HUNTER_MEROPS:
+        default:
+            return HUNTER_FLIGHT_PLANE;
+    }
+}
+
 static void steer_hunter_toward_target(drone_hunter_scene_t *s, int h, int target, const hunter_profile_t *p)
 {
     float tx;
@@ -1685,13 +1720,67 @@ static void steer_hunter_toward_target(drone_hunter_scene_t *s, int h, int targe
                        difficulty_defense_mult(s) *
                        speed_pp_mult(s);
     float speed;
+    hunter_flight_model_t fm = hunter_flight_model(s->h_type[h]);
     float lead_frames = hunter_guidance_lead_frames(s->h_type[h], s->team_ctrl[h], p->lead_gain);
     tx = s->kx[target] + (s->kvx[target] * lead_frames);
     ty = s->ky[target] + (s->kvy[target] * lead_frames);
     dist_to_pred = sqrtf(dist2(s->hx[h], s->hy[h], tx, ty));
     desired = atan2f(ty - s->hy[h], tx - s->hx[h]);
+
+    if (fm == HUNTER_FLIGHT_VERTICAL)
+    {
+        float nx = tx - s->hx[h];
+        float ny = ty - s->hy[h];
+        float accel = 0.34f;
+        float speed_cap = speed_goal * 1.04f;
+        float speed_floor = 0.22f;
+
+        if ((nx * nx) + (ny * ny) > 0.0001f)
+        {
+            (void)normalize_vec2(&nx, &ny);
+        }
+        if (dist_to_pred < (p->kill_radius * 4.2f))
+        {
+            speed_cap *= (dist_to_pred < (p->kill_radius * 2.6f)) ? 0.80f : 0.90f;
+            accel = 0.40f;
+        }
+        s->hvx[h] = (s->hvx[h] * (1.0f - accel)) + (nx * speed_cap * accel);
+        s->hvy[h] = (s->hvy[h] * (1.0f - accel)) + (ny * speed_cap * accel);
+        speed = sqrtf((s->hvx[h] * s->hvx[h]) + (s->hvy[h] * s->hvy[h]));
+        if (speed > speed_cap)
+        {
+            float scale = speed_cap / clampf(speed, 0.001f, 1000.0f);
+            s->hvx[h] *= scale;
+            s->hvy[h] *= scale;
+        }
+        else if (speed < speed_floor)
+        {
+            s->hvx[h] += nx * 0.08f;
+            s->hvy[h] += ny * 0.08f;
+        }
+        return;
+    }
+
     current = ((speed_now > 0.02f) ? atan2f(s->hvy[h], s->hvx[h]) : s->h_heading[h]);
     delta = wrap_angle_pi(desired - current);
+    if (fm == HUNTER_FLIGHT_PLANE)
+    {
+        turn_limit *= 0.86f;
+    }
+    else if ((fm == HUNTER_FLIGHT_HYBRID) && (dist_to_pred < (p->kill_radius * 5.5f)))
+    {
+        float nx = tx - s->hx[h];
+        float ny = ty - s->hy[h];
+        float blend = 0.28f;
+        float h_speed = speed_goal * 0.90f;
+        if ((nx * nx) + (ny * ny) > 0.0001f)
+        {
+            (void)normalize_vec2(&nx, &ny);
+        }
+        s->hvx[h] = (s->hvx[h] * (1.0f - blend)) + (nx * h_speed * blend);
+        s->hvy[h] = (s->hvy[h] * (1.0f - blend)) + (ny * h_speed * blend);
+        return;
+    }
     delta = clampf(delta, -turn_limit, turn_limit);
     speed = speed_now + ((speed_goal - speed_now) * 0.20f);
     if (dist_to_pred < (p->kill_radius * 5.0f))
@@ -1699,7 +1788,14 @@ static void steer_hunter_toward_target(drone_hunter_scene_t *s, int h, int targe
         /* Reduce terminal overshoot while preserving turn authority near intercept. */
         speed *= (dist_to_pred < (p->kill_radius * 3.0f)) ? 0.82f : 0.90f;
     }
-    speed = clampf(speed, 0.35f, speed_goal * 1.08f);
+    if (fm == HUNTER_FLIGHT_PLANE)
+    {
+        speed = clampf(speed, speed_goal * 0.55f, speed_goal * 1.08f);
+    }
+    else
+    {
+        speed = clampf(speed, 0.35f, speed_goal * 1.08f);
+    }
     current += delta;
     s->hvx[h] = cosf(current) * speed;
     s->hvy[h] = sinf(current) * speed;
@@ -3843,23 +3939,40 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
             float desired = atan2f(move_y, move_x) + (noise_y * 0.35f);
-            float delta = desired - s->k_heading[k];
+            float delta;
             float turn_limit = (phase == 2) ? 0.038f : 0.030f;
             float speed = attack_speed_score(s, k) * phase_speed_gain;
+            float goal_heading = atan2f(goal_y, goal_x);
+            float goal_delta = desired - goal_heading;
+            float vx;
+            float vy;
+            float progress;
+            float min_progress = speed * 0.16f;
 
-            while (delta > PI_F)
+            delta = wrap_angle_pi(desired - s->k_heading[k]);
+
+            /* Fixed-wing rule: allow evasive banking but avoid commanding a reverse-away heading. */
+            goal_delta = wrap_angle_pi(goal_delta);
+            if (fabsf(goal_delta) > 1.28f)
             {
-                delta -= 2.0f * PI_F;
-            }
-            while (delta < -PI_F)
-            {
-                delta += 2.0f * PI_F;
+                desired = goal_heading + clampf(goal_delta, -1.28f, 1.28f);
+                delta = wrap_angle_pi(desired - s->k_heading[k]);
             }
 
             delta = clampf(delta, -turn_limit, turn_limit);
             s->k_heading[k] += delta;
-            s->kvx[k] = (cosf(s->k_heading[k]) * speed) + (noise_x * 0.12f);
-            s->kvy[k] = (sinf(s->k_heading[k]) * speed) + (noise_y * 0.12f);
+            vx = (cosf(s->k_heading[k]) * speed) + (noise_x * 0.12f);
+            vy = (sinf(s->k_heading[k]) * speed) + (noise_y * 0.12f);
+            progress = (vx * goal_x) + (vy * goal_y);
+            if (progress < min_progress)
+            {
+                float steer_goal = wrap_angle_pi(goal_heading - s->k_heading[k]);
+                s->k_heading[k] += clampf(steer_goal, -turn_limit, turn_limit);
+                vx = cosf(s->k_heading[k]) * speed;
+                vy = sinf(s->k_heading[k]) * speed;
+            }
+            s->kvx[k] = vx;
+            s->kvy[k] = vy;
         }
         else
         {
