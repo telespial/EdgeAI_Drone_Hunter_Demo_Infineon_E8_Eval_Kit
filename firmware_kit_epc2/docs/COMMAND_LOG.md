@@ -1,5 +1,20 @@
 # COMMAND_LOG
 
+- 2026-03-29 | Fire animation + palette doctrine restoration in `drone_hunter_arena.c`:
+  - reverted forced flame-demo boot mode to restore normal game boot,
+  - re-enabled full animated city-fire renderer (`RENDER_STABILITY_SAFE_MODE=0`),
+  - centralized bright/dark flame profile mapping into canonical buckets used by runtime selection and demo paths,
+  - enforced weighted profile selection target: `75% bright` / `25% dark`.
+- 2026-03-29 | Build + flash validation for animated fire restoration:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` from rebuilt `proj_cm55.elf`,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2867200 bytes` / `verified 2863908 bytes`
+    - `** Resetting Target **`
+
 - 2026-03-29 | City-fire safe-mode visibility fix in `drone_hunter_arena.c`:
   - corrected safe-mode fire path so impact fires are no longer force-hidden every frame,
   - added persistent low-load ground fires tied to attacker successful target hits.

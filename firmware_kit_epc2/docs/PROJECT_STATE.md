@@ -17,7 +17,8 @@
   - CIWS stationary-structure + dynamic stream behavior,
   - inventory exhaustion end mode,
   - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
-  - low-load static city-fire rendering restored for visible post-impact fires (still-image fallback while long-run freeze monitoring continues),
+  - full animated city-fire rendering active (safe-mode fallback disabled),
+  - centralized fire profile mapping with weighted selection (75% bright, 25% dark),
   - bottom deck liquid-glass opacity increased for readability,
   - bright fire visibility pass with even bright-color profile selection,
   - naming normalization (`Stinger`, `Pelican`, `TYTAN`),
@@ -36,7 +37,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2633728 bytes` / `verified 2628796 bytes`
+- `wrote 2867200 bytes` / `verified 2863908 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
