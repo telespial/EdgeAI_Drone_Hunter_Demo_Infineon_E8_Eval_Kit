@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2863104 bytes`, `verified 2858508 bytes`
+- `wrote 2523136 bytes`, `verified 2519124 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -29,13 +29,14 @@
 - Hunter labels normalized to: `Stinger`, `Pelican`, `TYTAN`.
 - Additional freeze-hardening deployed:
   - city-fire render budget reduced,
-  - flame sprite/style updates throttled to reduce LVGL load.
+  - flame sprite/style updates throttled,
+  - dynamic city-fire runtime rendering path disabled (failsafe stability baseline).
 - CIWS structures remain fixed while bullet streams target dynamically.
 - Exhaustion-mode battle ending is active.
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,858,508 bytes`
+- CM55 verified image size (external SMIF): `2,519,124 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

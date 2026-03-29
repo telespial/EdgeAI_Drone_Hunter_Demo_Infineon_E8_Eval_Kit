@@ -1,5 +1,23 @@
 # COMMAND_LOG
 
+- 2026-03-29 | Freeze failsafe stabilization pass in `drone_hunter_arena.c`:
+  - reduced ATTACK/DEFEND liquid-glass card widths again,
+  - disabled dynamic city-fire runtime rendering loop to remove known freeze vector during gameplay,
+  - kept core combat/explosion ring systems active.
+- 2026-03-29 | Build + flash validation for freeze failsafe baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` and `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2523136 bytes` / `verified 2519124 bytes`
+    - `** Resetting Target **`
+- 2026-03-29 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260329-phase15-freeze-failsafe-cityfire-off-20260329_071703`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260329-phase15-freeze-failsafe-cityfire-off-20260329_071703`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-29 | Bright fire visibility + steering stabilization pass in `drone_hunter_arena.c`:
   - added/enforced evenly-selected bright fire profiles for high visibility:
     - bright orange, bright red, bright red/orange,

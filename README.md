@@ -40,6 +40,7 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - CIWS structures are stationary while streams target dynamically.
 - Match doctrine uses inventory exhaustion end mode.
 - Freeze hardening pass is active: reduced city-fire render concurrency and throttled flame sprite updates.
+- Failsafe freeze baseline active: dynamic city-fire runtime rendering path is disabled.
 - Fire palette now includes explicit bright-visible profiles with even bright-color selection:
   - bright orange,
   - bright red,
@@ -68,11 +69,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2863104 bytes` / `verified 2858508 bytes`
+- `wrote 2523136 bytes` / `verified 2519124 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,858,508 bytes`.
+- CM55 image verified (external SMIF): `2,519,124 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

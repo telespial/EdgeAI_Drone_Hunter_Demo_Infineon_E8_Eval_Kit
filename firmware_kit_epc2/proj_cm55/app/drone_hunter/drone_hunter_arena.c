@@ -58,7 +58,7 @@
 #define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
-#define CITY_FIRE_RENDER_MAX      (16)
+#define CITY_FIRE_RENDER_MAX      (10)
 #define LANE_SITE_COUNT           (16)
 #define LAUNCH_SECTOR_COUNT       (8)
 #define HUD_H                     (72)
@@ -266,6 +266,14 @@ typedef struct
     lv_obj_t *hud_info;
     lv_obj_t *hud_wave;
     lv_obj_t *hud_elapsed;
+    lv_obj_t *hud_attack_panel;
+    lv_obj_t *hud_defend_panel;
+    lv_obj_t *hud_attack_label;
+    lv_obj_t *hud_defend_label;
+    lv_obj_t *hud_attack_digits;
+    lv_obj_t *hud_defend_digits;
+    lv_obj_t *hud_attack_mode_text;
+    lv_obj_t *hud_defend_mode_text;
 
     lv_obj_t *deck_bar;
     lv_obj_t *deck_icon[HUNTER_TYPE_COUNT];
@@ -467,6 +475,8 @@ typedef struct
     uint8_t city_fire_style[CITY_FIRE_MAX];
     uint8_t city_fire_intensity[CITY_FIRE_MAX];
     float city_fire_phase[CITY_FIRE_MAX];
+    uint8_t city_fire_last_profile[CITY_FIRE_MAX];
+    uint8_t city_fire_last_frame[CITY_FIRE_MAX];
     int hunter_loaded[HUNTER_COUNT];
     int core_hp;
     float round_time_sec;
@@ -663,6 +673,8 @@ static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensi
     s->city_fire_style[idx] = (uint8_t)style_pick;
     s->city_fire_intensity[idx] = (uint8_t)((intensity >= CITY_FIRE_INTENSITY_BIG) ? CITY_FIRE_INTENSITY_BIG : CITY_FIRE_INTENSITY_SMALL);
     s->city_fire_phase[idx] = s->t + ((float)idx * 0.37f);
+    s->city_fire_last_profile[idx] = 0xFFu;
+    s->city_fire_last_frame[idx] = 0xFFu;
 }
 
 static int lane_from_fraction(float t)
@@ -3569,6 +3581,8 @@ static void reset_round(drone_hunter_scene_t *s)
         s->city_fire_style[i] = 0;
         s->city_fire_intensity[i] = CITY_FIRE_INTENSITY_SMALL;
         s->city_fire_phase[i] = 0.0f;
+        s->city_fire_last_profile[i] = 0xFFu;
+        s->city_fire_last_frame[i] = 0xFFu;
     }
 
     for (i = 0; i < KILLER_COUNT; ++i)
@@ -4860,314 +4874,11 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
 
     {
-        int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 2) : 0);
-        int guard;
-        if (target_fire_count > CITY_FIRE_RENDER_MAX)
+        /* Freeze failsafe: disable dynamic city-fire runtime rendering path. */
+        s->city_fire_count = 0;
+        for (k = 0; k < CITY_FIRE_MAX; ++k)
         {
-            target_fire_count = CITY_FIRE_RENDER_MAX;
-        }
-        if (target_fire_count < 0)
-        {
-            target_fire_count = 0;
-        }
-        if (s->city_fire_count > target_fire_count)
-        {
-            /* Decay active fire budget back down so per-frame render cost stays bounded. */
-            s->city_fire_count = target_fire_count;
-        }
-        for (guard = 0; (s->city_fire_count < target_fire_count) && (guard < CITY_FIRE_RENDER_MAX); ++guard)
-        {
-            float spread = (float)(s->city_fire_count + 1);
-            float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 41.0f) + (spread * 37.0f), (float)s->arena_w - 24.0f);
-            float fy = (float)s->arena_y + ((float)s->arena_h * 0.28f) +
-                       fmodf((s->t * 23.0f) + (spread * 29.0f), (float)s->arena_h * 0.64f);
-            add_city_fire(s, fx, fy, CITY_FIRE_INTENSITY_SMALL);
-        }
-        {
-            uint32_t now_tick = lv_tick_get();
-            static uint32_t fire_anim_tick = 0U;
-            int fire_anim_step = 0;
-            if ((uint32_t)(now_tick - fire_anim_tick) >= 80U)
-            {
-                fire_anim_tick = now_tick;
-                fire_anim_step = 1;
-            }
-            for (k = 0; k < CITY_FIRE_MAX; ++k)
-            {
-                if (k < s->city_fire_count)
-                {
-                    int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
-                    const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
-                    float fps = city_fire_profile_fps(profile);
-                    float phase = s->city_fire_phase[k];
-                    float frame_pos = ((s->t + phase) * fps);
-                    int frame_idx = ((int)frame_pos) % FLAME_SPRITE_FRAME_COUNT;
-                    /* Flame frame 0 in this pack is effectively empty on several profiles.
-                     * Skip it to prevent periodic blink-off artifacts (~50-100 ms). */
-                    if ((FLAME_SPRITE_FRAME_COUNT > 1) && (frame_idx == 0))
-                    {
-                        frame_idx = 1;
-                    }
-                    float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.70f, 1.34f);
-                    float jitter = 0.88f + (0.30f * sinf((s->t * 1.3f) + phase + ((float)k * 0.41f)));
-                    float style_var = 0.82f + (0.42f * fabsf(sinf((phase * 0.73f) + ((float)k * 1.37f))));
-                    float profile_scale = 1.0f;
-                    float profile_wobble = 2.0f;
-                    float base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 1.0f);
-                    float lift = 0.0f;
-                    int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
-                    lv_opa_t opa = LV_OPA_COVER;
-                    lv_color_t tint = lv_color_hex(0xFFFFFF);
-                    lv_opa_t tint_opa = LV_OPA_TRANSP;
-                    int32_t img_h = 0;
-                    int32_t zoom = 256;
-                    float wobble = 0.0f;
-                switch (profile)
-                {
-                    case CITY_FIRE_PROFILE_TORCH:
-                        profile_scale = intense ? 1.36f : 1.18f;
-                        profile_wobble = 3.8f;
-                        lift = 3.5f + (3.2f * sinf((s->t * 4.8f) + phase));
-                        opa = (lv_opa_t)(intense ? 252 : 238);
-                        tint = lv_color_hex(0xFFA640);
-                        tint_opa = (lv_opa_t)44;
-                        break;
-                    case CITY_FIRE_PROFILE_BLUE_JET:
-                        profile_scale = intense ? 1.28f : 1.12f;
-                        profile_wobble = 3.4f;
-                        lift = 2.2f + (2.8f * sinf((s->t * 4.2f) + phase));
-                        opa = (lv_opa_t)(intense ? 236 : 222);
-                        tint = lv_color_hex(0x58C8FF);
-                        tint_opa = (lv_opa_t)96;
-                        break;
-                    case CITY_FIRE_PROFILE_FLICKER:
-                        profile_scale = intense ? 1.42f : 1.18f;
-                        profile_wobble = 4.2f;
-                        lift = 2.6f + (3.6f * sinf((s->t * 5.4f) + phase));
-                        opa = (lv_opa_t)(intense ? 248 : 234);
-                        tint = lv_color_hex(0x8CDD55);
-                        tint_opa = (lv_opa_t)84;
-                        break;
-                    case CITY_FIRE_PROFILE_SPIRAL:
-                        profile_scale = intense ? 1.24f : 1.08f;
-                        profile_wobble = 3.9f;
-                        lift = 1.8f + (2.7f * sinf((s->t * 3.4f) + phase));
-                        opa = (lv_opa_t)(intense ? 234 : 220);
-                        tint = lv_color_hex(0xB56AF5);
-                        tint_opa = (lv_opa_t)92;
-                        break;
-                    case CITY_FIRE_PROFILE_BURST:
-                        profile_scale = intense ? 1.54f : 1.24f;
-                        profile_wobble = 4.6f;
-                        lift = 2.0f + (4.4f * sinf((s->t * 6.0f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 240);
-                        /* Occasional medium/dark red flame bursts with smoke bias. */
-                        if ((((int)(phase * 37.0f) + k) & 0x7) == 0)
-                        {
-                            tint = lv_color_hex(0x9B2C24);
-                            tint_opa = (lv_opa_t)132;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFF6B2E);
-                            tint_opa = (lv_opa_t)64;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_PULSE:
-                        profile_scale = intense ? 1.28f : 1.06f;
-                        profile_wobble = 2.8f;
-                        lift = 1.2f + (2.4f * sinf((s->t * 2.6f) + phase));
-                        opa = (lv_opa_t)(intense ? 236 : 222);
-                        tint = lv_color_hex(0xFFF2E5);
-                        tint_opa = (lv_opa_t)40;
-                        break;
-                    case CITY_FIRE_PROFILE_SMOKE:
-                        /* Smoke plumes/flumes with darker column feel. */
-                        profile_scale = intense ? 1.36f : 1.20f;
-                        profile_wobble = 2.3f;
-                        lift = intense ? (7.0f + (4.2f * sinf((s->t * 1.7f) + phase)))
-                                       : (3.8f + (1.9f * sinf((s->t * 1.9f) + phase)));
-                        opa = intense ? 208 : 194;
-                        tint = lv_color_hex(0x4A4038);
-                        tint_opa = (lv_opa_t)160;
-                        break;
-                    case CITY_FIRE_PROFILE_DUAL_JET:
-                        profile_scale = intense ? 1.34f : 1.14f;
-                        profile_wobble = 3.8f;
-                        lift = 2.4f + (3.2f * sinf((s->t * 4.1f) + phase));
-                        opa = (lv_opa_t)(intense ? 240 : 226);
-                        tint = lv_color_hex(0x55D4C7);
-                        tint_opa = (lv_opa_t)96;
-                        break;
-                    case CITY_FIRE_PROFILE_WHIP:
-                        profile_scale = intense ? 1.38f : 1.18f;
-                        profile_wobble = 4.1f;
-                        lift = 2.2f + (3.4f * sinf((s->t * 4.7f) + phase));
-                        opa = (lv_opa_t)(intense ? 244 : 230);
-                        tint = lv_color_hex(0xC756F0);
-                        tint_opa = (lv_opa_t)102;
-                        break;
-                    case CITY_FIRE_PROFILE_WIDE_TORCH:
-                        profile_scale = intense ? 1.42f : 1.22f;
-                        profile_wobble = 3.8f;
-                        lift = 2.3f + (3.0f * sinf((s->t * 3.7f) + phase));
-                        opa = (lv_opa_t)(intense ? 246 : 232);
-                        tint = lv_color_hex(0xF3B23F);
-                        tint_opa = (lv_opa_t)56;
-                        break;
-                    case CITY_FIRE_PROFILE_SPUTTER:
-                        profile_scale = intense ? 1.34f : 1.10f;
-                        profile_wobble = 4.0f;
-                        lift = 1.8f + (3.1f * sinf((s->t * 4.0f) + phase));
-                        opa = (lv_opa_t)(intense ? 238 : 224);
-                        tint = lv_color_hex(0x9BCC48);
-                        tint_opa = (lv_opa_t)110;
-                        break;
-                    case CITY_FIRE_PROFILE_RED_ORANGE:
-                        profile_scale = intense ? 1.46f : 1.20f;
-                        profile_wobble = 4.3f;
-                        lift = 2.3f + (3.9f * sinf((s->t * 5.2f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 246);
-                        if ((((k + (int)(phase * 31.0f)) & 0x1) == 0))
-                        {
-                            tint = lv_color_hex(0xFF3B1F); /* bright red flame body */
-                            tint_opa = (lv_opa_t)170;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFFA31A); /* bright orange details */
-                            tint_opa = (lv_opa_t)152;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_ORANGE_WHITE:
-                        profile_scale = intense ? 1.40f : 1.18f;
-                        profile_wobble = 3.7f;
-                        lift = 2.0f + (3.4f * sinf((s->t * 4.6f) + phase));
-                        opa = (lv_opa_t)(intense ? 246 : 232);
-                        if ((((k + (int)(phase * 29.0f)) & 0x1) == 0))
-                        {
-                            tint = lv_color_hex(0xFFFFFF);
-                            tint_opa = (lv_opa_t)86;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFFB347);
-                            tint_opa = (lv_opa_t)78;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_BRIGHT_RED:
-                        profile_scale = intense ? 1.48f : 1.16f;
-                        profile_wobble = 4.4f;
-                        lift = 2.5f + (4.1f * sinf((s->t * 5.6f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 246);
-                        if ((((k + (int)(phase * 41.0f)) & 0x3) == 0))
-                        {
-                            tint = lv_color_hex(0xFFF5F5); /* white details/highlights */
-                            tint_opa = (lv_opa_t)116;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFF2626); /* bright red body */
-                            tint_opa = (lv_opa_t)188;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_BRIGHT_ORANGE:
-                        profile_scale = intense ? 1.46f : 1.18f;
-                        profile_wobble = 4.1f;
-                        lift = 2.2f + (3.8f * sinf((s->t * 5.0f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 246);
-                        if ((((k + (int)(phase * 37.0f)) & 0x1) == 0))
-                        {
-                            tint = lv_color_hex(0xFFA500);
-                            tint_opa = (lv_opa_t)190;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFFD089);
-                            tint_opa = (lv_opa_t)152;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_BRIGHT_RED_HOT:
-                        profile_scale = intense ? 1.50f : 1.17f;
-                        profile_wobble = 4.5f;
-                        lift = 2.6f + (4.0f * sinf((s->t * 5.5f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 240);
-                        if ((((k + (int)(phase * 43.0f)) & 0x3) == 0))
-                        {
-                            tint = lv_color_hex(0xFFE3E3);
-                            tint_opa = (lv_opa_t)84;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFF1A1A);
-                            tint_opa = (lv_opa_t)132;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_BRIGHT_YELLOW_ORANGE:
-                        profile_scale = intense ? 1.44f : 1.19f;
-                        profile_wobble = 4.0f;
-                        lift = 2.1f + (3.6f * sinf((s->t * 4.9f) + phase));
-                        opa = (lv_opa_t)(intense ? 255 : 246);
-                        if ((((k + (int)(phase * 35.0f)) & 0x1) == 0))
-                        {
-                            tint = lv_color_hex(0xFF4A1A); /* bright red/orange */
-                            tint_opa = (lv_opa_t)184;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xFF9C00); /* bright orange/yellow */
-                            tint_opa = (lv_opa_t)172;
-                        }
-                        break;
-                    case CITY_FIRE_PROFILE_GROUND:
-                    default:
-                        profile_scale = intense ? 1.08f : 0.98f;
-                        profile_wobble = 2.2f;
-                        lift = 0.4f + (1.0f * sinf((s->t * 1.8f) + phase));
-                        opa = intense ? 222 : 214;
-                        /* Medium to dark red ground fire mixed with smoke tones. */
-                        if ((((k + (int)(phase * 19.0f)) & 0x3) == 0))
-                        {
-                            tint = lv_color_hex(0x7A201A);
-                            tint_opa = (lv_opa_t)138;
-                        }
-                        else
-                        {
-                            tint = lv_color_hex(0xA43A2A);
-                            tint_opa = (lv_opa_t)104;
-                        }
-                        break;
-                }
-                profile_scale *= style_var;
-                profile_wobble *= (0.78f + (0.44f * style_var));
-                zoom = (int32_t)(256.0f * depth * jitter * profile_scale);
-                wobble = sinf((s->t * (1.7f + (0.6f * style_var))) + phase) * profile_wobble;
-
-                if (k < CITY_FIRE_RENDER_MAX)
-                {
-                    int force_anim = fire_anim_step || lv_obj_has_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                    if (force_anim)
-                    {
-                        lv_image_set_src(s->city_fire[k], frames[frame_idx]);
-                        lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
-                        lv_obj_set_style_opa(s->city_fire[k], opa, 0);
-                        lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
-                        lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
-                        img_h = lv_obj_get_height(s->city_fire[k]);
-                        set_obj_center(s->city_fire[k], s->city_fire_x[k] + wobble, base_y - lift - ((float)img_h * 0.5f));
-                    }
-                }
-                else
-                {
-                    lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                }
-            }
-            else
-            {
-                lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-            }
-        }
+            lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
         }
     }
 
@@ -5334,8 +5045,12 @@ static void update_hud(drone_hunter_scene_t *s)
     int k;
     const char *hunter_ctrl = ctrl_name_compact(s->team_ctrl[0]);
     const char *attacker_ctrl = ctrl_name_compact(s->team_ctrl[1]);
+    const char *attacker_mode_text = (s->attacker_mode_sel == CTRL_EDGEAI) ? "EDGEAI" : "ALGO";
+    const char *defender_mode_text = "ALGO";
 
-    if (s->hud_mode == NULL)
+    if ((s->hud_mode == NULL) &&
+        (s->hud_attack_digits == NULL) &&
+        (s->hud_defend_digits == NULL))
     {
         return;
     }
@@ -5343,6 +5058,15 @@ static void update_hud(drone_hunter_scene_t *s)
     if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
     {
         hunter_ctrl = "HUMAN";
+        defender_mode_text = "HUMAN";
+    }
+    else if (s->defender_mode_sel == DEFENDER_MODE_EDGEAI)
+    {
+        defender_mode_text = "EDGEAI";
+    }
+    else
+    {
+        defender_mode_text = "ALGO";
     }
 
     for (k = 0; k < KILLER_COUNT; ++k)
@@ -5368,93 +5092,139 @@ static void update_hud(drone_hunter_scene_t *s)
     def_endurance = total_stock + ((s->ciws_ammo_left + s->ciws_ammo_right) / 120);
     availability = ((total_stock > 0) || (hunters_air > 0) || (s->ciws_ammo_left > 0) || (s->ciws_ammo_right > 0)) ? "READY" : "EMPTY";
 
-    lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  H:%04d A:%04d  |  IFF %s %s%s",
-                          mode_name(s->mode), arena_phase_name(phase),
-                          s->hunter_points, s->attacker_points,
-                          s->iff_advanced_mode ? "ADV" : "LOCK",
-                          s->iff_degraded ? "DEG" : "NOM",
-                          s->iff_merged_tracks ? " MERGED" : "");
-    lv_label_set_text_fmt(s->hud_hunter_score,
-                          "HUNTER(%s): %04d",
-                          hunter_ctrl, s->hunter_points);
-    lv_label_set_text_fmt(s->hud_score, "CORE %03d", s->core_hp);
-    lv_label_set_text_fmt(s->hud_attacker_score,
-                          "ATTACKER(%s): %04d",
-                          attacker_ctrl, s->attacker_points);
-    lv_label_set_text_fmt(s->hud_wave,
-                          "WAVE %d  |  MST %s  |  ARCH %s  |  STRAT %s%s%s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
-                          s->wave_idx,
-                          mission_milestone_short_name(s->mission_milestone),
-                          wave_archetype_short_name(s->wave_archetype),
-                          attack_strategy_short_name(s->attack_strategy_live),
-                          (s->wave_shift_applied >= 1) ? "*" : "",
-                          (s->wave_shift_applied >= 2) ? "+" : "",
-                          s->attack_destroyed, s->wave_target_total,
-                          s->attack_leaked,
-                          s->attack_remaining_to_spawn);
-    if (lead_k >= 0)
+    if (s->hud_attack_digits != NULL)
     {
-        char info[256];
-        float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
-        float need_km = s->k_range_to_core[lead_k] * km_per_px;
-        float best_km = hunter_range_km(s->k_recommended_counter[lead_k]);
-        env_fit = (best_km >= need_km) ? "GOOD" : "TIGHT";
-        (void)snprintf(info, sizeof(info),
-                       "TARGET:%s ETA%.1fs R%.1fkm REC:%s | F:R%d A%d O%d C%d M%d FF:%d COL:%d | SH:%d RQ:%d OS:%d",
-                       target_type_name(s, lead_k),
-                       s->k_eta_to_goal[lead_k],
-                       s->k_range_to_core[lead_k] * km_per_px,
-                       hunter_type_short_name(s->k_recommended_counter[lead_k]),
-                       s->fail_range_mismatch,
-                       s->fail_altitude_mismatch,
-                       s->fail_overkill,
-                       s->fail_ciws_misuse,
-                       s->fail_manual_override_low_conf,
-                       s->iff_ff_events,
-                       s->iff_collateral_events,
-                       s->h_swept_hit_events,
-                       s->h_reacquire_events,
-                       s->h_overshoot_events);
-        lv_label_set_text(s->hud_info, info);
+        lv_label_set_text_fmt(s->hud_attack_digits, "%04d", s->attacker_points);
     }
-    else
+    if (s->hud_defend_digits != NULL)
     {
-        lv_label_set_text_fmt(s->hud_info,
-                              "No active target | DEF STK:%d AIR:%d | F:R%d A%d O%d C%d M%d FF:%d COL:%d SH:%d RQ:%d OS:%d",
-                              total_stock, hunters_air,
-                              s->fail_range_mismatch,
-                              s->fail_altitude_mismatch,
-                              s->fail_overkill,
-                              s->fail_ciws_misuse,
-                              s->fail_manual_override_low_conf,
-                              s->iff_ff_events,
-                              s->iff_collateral_events,
-                              s->h_swept_hit_events,
-                              s->h_reacquire_events,
-                              s->h_overshoot_events);
+        lv_label_set_text_fmt(s->hud_defend_digits, "%04d", s->hunter_points);
     }
-    (void)snprintf(elapsed_line, sizeof(elapsed_line),
-                   "EL %02d:%02d | DEF END:%d STK:%d AIR:%d AVL:%s | ENV:%s LOCK:%.2f CD %.2f/%.2f | FF:%s",
-                   elapsed_mm, elapsed_ss,
-                   def_endurance,
-                   total_stock, hunters_air, availability,
-                   env_fit,
-                   lock_q,
-                   s->ciws_cooldown_left_sec, s->ciws_cooldown_sec,
-                   s->iff_advanced_mode ? "ADV" : "LOCK");
-    if (s->fail_reason_ttl > 0.0f)
+    if (s->hud_attack_mode_text != NULL)
     {
+        lv_label_set_text_fmt(s->hud_attack_mode_text, "%s", attacker_mode_text);
+        if (s->attacker_mode_sel == CTRL_EDGEAI)
+        {
+            lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
+        }
+        else
+        {
+            lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+        }
+    }
+    if (s->hud_defend_mode_text != NULL)
+    {
+        lv_label_set_text_fmt(s->hud_defend_mode_text, "%s", defender_mode_text);
+        if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
+        {
+            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xFCD34D), 0); /* HUMAN */
+        }
+        else if (s->defender_mode_sel == DEFENDER_MODE_EDGEAI)
+        {
+            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
+        }
+        else
+        {
+            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+        }
+    }
+
+    if (s->hud_mode == NULL)
+    {
+        /* Lightweight card-only HUD path to reduce update overhead and freeze risk. */
+        return;
+    }
+
+    if (s->hud_mode != NULL)
+    {
+        lv_label_set_text_fmt(s->hud_mode, "MODE: %s  |  PHASE: %s  |  H:%04d A:%04d  |  IFF %s %s%s",
+                              mode_name(s->mode), arena_phase_name(phase),
+                              s->hunter_points, s->attacker_points,
+                              s->iff_advanced_mode ? "ADV" : "LOCK",
+                              s->iff_degraded ? "DEG" : "NOM",
+                              s->iff_merged_tracks ? " MERGED" : "");
+        lv_label_set_text_fmt(s->hud_hunter_score,
+                              "HUNTER(%s): %04d",
+                              hunter_ctrl, s->hunter_points);
+        lv_label_set_text_fmt(s->hud_score, "CORE %03d", s->core_hp);
+        lv_label_set_text_fmt(s->hud_attacker_score,
+                              "ATTACKER(%s): %04d",
+                              attacker_ctrl, s->attacker_points);
+        lv_label_set_text_fmt(s->hud_wave,
+                              "WAVE %d  |  MST %s  |  ARCH %s  |  STRAT %s%s%s  |  NEUT %d/%d  |  LEAK %d  |  REM %d",
+                              s->wave_idx,
+                              mission_milestone_short_name(s->mission_milestone),
+                              wave_archetype_short_name(s->wave_archetype),
+                              attack_strategy_short_name(s->attack_strategy_live),
+                              (s->wave_shift_applied >= 1) ? "*" : "",
+                              (s->wave_shift_applied >= 2) ? "+" : "",
+                              s->attack_destroyed, s->wave_target_total,
+                              s->attack_leaked,
+                              s->attack_remaining_to_spawn);
+        if (lead_k >= 0)
+        {
+            char info[256];
+            float km_per_px = MAP_SIZE_KM / clampf((float)s->arena_w, 20.0f, 4000.0f);
+            float need_km = s->k_range_to_core[lead_k] * km_per_px;
+            float best_km = hunter_range_km(s->k_recommended_counter[lead_k]);
+            env_fit = (best_km >= need_km) ? "GOOD" : "TIGHT";
+            (void)snprintf(info, sizeof(info),
+                           "TARGET:%s ETA%.1fs R%.1fkm REC:%s | F:R%d A%d O%d C%d M%d FF:%d COL:%d | SH:%d RQ:%d OS:%d",
+                           target_type_name(s, lead_k),
+                           s->k_eta_to_goal[lead_k],
+                           s->k_range_to_core[lead_k] * km_per_px,
+                           hunter_type_short_name(s->k_recommended_counter[lead_k]),
+                           s->fail_range_mismatch,
+                           s->fail_altitude_mismatch,
+                           s->fail_overkill,
+                           s->fail_ciws_misuse,
+                           s->fail_manual_override_low_conf,
+                           s->iff_ff_events,
+                           s->iff_collateral_events,
+                           s->h_swept_hit_events,
+                           s->h_reacquire_events,
+                           s->h_overshoot_events);
+            lv_label_set_text(s->hud_info, info);
+        }
+        else
+        {
+            lv_label_set_text_fmt(s->hud_info,
+                                  "No active target | DEF STK:%d AIR:%d | F:R%d A%d O%d C%d M%d FF:%d COL:%d SH:%d RQ:%d OS:%d",
+                                  total_stock, hunters_air,
+                                  s->fail_range_mismatch,
+                                  s->fail_altitude_mismatch,
+                                  s->fail_overkill,
+                                  s->fail_ciws_misuse,
+                                  s->fail_manual_override_low_conf,
+                                  s->iff_ff_events,
+                                  s->iff_collateral_events,
+                                  s->h_swept_hit_events,
+                                  s->h_reacquire_events,
+                                  s->h_overshoot_events);
+        }
         (void)snprintf(elapsed_line, sizeof(elapsed_line),
-                       "ELAPSED %02d:%02d  |  WHY: %s",
-                       elapsed_mm, elapsed_ss, s->fail_reason_text);
+                       "EL %02d:%02d | DEF END:%d STK:%d AIR:%d AVL:%s | ENV:%s LOCK:%.2f CD %.2f/%.2f | FF:%s",
+                       elapsed_mm, elapsed_ss,
+                       def_endurance,
+                       total_stock, hunters_air, availability,
+                       env_fit,
+                       lock_q,
+                       s->ciws_cooldown_left_sec, s->ciws_cooldown_sec,
+                       s->iff_advanced_mode ? "ADV" : "LOCK");
+        if (s->fail_reason_ttl > 0.0f)
+        {
+            (void)snprintf(elapsed_line, sizeof(elapsed_line),
+                           "ELAPSED %02d:%02d  |  WHY: %s",
+                           elapsed_mm, elapsed_ss, s->fail_reason_text);
+        }
+        else if (s->iff_recovery_ttl > 0.0f)
+        {
+            (void)snprintf(elapsed_line, sizeof(elapsed_line),
+                           "ELAPSED %02d:%02d  |  IFF RECOVERY %.1fs",
+                           elapsed_mm, elapsed_ss, s->iff_recovery_ttl);
+        }
+        lv_label_set_text(s->hud_elapsed, elapsed_line);
     }
-    else if (s->iff_recovery_ttl > 0.0f)
-    {
-        (void)snprintf(elapsed_line, sizeof(elapsed_line),
-                       "ELAPSED %02d:%02d  |  IFF RECOVERY %.1fs",
-                       elapsed_mm, elapsed_ss, s->iff_recovery_ttl);
-    }
-    lv_label_set_text(s->hud_elapsed, elapsed_line);
 }
 
 static void maybe_end_round(drone_hunter_scene_t *s)
@@ -5742,6 +5512,74 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     s->hud_info = NULL;
     s->hud_wave = NULL;
     s->hud_elapsed = NULL;
+    s->hud_attack_panel = lv_obj_create(s->arena);
+    lv_obj_remove_style_all(s->hud_attack_panel);
+    lv_obj_set_size(s->hud_attack_panel, 102, 88);
+    lv_obj_align(s->hud_attack_panel, LV_ALIGN_TOP_LEFT, 10, 8);
+    lv_obj_set_style_bg_color(s->hud_attack_panel, lv_color_hex(0x8FD3FF), 0);
+    lv_obj_set_style_bg_opa(s->hud_attack_panel, (lv_opa_t)28, 0);
+    lv_obj_set_style_border_color(s->hud_attack_panel, lv_color_hex(0xE6F4FF), 0);
+    lv_obj_set_style_border_opa(s->hud_attack_panel, (lv_opa_t)70, 0);
+    lv_obj_set_style_border_width(s->hud_attack_panel, 1, 0);
+    lv_obj_set_style_radius(s->hud_attack_panel, 16, 0);
+    lv_obj_set_style_shadow_color(s->hud_attack_panel, lv_color_hex(0x6BBEFF), 0);
+    lv_obj_set_style_shadow_opa(s->hud_attack_panel, (lv_opa_t)38, 0);
+    lv_obj_set_style_shadow_width(s->hud_attack_panel, 12, 0);
+
+    s->hud_defend_panel = lv_obj_create(s->arena);
+    lv_obj_remove_style_all(s->hud_defend_panel);
+    lv_obj_set_size(s->hud_defend_panel, 102, 88);
+    lv_obj_align(s->hud_defend_panel, LV_ALIGN_TOP_RIGHT, -10, 8);
+    lv_obj_set_style_bg_color(s->hud_defend_panel, lv_color_hex(0x8FD3FF), 0);
+    lv_obj_set_style_bg_opa(s->hud_defend_panel, (lv_opa_t)28, 0);
+    lv_obj_set_style_border_color(s->hud_defend_panel, lv_color_hex(0xE6F4FF), 0);
+    lv_obj_set_style_border_opa(s->hud_defend_panel, (lv_opa_t)70, 0);
+    lv_obj_set_style_border_width(s->hud_defend_panel, 1, 0);
+    lv_obj_set_style_radius(s->hud_defend_panel, 16, 0);
+    lv_obj_set_style_shadow_color(s->hud_defend_panel, lv_color_hex(0x6BBEFF), 0);
+    lv_obj_set_style_shadow_opa(s->hud_defend_panel, (lv_opa_t)38, 0);
+    lv_obj_set_style_shadow_width(s->hud_defend_panel, 12, 0);
+
+    s->hud_attack_label = lv_label_create(s->hud_attack_panel);
+    lv_label_set_text(s->hud_attack_label, "ATTACK");
+    lv_obj_set_style_text_font(s->hud_attack_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(s->hud_attack_label, lv_color_hex(0xFFB347), 0);
+    lv_obj_set_style_text_letter_space(s->hud_attack_label, 2, 0);
+    lv_obj_align(s->hud_attack_label, LV_ALIGN_TOP_MID, 0, 4);
+
+    s->hud_defend_label = lv_label_create(s->hud_defend_panel);
+    lv_label_set_text(s->hud_defend_label, "DEFEND");
+    lv_obj_set_style_text_font(s->hud_defend_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(s->hud_defend_label, lv_color_hex(0x7DD3FC), 0);
+    lv_obj_set_style_text_letter_space(s->hud_defend_label, 2, 0);
+    lv_obj_align(s->hud_defend_label, LV_ALIGN_TOP_MID, 0, 4);
+
+    s->hud_attack_digits = lv_label_create(s->hud_attack_panel);
+    lv_label_set_text(s->hud_attack_digits, "0000");
+    lv_obj_set_style_text_font(s->hud_attack_digits, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(s->hud_attack_digits, lv_color_hex(0xCFF2FF), 0);
+    lv_obj_set_style_text_opa(s->hud_attack_digits, (lv_opa_t)234, 0);
+    lv_obj_align(s->hud_attack_digits, LV_ALIGN_CENTER, 0, -2);
+
+    s->hud_defend_digits = lv_label_create(s->hud_defend_panel);
+    lv_label_set_text(s->hud_defend_digits, "0000");
+    lv_obj_set_style_text_font(s->hud_defend_digits, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(s->hud_defend_digits, lv_color_hex(0xCFF2FF), 0);
+    lv_obj_set_style_text_opa(s->hud_defend_digits, (lv_opa_t)234, 0);
+    lv_obj_align(s->hud_defend_digits, LV_ALIGN_CENTER, 0, -2);
+
+    s->hud_attack_mode_text = lv_label_create(s->hud_attack_panel);
+    lv_label_set_text(s->hud_attack_mode_text, "ALGO");
+    lv_obj_set_style_text_font(s->hud_attack_mode_text, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0xD1ECFF), 0);
+    lv_obj_align(s->hud_attack_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
+
+    s->hud_defend_mode_text = lv_label_create(s->hud_defend_panel);
+    lv_label_set_text(s->hud_defend_mode_text, "ALGO");
+    lv_obj_set_style_text_font(s->hud_defend_mode_text, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xD1ECFF), 0);
+    lv_obj_align(s->hud_defend_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
+
     s->mode_btn = NULL;
     s->mode_btn_label = NULL;
 
