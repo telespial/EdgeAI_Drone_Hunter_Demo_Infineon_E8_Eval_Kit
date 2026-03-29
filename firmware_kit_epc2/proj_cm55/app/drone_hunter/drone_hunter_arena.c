@@ -13,6 +13,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #define PI_F                      (3.14159265359f)
 #define SPRITE_NOSE_FWD_TENTH     (900)
@@ -58,7 +59,11 @@
 #define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
-#define CITY_FIRE_RENDER_MAX      (10)
+#define CITY_FIRE_RENDER_MAX      (8)
+#define RENDER_STABILITY_SAFE_MODE (1)
+#define FREEZE_DIAG_EFFECTS_BYPASS (0)
+#define FREEZE_DIAG_LOGIC_BYPASS   (0)
+#define FREEZE_DIAG_MINIMAL_LOOP   (0)
 #define LANE_SITE_COUNT           (16)
 #define LAUNCH_SECTOR_COUNT       (8)
 #define HUD_H                     (72)
@@ -274,6 +279,8 @@ typedef struct
     lv_obj_t *hud_defend_digits;
     lv_obj_t *hud_attack_mode_text;
     lv_obj_t *hud_defend_mode_text;
+    lv_obj_t *hud_diag_stage;
+    char hud_diag_text[40];
 
     lv_obj_t *deck_bar;
     lv_obj_t *deck_icon[HUNTER_TYPE_COUNT];
@@ -337,6 +344,7 @@ typedef struct
     float kvy[KILLER_COUNT];
     float k_heading[KILLER_COUNT];
     uint16_t k_base_zoom[KILLER_COUNT];
+    const lv_image_dsc_t *k_last_src[KILLER_COUNT];
 
     float fx_intercept_t[KILLER_COUNT];
     float fx_spawn_t[KILLER_COUNT];
@@ -395,6 +403,7 @@ typedef struct
     float k_eta_to_goal[KILLER_COUNT];
     int k_priority_rank[KILLER_COUNT];
     int k_spawn_site[KILLER_COUNT];
+    int k_variant_seed[KILLER_COUNT];
     float k_target_value_mod[KILLER_COUNT];
     float k_lane_pressure[KILLER_COUNT];
     float lane_pressure[LANE_SITE_COUNT];
@@ -512,6 +521,30 @@ static void quick_menu_body_cb(lv_event_t *e);
 static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body);
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k);
 static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k);
+static void reset_round(drone_hunter_scene_t *s);
+
+static uint32_t runtime_entropy32(void)
+{
+    volatile uint32_t systick_val = *((volatile uint32_t *)0xE000E018u);
+    volatile uint32_t icsr = *((volatile uint32_t *)0xE000ED04u);
+    uint32_t t = lv_tick_get();
+    return (systick_val ^ (icsr << 7) ^ (t * 2654435761u));
+}
+
+static void set_diag_stage(drone_hunter_scene_t *s, const char *stage)
+{
+    if ((s == NULL) || (s->hud_diag_stage == NULL) || (stage == NULL))
+    {
+        return;
+    }
+    if (strncmp(s->hud_diag_text, stage, sizeof(s->hud_diag_text) - 1) == 0)
+    {
+        return;
+    }
+    (void)snprintf(s->hud_diag_text, sizeof(s->hud_diag_text), "%s", stage);
+    lv_label_set_text(s->hud_diag_stage, s->hud_diag_text);
+    lv_obj_move_foreground(s->hud_diag_stage);
+}
 
 static uint32_t scene_rng_next(drone_hunter_scene_t *s)
 {
@@ -975,7 +1008,7 @@ static float combat_floor_y(const drone_hunter_scene_t *s)
     if (s->deck_bar != NULL)
     {
         /* Keep all flight objects above the icon/deck strip. */
-        float deck_top = (float)lv_obj_get_y(s->deck_bar) - 8.0f;
+        float deck_top = (float)s->arena_y + (float)lv_obj_get_y(s->deck_bar) - 8.0f;
         if (deck_top < floor_y)
         {
             floor_y = deck_top;
@@ -1019,13 +1052,48 @@ static float segment_point_dist2(float ax, float ay, float bx, float by, float p
 
 static void set_obj_center(lv_obj_t *obj, float x, float y)
 {
+    int32_t w;
+    int32_t h;
+    int32_t px;
+    int32_t py;
+
     if (isnan(x) || isnan(y))
     {
         return;
     }
-    int32_t w = lv_obj_get_width(obj);
-    int32_t h = lv_obj_get_height(obj);
-    lv_obj_set_pos(obj, (int32_t)(x - (float)w * 0.5f), (int32_t)(y - (float)h * 0.5f));
+    if (!isfinite(x) || !isfinite(y))
+    {
+        return;
+    }
+    w = lv_obj_get_width(obj);
+    h = lv_obj_get_height(obj);
+    if ((w < 1) || (w > 512))
+    {
+        w = 64;
+    }
+    if ((h < 1) || (h > 512))
+    {
+        h = 64;
+    }
+    px = (int32_t)(x - ((float)w * 0.5f));
+    py = (int32_t)(y - ((float)h * 0.5f));
+    if (px < -2048)
+    {
+        px = -2048;
+    }
+    else if (px > 4096)
+    {
+        px = 4096;
+    }
+    if (py < -2048)
+    {
+        py = -2048;
+    }
+    else if (py > 4096)
+    {
+        py = 4096;
+    }
+    lv_obj_set_pos(obj, px, py);
 }
 
 static void get_obj_visual_center_in_parent(lv_obj_t *obj, lv_obj_t *parent, float *out_x, float *out_y)
@@ -1304,6 +1372,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         s->fx_kill_t[k] = shahed_kill ? (FX_KILL_SEC * 1.40f) : FX_KILL_SEC;
         s->fx_kill_x[k] = hit_x;
         s->fx_kill_y[k] = hit_y;
+        set_diag_stage(s, shahed_kill ? "DBG:CIWS_KILL_SHAHED" : "DBG:CIWS_KILL_OTHER");
         if (shahed_kill)
         {
             s->k_dying[k] = 1;
@@ -1320,6 +1389,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         }
         else
         {
+            set_diag_stage(s, "DBG:CIWS_RESPAWN");
             set_killer_hidden(s, k);
             respawn_killer(s, k, -1);
         }
@@ -1718,7 +1788,8 @@ static hunter_flight_model_t hunter_flight_model(hunter_type_t h)
         case HUNTER_ODIN_WIN_HIT:
             return HUNTER_FLIGHT_VERTICAL;
         case HUNTER_OCTOPUS_100:
-            return HUNTER_FLIGHT_HYBRID;
+            /* Keep Octopus on stable fixed-wing steering to avoid visible weave. */
+            return HUNTER_FLIGHT_PLANE;
         case HUNTER_STING_II:
         case HUNTER_SKYFALL_P1:
         case HUNTER_VB140_FLAMINGO:
@@ -2492,13 +2563,36 @@ static void begin_arena_from_splash(drone_hunter_scene_t *s)
 {
     if (!lv_obj_has_flag(s->splash, LV_OBJ_FLAG_HIDDEN))
     {
+        /* Mix human start timing into RNG so each boot has varied opening sequences. */
+        s->rng_state ^= (runtime_entropy32() ^ (lv_tick_get() * 2246822519u));
+        (void)scene_rng_next(s);
+        (void)scene_rng_next(s);
         lv_obj_add_flag(s->splash, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(s->arena, LV_OBJ_FLAG_HIDDEN);
+        if (s->hud_diag_stage != NULL)
+        {
+            lv_obj_clear_flag(s->hud_diag_stage, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_width(s->hud_diag_stage, s->arena_w - 8);
+            lv_obj_align(s->hud_diag_stage, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_move_foreground(s->hud_diag_stage);
+        }
+        /* Reset at match start so opening wave uses fresh entropy (not boot-time deterministic state). */
+        reset_round(s);
+        set_diag_stage(s, "DBG:START_MATCH");
     }
 }
 
 static float wrap_angle(float a)
 {
+    if (!isfinite(a))
+    {
+        return 0.0f;
+    }
+    a = remainderf(a, 2.0f * PI_F);
+    if (!isfinite(a))
+    {
+        return 0.0f;
+    }
     while (a > PI_F)
     {
         a -= 2.0f * PI_F;
@@ -2704,9 +2798,16 @@ static void lineup_gesture_cb(lv_event_t *e)
 static void splash_start_cb(lv_event_t *e)
 {
     drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    lv_indev_t *indev = lv_indev_get_act();
+    lv_point_t p = {0, 0};
 
     if (lv_event_get_code(e) == LV_EVENT_CLICKED)
     {
+        if (indev != NULL)
+        {
+            lv_indev_get_point(indev, &p);
+        }
+        s->rng_state ^= (uint32_t)((p.x << 16) ^ (p.y << 1) ^ (int32_t)runtime_entropy32());
         begin_arena_from_splash(s);
     }
 }
@@ -2768,7 +2869,7 @@ static void assign_mode(drone_hunter_scene_t *s, match_mode_t m)
 
 static int attack_variant_idx(const drone_hunter_scene_t *s, int k)
 {
-    int variant = (s->k_serial[k] + k) % 3;
+    int variant = (s->k_serial[k] + k + s->k_variant_seed[k]) % 3;
     if (variant < 0)
     {
         variant += 3;
@@ -2816,6 +2917,11 @@ static float attack_zoom_scale(const drone_hunter_scene_t *s, int k)
 
 static const lv_image_dsc_t *attack_image_src(const drone_hunter_scene_t *s, int k)
 {
+#if ATTACK_SPRITE_STABLE_ONLY
+    (void)s;
+    (void)k;
+    return &attack_shahed_yellow;
+#else
     int variant = attack_variant_idx(s, k);
     switch (variant)
     {
@@ -2823,6 +2929,7 @@ static const lv_image_dsc_t *attack_image_src(const drone_hunter_scene_t *s, int
         case 1:  return &attack_vb140_like_red;
         default: return &attack_dji_x_orange;
     }
+#endif
 }
 
 static void style_target(drone_hunter_scene_t *s, int k)
@@ -2839,14 +2946,20 @@ static void style_target(drone_hunter_scene_t *s, int k)
     src = attack_image_src(s, k);
 #endif
 
-    lv_image_set_src(s->killers[k], src);
+    if (s->k_last_src[k] != src)
+    {
+        lv_image_set_src(s->killers[k], src);
+        s->k_last_src[k] = src;
+    }
     {
         int32_t iw = lv_obj_get_width(s->killers[k]);
         int32_t ih = lv_obj_get_height(s->killers[k]);
         if ((iw <= 0) || (ih <= 0) || (iw > 220) || (ih > 220))
         {
             /* Defensive fallback for corrupted/unsupported image descriptors. */
-            lv_image_set_src(s->killers[k], attack_image_src(s, k));
+            src = attack_image_src(s, k);
+            lv_image_set_src(s->killers[k], src);
+            s->k_last_src[k] = src;
             zoom = 170;
         }
     }
@@ -3017,7 +3130,7 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
         int stock_live = (s->hunter_stock[i] > 0) ? 1 : 0;
         if (prev_icon_live[i] != stock_live)
         {
-            lv_obj_set_style_opa(s->deck_icon[i], stock_live ? LV_OPA_COVER : LV_OPA_30, 0);
+            lv_obj_set_style_opa(s->deck_icon[i], stock_live ? LV_OPA_COVER : LV_OPA_70, 0);
             prev_icon_live[i] = stock_live;
         }
         if (prev_in_use[i] != in_use)
@@ -3076,7 +3189,7 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
             lv_obj_set_style_text_color(s->deck_ciws_name,
                                         ciws_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
                                         0);
-            lv_obj_set_style_opa(s->deck_ciws_icon, ciws_live ? LV_OPA_COVER : LV_OPA_30, 0);
+            lv_obj_set_style_opa(s->deck_ciws_icon, ciws_live ? LV_OPA_COVER : LV_OPA_70, 0);
             prev_ciws_live = ciws_live;
         }
     }
@@ -3122,6 +3235,10 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     int spawned_so_far;
     float wave_progress;
 
+    set_diag_stage(s, "DBG:RESPAWN_ENTER");
+    s->rng_state ^= (runtime_entropy32() + (uint32_t)(k * 747796405u) + (uint32_t)(s->killer_spawn_tick * 2891336453u));
+    (void)scene_rng_next(s);
+
     if (s->attack_remaining_to_spawn <= 0)
     {
         set_killer_hidden(s, k);
@@ -3136,50 +3253,85 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     spawned_so_far = s->wave_target_total - s->attack_remaining_to_spawn;
     wave_progress = (float)spawned_so_far / clampf((float)s->wave_target_total, 1.0f, 20000.0f);
 
-    switch (s->wave_archetype)
     {
-        case WAVE_ARCHETYPE_SHAHED_HEAVY:
+        /* Strategic stochastic composition: doctrine shapes probabilities, RNG decides exact sequence. */
+        float fixed_bias = 0.50f;
+        float tier2_bias = 0.22f;
+        float tier1_bias = 0.52f;
+        float type_roll = (float)scene_rng_range(s, 1000) / 1000.0f;
+        float tier_roll = (float)scene_rng_range(s, 1000) / 1000.0f;
+
+        switch (s->wave_archetype)
         {
-            int roll = (s->killer_spawn_tick + (k * 2)) % 10;
-            s->ktype[k] = (roll < 8) ? TARGET_FIXED_WING : TARGET_FPV;
-            s->k_tier[k] = (wave_progress > 0.72f) ? 2 : ((s->wave_idx <= 2) ? 1 : 2);
-            break;
+            case WAVE_ARCHETYPE_SHAHED_HEAVY:
+                fixed_bias = 0.78f;
+                tier2_bias = 0.30f;
+                tier1_bias = 0.46f;
+                break;
+            case WAVE_ARCHETYPE_STRIKE_X_SWARM:
+                fixed_bias = 0.20f;
+                tier2_bias = 0.16f;
+                tier1_bias = 0.50f;
+                break;
+            case WAVE_ARCHETYPE_MIXED_DECEPTION:
+                fixed_bias = (wave_progress < 0.52f) ? 0.58f : 0.44f;
+                tier2_bias = 0.24f;
+                tier1_bias = 0.50f;
+                break;
+            case WAVE_ARCHETYPE_TERMINAL_SATURATION:
+            default:
+                fixed_bias = (wave_progress < 0.45f) ? 0.62f : 0.36f;
+                tier2_bias = (wave_progress < 0.45f) ? 0.20f : 0.34f;
+                tier1_bias = 0.50f;
+                break;
         }
-        case WAVE_ARCHETYPE_STRIKE_X_SWARM:
+
+        if (s->attack_strategy_live == ATTACK_STRATEGY_CENTER_PRESSURE)
         {
-            int roll = (s->killer_spawn_tick + k) % 12;
-            s->ktype[k] = (roll < 10) ? TARGET_FPV : TARGET_FIXED_WING;
-            s->k_tier[k] = (wave_progress > 0.62f) ? 2 : ((s->wave_idx <= 2) ? 0 : 1);
-            break;
+            fixed_bias += 0.07f;
         }
-        case WAVE_ARCHETYPE_MIXED_DECEPTION:
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_FLANK_PRESSURE)
         {
-            int roll = (s->killer_spawn_tick + (k * 3)) % 8;
-            if (wave_progress < 0.50f)
-            {
-                s->ktype[k] = (roll < 3) ? TARGET_FPV : TARGET_FIXED_WING;
-            }
-            else
-            {
-                s->ktype[k] = (roll < 5) ? TARGET_FPV : TARGET_FIXED_WING;
-            }
-            s->k_tier[k] = (s->wave_idx <= 2) ? 1 : ((roll & 1) ? 2 : 1);
-            break;
+            fixed_bias -= 0.07f;
         }
-        case WAVE_ARCHETYPE_TERMINAL_SATURATION:
-        default:
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_TERMINAL_SATURATION)
         {
-            int roll = (s->killer_spawn_tick + (k * 5)) % 10;
-            if (wave_progress < 0.45f)
-            {
-                s->ktype[k] = (roll < 6) ? TARGET_FIXED_WING : TARGET_FPV;
-            }
-            else
-            {
-                s->ktype[k] = (roll < 7) ? TARGET_FPV : TARGET_FIXED_WING;
-            }
-            s->k_tier[k] = (wave_progress > 0.50f) ? 2 : ((s->wave_idx <= 2) ? 1 : 2);
-            break;
+            tier2_bias += 0.08f;
+        }
+
+        if ((s->attack_leaked > s->attack_destroyed) || (wave_progress > 0.68f))
+        {
+            tier2_bias += 0.08f;
+            tier1_bias -= 0.04f;
+        }
+        if (s->wave_idx <= 2)
+        {
+            tier2_bias -= 0.06f;
+            tier1_bias += 0.04f;
+        }
+        if ((s->wave_idx == 1) || (wave_progress < 0.20f))
+        {
+            fixed_bias -= 0.08f;
+            tier2_bias -= 0.06f;
+        }
+
+        fixed_bias = clampf(fixed_bias, 0.12f, 0.90f);
+        tier2_bias = clampf(tier2_bias, 0.08f, 0.62f);
+        tier1_bias = clampf(tier1_bias, 0.20f, 0.74f);
+
+        s->ktype[k] = (type_roll < fixed_bias) ? TARGET_FIXED_WING : TARGET_FPV;
+
+        if (tier_roll < tier2_bias)
+        {
+            s->k_tier[k] = 2;
+        }
+        else if (tier_roll < (tier2_bias + tier1_bias))
+        {
+            s->k_tier[k] = 1;
+        }
+        else
+        {
+            s->k_tier[k] = 0;
         }
     }
 
@@ -3260,6 +3412,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     s->fx_spawn_x[k] = s->kx[k];
     s->fx_spawn_y[k] = s->ky[k];
     s->k_missed_by_hunter[k] = 0;
+    s->k_variant_seed[k] = scene_rng_range(s, 3);
 
 }
 
@@ -3504,10 +3657,18 @@ static void reset_round(drone_hunter_scene_t *s)
     s->round_start_tick_ms = lv_tick_get();
     s->hud_refresh_t = HUD_REFRESH_SEC;
     s->t = 0.0f;
-    s->rng_state = (uint32_t)(lv_tick_get() ^ (uint32_t)(uintptr_t)s ^ ((uint32_t)s->wave_idx * 2654435761u));
+    s->rng_state = (uint32_t)(lv_tick_get() ^ (uint32_t)(uintptr_t)s ^ ((uint32_t)s->wave_idx * 2654435761u) ^ runtime_entropy32());
     if (s->rng_state == 0U)
     {
         s->rng_state = 0x5F3759DFu;
+    }
+    {
+        int warm = 8 + (int)(runtime_entropy32() & 0x1Fu);
+        int w;
+        for (w = 0; w < warm; ++w)
+        {
+            (void)scene_rng_next(s);
+        }
     }
     s->strategy_replan_tick = 0;
     s->killer_spawn_tick = scene_rng_range(s, 97);
@@ -3622,6 +3783,8 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_noise[i] = 0.0f;
         s->k_commit_conf[i] = 0.0f;
         s->k_commit_reason[i] = COMMIT_REASON_NO_TARGET;
+        s->k_last_src[i] = NULL;
+        s->k_variant_seed[i] = 0;
     }
     for (i = 0; i < LANE_SITE_COUNT; ++i)
     {
@@ -3635,6 +3798,7 @@ static void reset_round(drone_hunter_scene_t *s)
 
     hide_overlay(s);
     hide_quick_menu(s);
+    set_diag_stage(s, "DBG:ROUND_RESET");
 }
 
 static void restart_cb(lv_event_t *e)
@@ -3832,6 +3996,12 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     {
         if (!s->killer_active[k])
         {
+            continue;
+        }
+        if (!isfinite(s->kx[k]) || !isfinite(s->ky[k]) || !isfinite(s->kvx[k]) || !isfinite(s->kvy[k]) || !isfinite(s->k_heading[k]))
+        {
+            set_killer_hidden(s, k);
+            respawn_killer(s, k, -1);
             continue;
         }
         if (s->k_dying[k])
@@ -4072,18 +4242,20 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 
         if (dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k]) < 324.0f)
         {
+            set_diag_stage(s, "DBG:ATTACKER_GOAL_HIT");
             s->attack_leaked++;
             s->attacker_points++;
             s->attacker_goal_detonations++;
             s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
-        s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
-        s->fx_intercept_x[k] = s->k_goal_x[k];
-        s->fx_intercept_y[k] = s->k_goal_y[k];
+            s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
+            s->fx_intercept_x[k] = s->k_goal_x[k];
+            s->fx_intercept_y[k] = s->k_goal_y[k];
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
             add_city_fire(s, s->k_goal_x[k] - 8.0f, s->k_goal_y[k] + 6.0f, CITY_FIRE_INTENSITY_BIG);
             add_city_fire(s, s->k_goal_x[k] + 9.0f, s->k_goal_y[k] + 5.0f, CITY_FIRE_INTENSITY_BIG);
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k] - 7.0f, CITY_FIRE_INTENSITY_BIG);
+            set_diag_stage(s, "DBG:ATTACKER_RESPAWN");
             respawn_killer(s, k, -1);
         }
     }
@@ -4131,6 +4303,18 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     const hunter_profile_t *p;
     float prev_hx = s->hx[h];
     float prev_hy = s->hy[h];
+
+    if (!isfinite(s->hx[h]) || !isfinite(s->hy[h]) || !isfinite(s->hvx[h]) || !isfinite(s->hvy[h]) || !isfinite(s->h_heading[h]))
+    {
+        s->hx[h] = hunter_regroup_x(s, h, core_x);
+        s->hy[h] = hunter_regroup_y(s, h);
+        s->hvx[h] = 0.0f;
+        s->hvy[h] = 0.0f;
+        s->h_heading[h] = -PI_F * 0.5f;
+        s->h_falling[h] = 0;
+        s->h_target_idx[h] = -1;
+        s->h_target_serial[h] = 0;
+    }
 
     if (!s->hunter_loaded[h] && !any_hunter_stock_remaining(s))
     {
@@ -4594,6 +4778,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     float hit_y;
                     int shahed_kill = target_is_shahed_visual(s, committed);
                     int blast_style = target_blast_style_for_visual(s, committed);
+                    set_diag_stage(s, shahed_kill ? "DBG:HUNTER_KILL_SHAHED" : "DBG:HUNTER_KILL_OTHER");
 
                     /* Anchor FX to the rendered target center (post-transform). */
                     get_obj_visual_center_in_parent(s->killers[committed], s->arena, &hit_x, &hit_y);
@@ -4643,6 +4828,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     lv_obj_add_flag(s->hunters[h], LV_OBJ_FLAG_HIDDEN);
                     if (!shahed_kill)
                     {
+                        set_diag_stage(s, "DBG:HUNTER_RESPAWN");
                         respawn_killer(s, committed, -1);
                     }
                 }
@@ -4874,8 +5060,14 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
 
     {
-        /* Low-load static fire rendering: keeps visible impact fires without per-frame flame animation churn. */
-        int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 3) : 0);
+#if RENDER_STABILITY_SAFE_MODE
+        s->city_fire_count = 0;
+        for (k = 0; k < CITY_FIRE_MAX; ++k)
+        {
+            lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+        }
+#else
+        int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 2) : 0);
         int guard;
         if (target_fire_count > CITY_FIRE_RENDER_MAX)
         {
@@ -4892,69 +5084,324 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         for (guard = 0; (s->city_fire_count < target_fire_count) && (guard < CITY_FIRE_RENDER_MAX); ++guard)
         {
             float spread = (float)(s->city_fire_count + 1);
-            float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 31.0f) + (spread * 29.0f), (float)s->arena_w - 24.0f);
-            float fy = (float)s->arena_y + ((float)s->arena_h * 0.30f) +
-                       fmodf((s->t * 19.0f) + (spread * 17.0f), (float)s->arena_h * 0.58f);
+            float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 41.0f) + (spread * 37.0f), (float)s->arena_w - 24.0f);
+            float fy = (float)s->arena_y + ((float)s->arena_h * 0.28f) +
+                       fmodf((s->t * 23.0f) + (spread * 29.0f), (float)s->arena_h * 0.64f);
             add_city_fire(s, fx, fy, CITY_FIRE_INTENSITY_SMALL);
         }
-        for (k = 0; k < CITY_FIRE_MAX; ++k)
         {
-            if ((k < s->city_fire_count) && (k < CITY_FIRE_RENDER_MAX))
+            uint32_t now_tick = lv_tick_get();
+            static uint32_t fire_anim_tick = 0U;
+            int fire_anim_step = 0;
+            if ((uint32_t)(now_tick - fire_anim_tick) >= 160U)
             {
-                int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
-                const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
-                int frame_idx = (FLAME_SPRITE_FRAME_COUNT > 2) ? 2 : 1;
-                float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.72f, 1.30f);
-                float base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 1.0f);
-                int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
-                int32_t zoom = (int32_t)(256.0f * depth * (intense ? 1.22f : 1.08f));
-                lv_opa_t opa = (lv_opa_t)(intense ? 236 : 218);
-                lv_color_t tint = lv_color_hex(0xFF6B2E);
-                lv_opa_t tint_opa = (lv_opa_t)120;
-                int32_t img_h;
-                float scaled_half_h;
-
-                if ((profile == CITY_FIRE_PROFILE_BLUE_JET) || (profile == CITY_FIRE_PROFILE_DUAL_JET) || (profile == CITY_FIRE_PROFILE_SPIRAL))
-                {
-                    tint = lv_color_hex(0x58C8FF);
-                    tint_opa = (lv_opa_t)96;
-                }
-                else if ((profile == CITY_FIRE_PROFILE_BRIGHT_RED) || (profile == CITY_FIRE_PROFILE_BRIGHT_RED_HOT))
-                {
-                    tint = lv_color_hex(0xFF1E1E);
-                    tint_opa = (lv_opa_t)188;
-                }
-                else if ((profile == CITY_FIRE_PROFILE_BRIGHT_ORANGE) || (profile == CITY_FIRE_PROFILE_BRIGHT_YELLOW_ORANGE))
-                {
-                    tint = lv_color_hex(0xFF9C00);
-                    tint_opa = (lv_opa_t)188;
-                }
-                else if (profile == CITY_FIRE_PROFILE_SMOKE)
-                {
-                    tint = lv_color_hex(0x4A4038);
-                    tint_opa = (lv_opa_t)156;
-                }
-
-                lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                if ((s->city_fire_last_profile[k] != (uint8_t)profile) || (s->city_fire_last_frame[k] != (uint8_t)frame_idx))
-                {
-                    lv_image_set_src(s->city_fire[k], frames[frame_idx]);
-                    s->city_fire_last_profile[k] = (uint8_t)profile;
-                    s->city_fire_last_frame[k] = (uint8_t)frame_idx;
-                }
-                lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
-                lv_obj_set_style_opa(s->city_fire[k], opa, 0);
-                lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
-                lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
-                img_h = lv_obj_get_height(s->city_fire[k]);
-                scaled_half_h = ((float)img_h * (float)zoom) / 512.0f;
-                set_obj_center(s->city_fire[k], s->city_fire_x[k], base_y - scaled_half_h);
+                fire_anim_tick = now_tick;
+                fire_anim_step = 1;
             }
-            else
+            for (k = 0; k < CITY_FIRE_MAX; ++k)
             {
-                lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                if (k < s->city_fire_count)
+                {
+                    int force_anim = fire_anim_step || lv_obj_has_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                    if (!force_anim)
+                    {
+                        continue;
+                    }
+                    int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
+                    const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
+                    float fps = city_fire_profile_fps(profile);
+                    float phase = s->city_fire_phase[k];
+                    float frame_pos;
+                    int frame_idx;
+                    float depth;
+                    float jitter;
+                    float style_var;
+                    float profile_scale = 1.0f;
+                    float profile_wobble = 2.0f;
+                    float base_y;
+                    float lift = 0.0f;
+                    int intense;
+                    lv_opa_t opa = LV_OPA_COVER;
+                    lv_color_t tint = lv_color_hex(0xFFFFFF);
+                    lv_opa_t tint_opa = LV_OPA_TRANSP;
+                    int32_t img_h = 0;
+                    int32_t zoom = 256;
+                    float wobble = 0.0f;
+
+                    if (!isfinite(phase))
+                    {
+                        phase = 0.0f;
+                    }
+                    frame_pos = ((s->t + phase) * fps);
+                    frame_idx = ((int)frame_pos) % FLAME_SPRITE_FRAME_COUNT;
+                    if ((FLAME_SPRITE_FRAME_COUNT > 1) && (frame_idx == 0))
+                    {
+                        frame_idx = 1;
+                    }
+                    depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.70f, 1.34f);
+                    jitter = 0.88f + (0.30f * sinf((s->t * 1.3f) + phase + ((float)k * 0.41f)));
+                    style_var = 0.82f + (0.42f * fabsf(sinf((phase * 0.73f) + ((float)k * 1.37f))));
+                    base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 6.0f);
+                    intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
+                    switch (profile)
+                    {
+                        case CITY_FIRE_PROFILE_TORCH:
+                            profile_scale = intense ? 1.36f : 1.18f;
+                            profile_wobble = 3.8f;
+                            lift = 3.5f + (3.2f * sinf((s->t * 4.8f) + phase));
+                            opa = (lv_opa_t)(intense ? 252 : 238);
+                            tint = lv_color_hex(0xFFA640);
+                            tint_opa = (lv_opa_t)44;
+                            break;
+                        case CITY_FIRE_PROFILE_BLUE_JET:
+                            profile_scale = intense ? 1.28f : 1.12f;
+                            profile_wobble = 3.4f;
+                            lift = 2.2f + (2.8f * sinf((s->t * 4.2f) + phase));
+                            opa = (lv_opa_t)(intense ? 236 : 222);
+                            tint = lv_color_hex(0x58C8FF);
+                            tint_opa = (lv_opa_t)96;
+                            break;
+                        case CITY_FIRE_PROFILE_FLICKER:
+                            profile_scale = intense ? 1.42f : 1.18f;
+                            profile_wobble = 4.2f;
+                            lift = 2.6f + (3.6f * sinf((s->t * 5.4f) + phase));
+                            opa = (lv_opa_t)(intense ? 248 : 234);
+                            tint = lv_color_hex(0x8CDD55);
+                            tint_opa = (lv_opa_t)84;
+                            break;
+                        case CITY_FIRE_PROFILE_SPIRAL:
+                            profile_scale = intense ? 1.24f : 1.08f;
+                            profile_wobble = 3.9f;
+                            lift = 1.8f + (2.7f * sinf((s->t * 3.4f) + phase));
+                            opa = (lv_opa_t)(intense ? 234 : 220);
+                            tint = lv_color_hex(0xB56AF5);
+                            tint_opa = (lv_opa_t)92;
+                            break;
+                        case CITY_FIRE_PROFILE_BURST:
+                            profile_scale = intense ? 1.54f : 1.24f;
+                            profile_wobble = 4.6f;
+                            lift = 2.0f + (4.4f * sinf((s->t * 6.0f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 240);
+                            if ((((int)(phase * 37.0f) + k) & 0x7) == 0)
+                            {
+                                tint = lv_color_hex(0x9B2C24);
+                                tint_opa = (lv_opa_t)132;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFF6B2E);
+                                tint_opa = (lv_opa_t)64;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_PULSE:
+                            profile_scale = intense ? 1.28f : 1.06f;
+                            profile_wobble = 2.8f;
+                            lift = 1.2f + (2.4f * sinf((s->t * 2.6f) + phase));
+                            opa = (lv_opa_t)(intense ? 236 : 222);
+                            tint = lv_color_hex(0xFFF2E5);
+                            tint_opa = (lv_opa_t)40;
+                            break;
+                        case CITY_FIRE_PROFILE_SMOKE:
+                            profile_scale = intense ? 1.36f : 1.20f;
+                            profile_wobble = 2.3f;
+                            lift = intense ? (7.0f + (4.2f * sinf((s->t * 1.7f) + phase)))
+                                           : (3.8f + (1.9f * sinf((s->t * 1.9f) + phase)));
+                            opa = intense ? 208 : 194;
+                            tint = lv_color_hex(0x4A4038);
+                            tint_opa = (lv_opa_t)160;
+                            break;
+                        case CITY_FIRE_PROFILE_DUAL_JET:
+                            profile_scale = intense ? 1.34f : 1.14f;
+                            profile_wobble = 3.8f;
+                            lift = 2.4f + (3.2f * sinf((s->t * 4.1f) + phase));
+                            opa = (lv_opa_t)(intense ? 240 : 226);
+                            tint = lv_color_hex(0x55D4C7);
+                            tint_opa = (lv_opa_t)96;
+                            break;
+                        case CITY_FIRE_PROFILE_WHIP:
+                            profile_scale = intense ? 1.38f : 1.18f;
+                            profile_wobble = 4.1f;
+                            lift = 2.2f + (3.4f * sinf((s->t * 4.7f) + phase));
+                            opa = (lv_opa_t)(intense ? 244 : 230);
+                            tint = lv_color_hex(0xC756F0);
+                            tint_opa = (lv_opa_t)102;
+                            break;
+                        case CITY_FIRE_PROFILE_WIDE_TORCH:
+                            profile_scale = intense ? 1.42f : 1.22f;
+                            profile_wobble = 3.8f;
+                            lift = 2.3f + (3.0f * sinf((s->t * 3.7f) + phase));
+                            opa = (lv_opa_t)(intense ? 246 : 232);
+                            tint = lv_color_hex(0xF3B23F);
+                            tint_opa = (lv_opa_t)56;
+                            break;
+                        case CITY_FIRE_PROFILE_SPUTTER:
+                            profile_scale = intense ? 1.34f : 1.10f;
+                            profile_wobble = 4.0f;
+                            lift = 1.8f + (3.1f * sinf((s->t * 4.0f) + phase));
+                            opa = (lv_opa_t)(intense ? 238 : 224);
+                            tint = lv_color_hex(0x9BCC48);
+                            tint_opa = (lv_opa_t)110;
+                            break;
+                        case CITY_FIRE_PROFILE_RED_ORANGE:
+                            profile_scale = intense ? 1.46f : 1.20f;
+                            profile_wobble = 4.3f;
+                            lift = 2.3f + (3.9f * sinf((s->t * 5.2f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 246);
+                            if ((((k + (int)(phase * 31.0f)) & 0x1) == 0))
+                            {
+                                tint = lv_color_hex(0xFF3B1F);
+                                tint_opa = (lv_opa_t)170;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFFA31A);
+                                tint_opa = (lv_opa_t)152;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_ORANGE_WHITE:
+                            profile_scale = intense ? 1.40f : 1.18f;
+                            profile_wobble = 3.7f;
+                            lift = 2.0f + (3.4f * sinf((s->t * 4.6f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 248);
+                            if ((((k + (int)(phase * 29.0f)) & 0x1) == 0))
+                            {
+                                tint = lv_color_hex(0xFFFFFF);
+                                tint_opa = (lv_opa_t)140;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFFB000);
+                                tint_opa = (lv_opa_t)190;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_BRIGHT_RED:
+                            profile_scale = intense ? 1.48f : 1.16f;
+                            profile_wobble = 4.4f;
+                            lift = 2.5f + (4.1f * sinf((s->t * 5.6f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 246);
+                            if ((((k + (int)(phase * 41.0f)) & 0x3) == 0))
+                            {
+                                tint = lv_color_hex(0xFFF5F5);
+                                tint_opa = (lv_opa_t)116;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFF1E1E);
+                                tint_opa = (lv_opa_t)206;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_BRIGHT_ORANGE:
+                            profile_scale = intense ? 1.46f : 1.18f;
+                            profile_wobble = 4.1f;
+                            lift = 2.2f + (3.8f * sinf((s->t * 5.0f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 246);
+                            if ((((k + (int)(phase * 37.0f)) & 0x1) == 0))
+                            {
+                                tint = lv_color_hex(0xFF9800);
+                                tint_opa = (lv_opa_t)214;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFFD27A);
+                                tint_opa = (lv_opa_t)180;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_BRIGHT_RED_HOT:
+                            profile_scale = intense ? 1.50f : 1.17f;
+                            profile_wobble = 4.5f;
+                            lift = 2.6f + (4.0f * sinf((s->t * 5.5f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 240);
+                            if ((((k + (int)(phase * 43.0f)) & 0x3) == 0))
+                            {
+                                tint = lv_color_hex(0xFFE3E3);
+                                tint_opa = (lv_opa_t)84;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFF1A1A);
+                                tint_opa = (lv_opa_t)198;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_BRIGHT_YELLOW_ORANGE:
+                            profile_scale = intense ? 1.44f : 1.19f;
+                            profile_wobble = 4.0f;
+                            lift = 2.1f + (3.6f * sinf((s->t * 4.9f) + phase));
+                            opa = (lv_opa_t)(intense ? 255 : 246);
+                            if ((((k + (int)(phase * 35.0f)) & 0x1) == 0))
+                            {
+                                tint = lv_color_hex(0xFF4A1A);
+                                tint_opa = (lv_opa_t)184;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xFF9C00);
+                                tint_opa = (lv_opa_t)204;
+                            }
+                            break;
+                        case CITY_FIRE_PROFILE_GROUND:
+                        default:
+                            profile_scale = intense ? 1.08f : 0.98f;
+                            profile_wobble = 2.2f;
+                            lift = 0.4f + (1.0f * sinf((s->t * 1.8f) + phase));
+                            opa = intense ? 222 : 214;
+                            if ((((k + (int)(phase * 19.0f)) & 0x3) == 0))
+                            {
+                                tint = lv_color_hex(0x7A201A);
+                                tint_opa = (lv_opa_t)138;
+                            }
+                            else
+                            {
+                                tint = lv_color_hex(0xA43A2A);
+                                tint_opa = (lv_opa_t)104;
+                            }
+                            break;
+                    }
+                    if (lift < 0.0f)
+                    {
+                        lift = 0.0f;
+                    }
+                    lift = clampf(lift * 0.22f, 0.0f, 2.8f);
+                    profile_scale *= style_var;
+                    profile_wobble *= (0.38f + (0.18f * style_var));
+                    zoom = (int32_t)(256.0f * depth * jitter * profile_scale);
+                    wobble = sinf((s->t * (1.5f + (0.5f * style_var))) + phase) * profile_wobble;
+                    if ((profile == CITY_FIRE_PROFILE_SMOKE) || (profile == CITY_FIRE_PROFILE_GROUND))
+                    {
+                        wobble = 0.0f;
+                    }
+
+                    if (k < CITY_FIRE_RENDER_MAX)
+                    {
+                        lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                        if ((s->city_fire_last_profile[k] != (uint8_t)profile) ||
+                            (s->city_fire_last_frame[k] != (uint8_t)frame_idx))
+                        {
+                            lv_image_set_src(s->city_fire[k], frames[frame_idx]);
+                            s->city_fire_last_profile[k] = (uint8_t)profile;
+                            s->city_fire_last_frame[k] = (uint8_t)frame_idx;
+                        }
+                        lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
+                        lv_obj_set_style_opa(s->city_fire[k], opa, 0);
+                        lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
+                        lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
+                        img_h = lv_obj_get_height(s->city_fire[k]);
+                        {
+                            float scaled_half_h = ((float)img_h * (float)zoom) / 512.0f;
+                            set_obj_center(s->city_fire[k], s->city_fire_x[k] + wobble, base_y - lift - scaled_half_h);
+                        }
+                    }
+                    else
+                    {
+                        lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                    }
+                }
+                else
+                {
+                    lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                }
             }
         }
+#endif
     }
 
     for (k = 0; k < CIWS_TRACER_COUNT; ++k)
@@ -5076,7 +5523,11 @@ static void update_positions(drone_hunter_scene_t *s)
             int32_t kh = lv_obj_get_height(s->killers[k]);
             if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
             {
-                lv_image_set_src(s->killers[k], src);
+                if (s->k_last_src[k] != src)
+                {
+                    lv_image_set_src(s->killers[k], src);
+                    s->k_last_src[k] = src;
+                }
                 s->k_base_zoom[k] = (uint16_t)clampf(176.0f * attack_zoom_scale(s, k), 80.0f, 900.0f);
                 zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 70.0f, 920.0f);
             }
@@ -5358,15 +5809,29 @@ static void anim_cb(lv_timer_t *timer)
         return;
     }
 
+#if FREEZE_DIAG_MINIMAL_LOOP
+    /* Extreme isolation mode: keep timer alive but bypass all arena updates. */
+    s->t += 0.010f;
+    return;
+#endif
+
     s->t += 0.040f * speed_pp_mult(s);
+    set_diag_stage(s, "DBG:ANIM_TICK");
 
     if (!s->round_over)
     {
         int k;
 
         s->round_time_sec -= DT_SEC;
+#if FREEZE_DIAG_LOGIC_BYPASS
+        /* Freeze isolation mode: bypass movement/engagement logic. */
+        (void)core_x;
+        (void)core_y;
+#else
+        set_diag_stage(s, "DBG:UPDATE_KILLERS");
         update_killers(s, core_x, core_y);
 
+        set_diag_stage(s, "DBG:UPDATE_HUNTERS");
         for (h = 0; h < HUNTER_COUNT; ++h)
         {
             if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
@@ -5384,7 +5849,9 @@ static void anim_cb(lv_timer_t *timer)
             }
             update_hunter(s, h, core_x, core_y);
         }
+#endif
 
+        set_diag_stage(s, "DBG:DECAY_FX");
         for (k = 0; k < KILLER_COUNT; ++k)
         {
             s->fx_intercept_t[k] = clampf(s->fx_intercept_t[k] - DT_SEC, 0.0f, FX_INTERCEPT_SEC);
@@ -5425,15 +5892,27 @@ static void anim_cb(lv_timer_t *timer)
         }
 
         s->fx_core_hit_t = clampf(s->fx_core_hit_t - DT_SEC, 0.0f, FX_CORE_HIT_SEC);
+#if !FREEZE_DIAG_LOGIC_BYPASS
+        set_diag_stage(s, "DBG:END_ROUND_CHECK");
         maybe_end_round(s);
+#endif
     }
 
+#if !FREEZE_DIAG_LOGIC_BYPASS
+    set_diag_stage(s, "DBG:UPDATE_POSITIONS");
     update_positions(s);
+#endif
+#if FREEZE_DIAG_EFFECTS_BYPASS
+    /* Freeze isolation mode: bypass heavy FX render pass to keep game loop alive. */
+#else
+    set_diag_stage(s, "DBG:UPDATE_EFFECTS");
     update_effects(s, core_x, core_y);
+#endif
     s->hud_refresh_t += DT_SEC;
     if (s->hud_refresh_t >= HUD_REFRESH_SEC)
     {
         s->hud_refresh_t = 0.0f;
+        set_diag_stage(s, "DBG:UPDATE_HUD");
         update_hud(s);
     }
 }
@@ -5655,6 +6134,22 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xD1ECFF), 0);
     lv_obj_align(s->hud_defend_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
 
+    s->hud_diag_stage = lv_label_create(s->arena);
+    lv_label_set_text(s->hud_diag_stage, "DBG:BOOT");
+    lv_obj_set_style_text_font(s->hud_diag_stage, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s->hud_diag_stage, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_color(s->hud_diag_stage, lv_color_hex(0x991B1B), 0);
+    lv_obj_set_style_bg_opa(s->hud_diag_stage, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_left(s->hud_diag_stage, 6, 0);
+    lv_obj_set_style_pad_right(s->hud_diag_stage, 6, 0);
+    lv_obj_set_style_pad_top(s->hud_diag_stage, 2, 0);
+    lv_obj_set_style_pad_bottom(s->hud_diag_stage, 2, 0);
+    lv_obj_set_style_text_align(s->hud_diag_stage, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(s->hud_diag_stage, s->arena_w - 8);
+    lv_obj_align(s->hud_diag_stage, LV_ALIGN_TOP_MID, 0, 2);
+    lv_obj_move_foreground(s->hud_diag_stage);
+    (void)snprintf(s->hud_diag_text, sizeof(s->hud_diag_text), "%s", "DBG:BOOT");
+
     s->mode_btn = NULL;
     s->mode_btn_label = NULL;
 
@@ -5831,6 +6326,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         s->killers[i] = lv_image_create(s->arena);
         lv_obj_remove_style_all(s->killers[i]);
         lv_image_set_src(s->killers[i], &attack_shahed_yellow);
+        s->k_last_src[i] = &attack_shahed_yellow;
         lv_obj_set_style_transform_zoom(s->killers[i], 185, 0);
         lv_obj_add_flag(s->killers[i], LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(s->killers[i], target_pick_cb, LV_EVENT_CLICKED, s);

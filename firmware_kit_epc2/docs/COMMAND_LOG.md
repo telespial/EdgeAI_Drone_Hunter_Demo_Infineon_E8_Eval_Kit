@@ -1,5 +1,23 @@
 # COMMAND_LOG
 
+- 2026-03-29 | Strategic attacker sequence + visible debug-stage instrumentation in `drone_hunter_arena.c`:
+  - replaced deterministic attacker composition tables with doctrine-weighted stochastic spawn selection,
+  - reset round at splash start after entropy mix to avoid boot-time replay patterns,
+  - moved/foregrounded top-center `DBG:*` banner to keep freeze-stage text visible during arena runtime.
+- 2026-03-29 | Build + flash validation for strategic+debug pass:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` from rebuilt `proj_cm55.elf`,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2523136 bytes` / `verified 2521124 bytes`
+    - `** Resetting Target **`
+- 2026-03-29 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260329-phase15-strategic-rng-debug-banner-20260329_091916`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260329-phase15-strategic-rng-debug-banner-20260329_091916`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-29 | Fire visibility + deck glass readability pass in `drone_hunter_arena.c`:
   - restored city-fire rendering using low-load static sprite mode so impact fires are visible again,
   - preserved freeze hardening by avoiding the heavy animated city-fire runtime path,

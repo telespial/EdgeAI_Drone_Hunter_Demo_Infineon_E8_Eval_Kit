@@ -34,6 +34,7 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 2. Visual-fire realism stabilization and freeze-proofing.
 3. Repository and docs hygiene.
 4. Flash/recovery safety hardening.
+5. Strategic non-repeating attacker release sequencing + top debug-stage instrumentation.
 
 ## Phase 16 Preview
 - Ambient city layer.

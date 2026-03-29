@@ -27,6 +27,10 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - Planned next: `Phase 16` (soundscape/audio layer).
 
 ## Current Gameplay Baseline
+- Startup sequencing no longer replays deterministic openings:
+  - round reseeds/resets at splash start,
+  - attacker composition uses strategic stochastic weighting (doctrine-driven probabilities + RNG per spawn).
+- Runtime debug stage banner is active and foregrounded at top center (`DBG:*`) for freeze localization.
 - Phase 14 movement doctrine is integrated (attacker evasion + hunter intercept behavior).
 - Skyfall guidance no longer uses hybrid endgame blending (plane steering applied to remove wiggle).
 - Stinger guidance now uses plane steering for smoother non-wiggling pursuit.
@@ -70,11 +74,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857092 bytes`
+- `wrote 2523136 bytes` / `verified 2521124 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,857,092 bytes`.
+- CM55 image verified (external SMIF): `2,521,124 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

@@ -9,6 +9,9 @@
 - Phases `1-14` are complete.
 - Phase `15` is active.
 - Current runtime includes:
+  - strategic stochastic attacker release composition (doctrine-weighted, run-varying spawn order),
+  - splash-start entropy reseed + reset to prevent boot-time replay patterns,
+  - top-center foreground debug stage banner (`DBG:*`) for freeze tracing,
   - phase-14 movement doctrine,
   - phase-15 settings controls,
   - CIWS stationary-structure + dynamic stream behavior,
@@ -33,7 +36,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857092 bytes`
+- `wrote 2523136 bytes` / `verified 2521124 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
