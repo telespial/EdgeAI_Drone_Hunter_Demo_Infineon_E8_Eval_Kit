@@ -490,6 +490,8 @@ static void iff_toggle_cb(lv_event_t *e);
 static void quick_menu_close_cb(lv_event_t *e);
 static void quick_menu_body_cb(lv_event_t *e);
 static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body);
+static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k);
+static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k);
 
 static uint32_t scene_rng_next(drone_hunter_scene_t *s)
 {
@@ -568,6 +570,17 @@ static float city_fire_profile_fps(int profile)
 static int city_fire_pick_profile(float seed, int intensity)
 {
     int roll = ((int)fabsf(fmodf(seed * 97.0f, 1024.0f))) % CITY_FIRE_PROFILE_COUNT;
+    int hot_gate = ((int)fabsf(fmodf(seed * 131.0f, 4096.0f))) % 100;
+    if (hot_gate < 35)
+    {
+        static const uint8_t hot_profiles[3] = {
+            CITY_FIRE_PROFILE_RED_ORANGE,
+            CITY_FIRE_PROFILE_ORANGE_WHITE,
+            CITY_FIRE_PROFILE_BRIGHT_RED
+        };
+        int hot_roll = ((int)fabsf(fmodf(seed * 173.0f, 4096.0f))) % 3;
+        return (int)hot_profiles[hot_roll];
+    }
     if (intensity >= CITY_FIRE_INTENSITY_BIG)
     {
         static const uint8_t big_profiles[CITY_FIRE_PROFILE_COUNT] = {
@@ -1223,9 +1236,8 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     {
         float hit_x;
         float hit_y;
-        int shahed_kill = (s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA);
-        int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
-                          ((s->ktype[k] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_RED);
+        int shahed_kill = target_is_shahed_visual(s, k);
+        int blast_style = target_blast_style_for_visual(s, k);
 
         get_obj_visual_center_in_parent(s->killers[k], s->arena, &hit_x, &hit_y);
         s->attack_destroyed++;
@@ -2629,6 +2641,25 @@ static int attack_variant_idx(const drone_hunter_scene_t *s, int k)
         variant += 3;
     }
     return variant;
+}
+
+static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k)
+{
+    return (attack_variant_idx(s, k) == 0);
+}
+
+static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k)
+{
+    int variant = attack_variant_idx(s, k);
+    if (variant == 0)
+    {
+        return BLAST_STYLE_GIANT_ORANGE;
+    }
+    if (variant == 1)
+    {
+        return BLAST_STYLE_MEDIUM_RED;
+    }
+    return BLAST_STYLE_SMALL_WHITE;
 }
 
 static float attack_zoom_scale(const drone_hunter_scene_t *s, int k)
@@ -4344,9 +4375,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     int pts = (s->ktype[committed] == TARGET_FIXED_WING) ? p->points_fixed : p->points_fpv;
                     float hit_x;
                     float hit_y;
-                    int shahed_kill = target_is_shahed(s, committed);
-                    int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
-                                      ((s->ktype[committed] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_RED);
+                    int shahed_kill = target_is_shahed_visual(s, committed);
+                    int blast_style = target_blast_style_for_visual(s, committed);
 
                     /* Anchor FX to the rendered target center (post-transform). */
                     get_obj_visual_center_in_parent(s->killers[committed], s->arena, &hit_x, &hit_y);
@@ -4780,13 +4810,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                         opa = (lv_opa_t)(intense ? 250 : 236);
                         if ((((k + (int)(phase * 31.0f)) & 0x1) == 0))
                         {
-                            tint = lv_color_hex(0xFF5A1F);
-                            tint_opa = (lv_opa_t)98;
+                            tint = lv_color_hex(0xCF2A1D); /* red flame body */
+                            tint_opa = (lv_opa_t)116;
                         }
                         else
                         {
-                            tint = lv_color_hex(0xFF9A3A);
-                            tint_opa = (lv_opa_t)74;
+                            tint = lv_color_hex(0xFF8A2A); /* orange details */
+                            tint_opa = (lv_opa_t)88;
                         }
                         break;
                     case CITY_FIRE_PROFILE_ORANGE_WHITE:
@@ -4812,13 +4842,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                         opa = (lv_opa_t)(intense ? 252 : 238);
                         if ((((k + (int)(phase * 41.0f)) & 0x3) == 0))
                         {
-                            tint = lv_color_hex(0xB91C1C);
-                            tint_opa = (lv_opa_t)126;
+                            tint = lv_color_hex(0xFFF4F4); /* white details/highlights */
+                            tint_opa = (lv_opa_t)74;
                         }
                         else
                         {
-                            tint = lv_color_hex(0xFF2D2D);
-                            tint_opa = (lv_opa_t)110;
+                            tint = lv_color_hex(0xFF2D2D); /* bright red body */
+                            tint_opa = (lv_opa_t)126;
                         }
                         break;
                     case CITY_FIRE_PROFILE_GROUND:
