@@ -28,7 +28,7 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 ## Expected Success Signatures
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2523136 bytes`, `verified 2519124 bytes`
+- `wrote 2859008 bytes`, `verified 2857092 bytes`
 - `** Resetting Target **`
 
 ## Post-Flash Smoke Check

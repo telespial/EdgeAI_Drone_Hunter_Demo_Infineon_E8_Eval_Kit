@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2523136 bytes`, `verified 2519124 bytes`
+- `wrote 2859008 bytes`, `verified 2857092 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -30,13 +30,14 @@
 - Additional freeze-hardening deployed:
   - city-fire render budget reduced,
   - flame sprite/style updates throttled,
-  - dynamic city-fire runtime rendering path disabled (failsafe stability baseline).
+  - low-load static city-fire rendering restored for visible impact fires.
+- Bottom deck liquid-glass bar opacity increased by ~20% for better readability.
 - CIWS structures remain fixed while bullet streams target dynamically.
 - Exhaustion-mode battle ending is active.
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,519,124 bytes`
+- CM55 verified image size (external SMIF): `2,857,092 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

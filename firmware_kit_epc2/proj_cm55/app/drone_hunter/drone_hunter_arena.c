@@ -4874,11 +4874,86 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
 
     {
-        /* Freeze failsafe: disable dynamic city-fire runtime rendering path. */
-        s->city_fire_count = 0;
+        /* Low-load static fire rendering: keeps visible impact fires without per-frame flame animation churn. */
+        int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 3) : 0);
+        int guard;
+        if (target_fire_count > CITY_FIRE_RENDER_MAX)
+        {
+            target_fire_count = CITY_FIRE_RENDER_MAX;
+        }
+        if (target_fire_count < 0)
+        {
+            target_fire_count = 0;
+        }
+        if (s->city_fire_count > target_fire_count)
+        {
+            s->city_fire_count = target_fire_count;
+        }
+        for (guard = 0; (s->city_fire_count < target_fire_count) && (guard < CITY_FIRE_RENDER_MAX); ++guard)
+        {
+            float spread = (float)(s->city_fire_count + 1);
+            float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 31.0f) + (spread * 29.0f), (float)s->arena_w - 24.0f);
+            float fy = (float)s->arena_y + ((float)s->arena_h * 0.30f) +
+                       fmodf((s->t * 19.0f) + (spread * 17.0f), (float)s->arena_h * 0.58f);
+            add_city_fire(s, fx, fy, CITY_FIRE_INTENSITY_SMALL);
+        }
         for (k = 0; k < CITY_FIRE_MAX; ++k)
         {
-            lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+            if ((k < s->city_fire_count) && (k < CITY_FIRE_RENDER_MAX))
+            {
+                int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
+                const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
+                int frame_idx = (FLAME_SPRITE_FRAME_COUNT > 2) ? 2 : 1;
+                float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.72f, 1.30f);
+                float base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 1.0f);
+                int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
+                int32_t zoom = (int32_t)(256.0f * depth * (intense ? 1.22f : 1.08f));
+                lv_opa_t opa = (lv_opa_t)(intense ? 236 : 218);
+                lv_color_t tint = lv_color_hex(0xFF6B2E);
+                lv_opa_t tint_opa = (lv_opa_t)120;
+                int32_t img_h;
+                float scaled_half_h;
+
+                if ((profile == CITY_FIRE_PROFILE_BLUE_JET) || (profile == CITY_FIRE_PROFILE_DUAL_JET) || (profile == CITY_FIRE_PROFILE_SPIRAL))
+                {
+                    tint = lv_color_hex(0x58C8FF);
+                    tint_opa = (lv_opa_t)96;
+                }
+                else if ((profile == CITY_FIRE_PROFILE_BRIGHT_RED) || (profile == CITY_FIRE_PROFILE_BRIGHT_RED_HOT))
+                {
+                    tint = lv_color_hex(0xFF1E1E);
+                    tint_opa = (lv_opa_t)188;
+                }
+                else if ((profile == CITY_FIRE_PROFILE_BRIGHT_ORANGE) || (profile == CITY_FIRE_PROFILE_BRIGHT_YELLOW_ORANGE))
+                {
+                    tint = lv_color_hex(0xFF9C00);
+                    tint_opa = (lv_opa_t)188;
+                }
+                else if (profile == CITY_FIRE_PROFILE_SMOKE)
+                {
+                    tint = lv_color_hex(0x4A4038);
+                    tint_opa = (lv_opa_t)156;
+                }
+
+                lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+                if ((s->city_fire_last_profile[k] != (uint8_t)profile) || (s->city_fire_last_frame[k] != (uint8_t)frame_idx))
+                {
+                    lv_image_set_src(s->city_fire[k], frames[frame_idx]);
+                    s->city_fire_last_profile[k] = (uint8_t)profile;
+                    s->city_fire_last_frame[k] = (uint8_t)frame_idx;
+                }
+                lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
+                lv_obj_set_style_opa(s->city_fire[k], opa, 0);
+                lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
+                lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
+                img_h = lv_obj_get_height(s->city_fire[k]);
+                scaled_half_h = ((float)img_h * (float)zoom) / 512.0f;
+                set_obj_center(s->city_fire[k], s->city_fire_x[k], base_y - scaled_half_h);
+            }
+            else
+            {
+                lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 
@@ -5587,10 +5662,15 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_remove_style_all(s->deck_bar);
     lv_obj_set_size(s->deck_bar, sw - 16, DECK_H + 10);
     lv_obj_set_pos(s->deck_bar, 8, sh - (DECK_H + 10) - 6);
-    lv_obj_set_style_bg_color(s->deck_bar, lv_color_hex(0x0B1220), 0);
-    lv_obj_set_style_bg_opa(s->deck_bar, LV_OPA_70, 0);
-    lv_obj_set_style_border_color(s->deck_bar, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_bg_color(s->deck_bar, lv_color_hex(0x8FD3FF), 0);
+    lv_obj_set_style_bg_opa(s->deck_bar, (lv_opa_t)34, 0);
+    lv_obj_set_style_border_color(s->deck_bar, lv_color_hex(0xE6F4FF), 0);
+    lv_obj_set_style_border_opa(s->deck_bar, (lv_opa_t)70, 0);
     lv_obj_set_style_border_width(s->deck_bar, 1, 0);
+    lv_obj_set_style_radius(s->deck_bar, 16, 0);
+    lv_obj_set_style_shadow_color(s->deck_bar, lv_color_hex(0x6BBEFF), 0);
+    lv_obj_set_style_shadow_opa(s->deck_bar, (lv_opa_t)38, 0);
+    lv_obj_set_style_shadow_width(s->deck_bar, 12, 0);
     lv_obj_add_flag(s->deck_bar, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
