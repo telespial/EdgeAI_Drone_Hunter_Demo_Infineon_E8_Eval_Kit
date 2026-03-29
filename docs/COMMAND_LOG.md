@@ -1,5 +1,23 @@
 # COMMAND_LOG
 
+- 2026-03-28 | Flame variation rebalance pass in `drone_hunter_arena.c`:
+  - restored vivid blue/green/purple families while preserving hot red/orange/white flame families,
+  - rebalanced profile picker to mixed hot/vivid/smoke distribution,
+  - increased per-fire style variation (size scaling, wobble amplitude, and motion-rate diversity).
+- 2026-03-28 | Build + flash validation for flame variation mix:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` and `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2859008 bytes` / `verified 2856604 bytes`
+    - `** Resetting Target **`
+- 2026-03-28 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260328-phase15-flame-variation-mixed-palette-20260328_191719`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260328-phase15-flame-variation-mixed-palette-20260328_191719`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-28 | Bottom icon/deck flicker mitigation hardening in `drone_hunter_arena.c`:
   - kept deck UI state-change caching/throttled CIWS text refresh,
   - removed per-frame `lv_obj_move_foreground(...)` churn on hunters/intercept/kill FX,
