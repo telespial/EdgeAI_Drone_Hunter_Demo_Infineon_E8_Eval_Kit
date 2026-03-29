@@ -74,7 +74,7 @@
 #define SETTINGS_ROW_COUNT        (5)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
-#define BLAST_STYLE_MEDIUM_WHITE  (1)
+#define BLAST_STYLE_MEDIUM_RED    (1)
 #define BLAST_STYLE_GIANT_ORANGE  (2)
 /* Flame pack v2 style identity list (manifest-aligned). */
 #define CITY_FIRE_PROFILE_TORCH      (0)
@@ -1225,7 +1225,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         float hit_y;
         int shahed_kill = (s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA);
         int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
-                          ((s->ktype[k] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_WHITE);
+                          ((s->ktype[k] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_RED);
 
         get_obj_visual_center_in_parent(s->killers[k], s->arena, &hit_x, &hit_y);
         s->attack_destroyed++;
@@ -4346,7 +4346,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     float hit_y;
                     int shahed_kill = target_is_shahed(s, committed);
                     int blast_style = shahed_kill ? BLAST_STYLE_GIANT_ORANGE :
-                                      ((s->ktype[committed] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_WHITE);
+                                      ((s->ktype[committed] == TARGET_FPV) ? BLAST_STYLE_SMALL_WHITE : BLAST_STYLE_MEDIUM_RED);
 
                     /* Anchor FX to the rendered target center (post-transform). */
                     get_obj_visual_center_in_parent(s->killers[committed], s->arena, &hit_x, &hit_y);
@@ -4513,13 +4513,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                 border_color = lv_color_hex(0xFDE047);
                 border_w = 5;
             }
-            else if (blast_style == BLAST_STYLE_MEDIUM_WHITE)
+            else if (blast_style == BLAST_STYLE_MEDIUM_RED)
             {
                 size = (int32_t)((22.0f + (grow * 72.0f)) * depth_scale);
                 fill_opa = (lv_opa_t)(55 + (int32_t)(life * 95.0f));
                 border_opa = (lv_opa_t)(120 + (int32_t)(life * 125.0f));
-                fill_color = lv_color_hex(0xFFFFFF);
-                border_color = lv_color_hex(0xFFFFFF);
+                fill_color = lv_color_hex(0xC62828);
+                border_color = lv_color_hex(0xFF6B6B);
                 border_w = 4;
             }
             else
@@ -4590,13 +4590,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                 border_color = lv_color_hex(0xFDE68A);
                 border_w = 6;
             }
-            else if (blast_style == BLAST_STYLE_MEDIUM_WHITE)
+            else if (blast_style == BLAST_STYLE_MEDIUM_RED)
             {
                 size = (int32_t)((30.0f + (grow * 86.0f)) * depth_scale);
                 ring_opa = (lv_opa_t)(125 + (int32_t)(life * 120.0f));
                 fill_opa = (lv_opa_t)(30 + (int32_t)(life * 85.0f));
-                fill_color = lv_color_hex(0xFFFFFF);
-                border_color = lv_color_hex(0xFFFFFF);
+                fill_color = lv_color_hex(0xC62828);
+                border_color = lv_color_hex(0xFF6B6B);
                 border_w = 4;
             }
             else
@@ -4652,6 +4652,12 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                 float phase = s->city_fire_phase[k];
                 float frame_pos = ((s->t + phase) * fps);
                 int frame_idx = ((int)frame_pos) % FLAME_SPRITE_FRAME_COUNT;
+                /* Flame frame 0 in this pack is effectively empty on several profiles.
+                 * Skip it to prevent periodic blink-off artifacts (~50-100 ms). */
+                if ((FLAME_SPRITE_FRAME_COUNT > 1) && (frame_idx == 0))
+                {
+                    frame_idx = 1;
+                }
                 float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.70f, 1.34f);
                 float jitter = 0.88f + (0.30f * sinf((s->t * 1.3f) + phase + ((float)k * 0.41f)));
                 float profile_scale = 1.0f;

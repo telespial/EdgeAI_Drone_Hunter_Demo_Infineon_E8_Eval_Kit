@@ -422,3 +422,19 @@
   - golden: `golden-20260328-phase15-fire-choices-20260328_180136`
   - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-fire-choices-20260328_180136`
   - rolling links `current_golden` and `current_failsafe` updated.
+- 2026-03-28 | Explosion-class refinement patch in `drone_hunter_arena.c`:
+  - Shahed maps to largest giant orange circular blast,
+  - fixed-wing Strike-Prop maps to medium red circular blast,
+  - X-wing/FPV maps to small bright white circular blast,
+  - all blast sizes continue to scale by depth (`depth_zoom_factor_for_y`).
+- 2026-03-28 | Flame render sync hardening patch in `drone_hunter_arena.c`:
+  - city-fire animation now skips frame index `0` (empty frame in current sprite pack) to avoid rapid blink-off artifacts.
+- 2026-03-28 | Rebuild + flash validation for explosion map + flame sync fix:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash succeeded (`erase_all; program cm33_s; program cm33_ns; program cm55`),
+  - signatures: `wrote 32768/verified 30456`, `wrote 12288/verified 8732`, `wrote 2859008/verified 2857120`.
+- 2026-03-28 | New restore points created from flame-sync baseline:
+  - golden: `golden-20260328-phase15-flame-sync-fix-20260328_181554`
+  - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-flame-sync-fix-20260328_181554`
+  - rolling links `current_golden` and `current_failsafe` updated.

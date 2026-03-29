@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2859008 bytes`, `verified 2857104 bytes`
+- `wrote 2859008 bytes`, `verified 2857120 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -23,7 +23,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,857,104 bytes`
+- CM55 verified image size (external SMIF): `2,857,120 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
