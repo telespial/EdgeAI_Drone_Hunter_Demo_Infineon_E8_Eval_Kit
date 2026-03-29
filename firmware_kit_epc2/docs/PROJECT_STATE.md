@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-28
+- Last Updated: 2026-03-29
 - Primary runtime file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -13,6 +13,8 @@
   - phase-15 settings controls,
   - CIWS stationary-structure + dynamic stream behavior,
   - inventory exhaustion end mode,
+  - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
+  - naming normalization (`Stinger`, `Pelican`, `TYTAN`),
   - deterministic ALGO with EDGEAI layered behavior/fallback model.
 
 ## Verified Hardware
@@ -28,7 +30,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857892 bytes`
+- `wrote 2859008 bytes` / `verified 2857900 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

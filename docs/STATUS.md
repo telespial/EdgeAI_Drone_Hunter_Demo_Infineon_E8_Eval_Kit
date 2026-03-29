@@ -1,6 +1,6 @@
 # STATUS
 
-- Date: 2026-03-28
+- Date: 2026-03-29
 - Branch: `main`
 - Runtime baseline: full clean rebuild and full 3-image flash validated on hardware.
 
@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2859008 bytes`, `verified 2857892 bytes`
+- `wrote 2859008 bytes`, `verified 2857900 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -22,12 +22,17 @@
 - Explosion mapping is enforced by visual drone class:
   - Shahed: large orange, fixed-wing: red, X-wing DJI: small white.
 - Fire palette now blends hot + vivid + smoke families with stronger per-fire variation.
+- Skyfall steering set to plane model to remove hybrid wiggle behavior.
+- Hunter labels normalized to: `Stinger`, `Pelican`, `TYTAN`.
+- Additional freeze-hardening deployed:
+  - city-fire render budget reduced,
+  - flame sprite/style updates throttled to reduce LVGL load.
 - CIWS structures remain fixed while bullet streams target dynamically.
 - Exhaustion-mode battle ending is active.
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,857,892 bytes`
+- CM55 verified image size (external SMIF): `2,857,900 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

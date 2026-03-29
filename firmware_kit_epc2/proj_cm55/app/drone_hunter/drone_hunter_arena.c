@@ -58,7 +58,7 @@
 #define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
-#define CITY_FIRE_RENDER_MAX      (24)
+#define CITY_FIRE_RENDER_MAX      (16)
 #define LANE_SITE_COUNT           (16)
 #define LAUNCH_SECTOR_COUNT       (8)
 #define HUD_H                     (72)
@@ -1436,13 +1436,13 @@ static const char *arena_phase_name(int phase)
 
 static const hunter_profile_t g_hunter_profiles[HUNTER_TYPE_COUNT] =
 {
-    {"Sting-II",      2.20f, 0.020f, 0.66f, 1.55f, 14.8f, 1, 3, 32, 20, 18, 7, 15, 4, 10, 5, 0xD1D5DB, 0x9CA3AF, "Sting-II is tuned for rapid intercepts against fast threats. It reaches speed quickly and keeps a stable nose-in pursuit path."},
+    {"Stinger",       2.20f, 0.020f, 0.66f, 1.55f, 14.8f, 1, 3, 32, 20, 18, 7, 15, 4, 10, 5, 0xD1D5DB, 0x9CA3AF, "Stinger is tuned for rapid intercepts against fast threats. It reaches speed quickly and keeps a stable nose-in pursuit path."},
     {"Bagnet",        1.68f, 0.016f, 0.72f, 1.10f, 13.8f, 2, 2, 30, 20, 16, 7, 14, 4,  9, 5, 0xD4D4D8, 0xA1A1AA, "Bagnet is a close-range hunter built for tight FPV engagements. It favors control and positioning over pure top speed."},
     {"Skyfall P1",    2.50f, 0.023f, 0.62f, 1.70f, 14.2f, 1, 3, 34, 20, 20, 6, 15, 3, 10, 4, 0xE5E7EB, 0x9CA3AF, "Skyfall P1 is optimized for predictive lead pursuit. It is one of the fastest options in the lineup for fixed-wing intercepts."},
     {"Octopus-100",   1.98f, 0.018f, 0.70f, 1.30f, 14.5f, 2, 2, 32, 20, 17, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Octopus-100 is a balanced multirotor platform for mixed threat environments. It trades extremes for consistent all-round behavior."},
     {"ODIN Win_Hit",  2.05f, 0.019f, 0.68f, 1.25f, 15.4f, 2, 2, 33, 21, 18, 8, 15, 4, 10, 5, 0xCBD5E1, 0x94A3B8, "ODIN Win_Hit emphasizes stable tracking and reliable direct-hit geometry. It performs well when holding line and avoiding overshoot."},
-    {"VB140",         1.10f, 0.015f, 0.75f, 1.05f, 16.4f, 3, 1, 36, 18, 20, 6, 18, 3,  8, 4, 0xE7E5E4, 0xA8A29E, "VB140 uses a larger frame for close interception pressure. It is resilient in dense engagements and favors high-contact scoring."},
-    {"Tytan",         1.50f, 0.021f, 0.64f, 1.50f, 14.6f, 1, 3, 34, 20, 19, 7, 15, 4, 10, 5, 0xE5E7EB, 0x9CA3AF, "Tytan is an aggressive fixed-wing hunter with strong approach speed. It is suited for decisive first-pass intercept attempts."},
+    {"Pelican",       1.10f, 0.015f, 0.75f, 1.05f, 16.4f, 3, 1, 36, 18, 20, 6, 18, 3,  8, 4, 0xE7E5E4, 0xA8A29E, "Pelican uses a larger frame for close interception pressure. It is resilient in dense engagements and favors high-contact scoring."},
+    {"TYTAN",         1.50f, 0.021f, 0.64f, 1.50f, 14.6f, 1, 3, 34, 20, 19, 7, 15, 4, 10, 5, 0xE5E7EB, 0x9CA3AF, "TYTAN is an aggressive fixed-wing hunter with strong approach speed. It is suited for decisive first-pass intercept attempts."},
     {"Merops",        1.86f, 0.018f, 0.69f, 1.20f, 15.2f, 2, 2, 35, 20, 19, 7, 16, 4, 10, 5, 0xD6D3D1, 0xA8A29E, "Merops is a general-purpose interceptor for variable weather and threat mixes. It balances predictability, control, and endurance."}
 };
 
@@ -1475,13 +1475,13 @@ static const char *hunter_type_short_name(hunter_type_t t)
 {
     switch (t)
     {
-        case HUNTER_STING_II: return "Sting-II";
+        case HUNTER_STING_II: return "Stinger";
         case HUNTER_BAGNET: return "Bagnet";
         case HUNTER_SKYFALL_P1: return "Skyfall";
         case HUNTER_OCTOPUS_100: return "Octopus";
         case HUNTER_ODIN_WIN_HIT: return "ODIN";
-        case HUNTER_VB140_FLAMINGO: return "VB140";
-        case HUNTER_TYTAN: return "Tytan";
+        case HUNTER_VB140_FLAMINGO: return "Pelican";
+        case HUNTER_TYTAN: return "TYTAN";
         case HUNTER_MEROPS: return "Merops";
         default: return "Hunter";
     }
@@ -1694,9 +1694,9 @@ static hunter_flight_model_t hunter_flight_model(hunter_type_t h)
         case HUNTER_BAGNET:
         case HUNTER_ODIN_WIN_HIT:
             return HUNTER_FLIGHT_VERTICAL;
-        case HUNTER_SKYFALL_P1:
         case HUNTER_OCTOPUS_100:
             return HUNTER_FLIGHT_HYBRID;
+        case HUNTER_SKYFALL_P1:
         case HUNTER_VB140_FLAMINGO:
         case HUNTER_TYTAN:
         case HUNTER_MEROPS:
@@ -4849,11 +4849,21 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
 
     {
         int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 2) : 0);
-        if (target_fire_count > CITY_FIRE_MAX)
+        int guard;
+        if (target_fire_count > CITY_FIRE_RENDER_MAX)
         {
-            target_fire_count = CITY_FIRE_MAX;
+            target_fire_count = CITY_FIRE_RENDER_MAX;
         }
-        while (s->city_fire_count < target_fire_count)
+        if (target_fire_count < 0)
+        {
+            target_fire_count = 0;
+        }
+        if (s->city_fire_count > target_fire_count)
+        {
+            /* Decay active fire budget back down so per-frame render cost stays bounded. */
+            s->city_fire_count = target_fire_count;
+        }
+        for (guard = 0; (s->city_fire_count < target_fire_count) && (guard < CITY_FIRE_RENDER_MAX); ++guard)
         {
             float spread = (float)(s->city_fire_count + 1);
             float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 41.0f) + (spread * 37.0f), (float)s->arena_w - 24.0f);
@@ -4861,37 +4871,45 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                        fmodf((s->t * 23.0f) + (spread * 29.0f), (float)s->arena_h * 0.64f);
             add_city_fire(s, fx, fy, CITY_FIRE_INTENSITY_SMALL);
         }
-        for (k = 0; k < CITY_FIRE_MAX; ++k)
         {
-            if (k < s->city_fire_count)
+            uint32_t now_tick = lv_tick_get();
+            static uint32_t fire_anim_tick = 0U;
+            int fire_anim_step = 0;
+            if ((uint32_t)(now_tick - fire_anim_tick) >= 80U)
             {
-                int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
-                const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
-                float fps = city_fire_profile_fps(profile);
-                float phase = s->city_fire_phase[k];
-                float frame_pos = ((s->t + phase) * fps);
-                int frame_idx = ((int)frame_pos) % FLAME_SPRITE_FRAME_COUNT;
-                /* Flame frame 0 in this pack is effectively empty on several profiles.
-                 * Skip it to prevent periodic blink-off artifacts (~50-100 ms). */
-                if ((FLAME_SPRITE_FRAME_COUNT > 1) && (frame_idx == 0))
+                fire_anim_tick = now_tick;
+                fire_anim_step = 1;
+            }
+            for (k = 0; k < CITY_FIRE_MAX; ++k)
+            {
+                if (k < s->city_fire_count)
                 {
-                    frame_idx = 1;
-                }
-                float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.70f, 1.34f);
-                float jitter = 0.88f + (0.30f * sinf((s->t * 1.3f) + phase + ((float)k * 0.41f)));
-                float style_var = 0.82f + (0.42f * fabsf(sinf((phase * 0.73f) + ((float)k * 1.37f))));
-                float profile_scale = 1.0f;
-                float profile_wobble = 2.0f;
-                float base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 1.0f);
-                float lift = 0.0f;
-                int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
-                lv_opa_t opa = LV_OPA_COVER;
-                lv_color_t tint = lv_color_hex(0xFFFFFF);
-                lv_opa_t tint_opa = LV_OPA_TRANSP;
-                int32_t img_h = 0;
-                int32_t zoom = 256;
-                float wobble = 0.0f;
-
+                    int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
+                    const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
+                    float fps = city_fire_profile_fps(profile);
+                    float phase = s->city_fire_phase[k];
+                    float frame_pos = ((s->t + phase) * fps);
+                    int frame_idx = ((int)frame_pos) % FLAME_SPRITE_FRAME_COUNT;
+                    /* Flame frame 0 in this pack is effectively empty on several profiles.
+                     * Skip it to prevent periodic blink-off artifacts (~50-100 ms). */
+                    if ((FLAME_SPRITE_FRAME_COUNT > 1) && (frame_idx == 0))
+                    {
+                        frame_idx = 1;
+                    }
+                    float depth = clampf(depth_zoom_factor_for_y(s, s->city_fire_y[k]), 0.70f, 1.34f);
+                    float jitter = 0.88f + (0.30f * sinf((s->t * 1.3f) + phase + ((float)k * 0.41f)));
+                    float style_var = 0.82f + (0.42f * fabsf(sinf((phase * 0.73f) + ((float)k * 1.37f))));
+                    float profile_scale = 1.0f;
+                    float profile_wobble = 2.0f;
+                    float base_y = clampf(s->city_fire_y[k], (float)s->arena_y + 8.0f, combat_floor_y(s) - 1.0f);
+                    float lift = 0.0f;
+                    int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
+                    lv_opa_t opa = LV_OPA_COVER;
+                    lv_color_t tint = lv_color_hex(0xFFFFFF);
+                    lv_opa_t tint_opa = LV_OPA_TRANSP;
+                    int32_t img_h = 0;
+                    int32_t zoom = 256;
+                    float wobble = 0.0f;
                 switch (profile)
                 {
                     case CITY_FIRE_PROFILE_TORCH:
@@ -5067,14 +5085,18 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
 
                 if (k < CITY_FIRE_RENDER_MAX)
                 {
+                    int force_anim = fire_anim_step || lv_obj_has_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
-                    lv_image_set_src(s->city_fire[k], frames[frame_idx]);
-                    lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
-                    lv_obj_set_style_opa(s->city_fire[k], opa, 0);
-                    lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
-                    lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
-                    img_h = lv_obj_get_height(s->city_fire[k]);
-                    set_obj_center(s->city_fire[k], s->city_fire_x[k] + wobble, base_y - lift - ((float)img_h * 0.5f));
+                    if (force_anim)
+                    {
+                        lv_image_set_src(s->city_fire[k], frames[frame_idx]);
+                        lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
+                        lv_obj_set_style_opa(s->city_fire[k], opa, 0);
+                        lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
+                        lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
+                        img_h = lv_obj_get_height(s->city_fire[k]);
+                        set_obj_center(s->city_fire[k], s->city_fire_x[k] + wobble, base_y - lift - ((float)img_h * 0.5f));
+                    }
                 }
                 else
                 {
@@ -5085,6 +5107,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             {
                 lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
             }
+        }
         }
     }
 

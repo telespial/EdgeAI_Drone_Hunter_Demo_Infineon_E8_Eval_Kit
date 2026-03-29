@@ -21,13 +21,15 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - `rules.md`: canonical rules/spec intent.
 - `ToDo.md`: roadmap and phase tracker.
 
-## Program Status (2026-03-28)
+## Program Status (2026-03-29)
 - Completed phases: `1` through `14`.
 - In progress: `Phase 15`.
 - Planned next: `Phase 16` (soundscape/audio layer).
 
 ## Current Gameplay Baseline
 - Phase 14 movement doctrine is integrated (attacker evasion + hunter intercept behavior).
+- Skyfall guidance no longer uses hybrid endgame blending (plane steering applied to remove wiggle).
+- Hunter labels updated: `Stinger`, `Pelican`, `TYTAN`.
 - Phase 15 settings are integrated in popup:
   - `ATTACKER`: `ALGO/EDGEAI`
   - `DEFENDER`: `ALGO/EDGEAI/HUMAN`
@@ -36,6 +38,7 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
   - `SPEED++`: `NORMAL/FAST+/FAST++`
 - CIWS structures are stationary while streams target dynamically.
 - Match doctrine uses inventory exhaustion end mode.
+- Freeze hardening pass is active: reduced city-fire render concurrency and throttled flame sprite updates.
 
 ## Build
 ```bash
@@ -60,11 +63,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857892 bytes`
+- `wrote 2859008 bytes` / `verified 2857900 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,857,892 bytes`.
+- CM55 image verified (external SMIF): `2,857,900 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

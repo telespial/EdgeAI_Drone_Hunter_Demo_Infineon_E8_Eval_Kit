@@ -1,5 +1,24 @@
 # COMMAND_LOG
 
+- 2026-03-29 | Runtime stabilization + naming normalization in `drone_hunter_arena.c`:
+  - Skyfall switched to plane steering model to remove hybrid wiggle behavior,
+  - hunter labels normalized to `Stinger`, `Pelican`, `TYTAN`,
+  - reduced city fire render cap (`CITY_FIRE_RENDER_MAX`) and added bounded fire-target growth guard,
+  - throttled flame sprite/style updates to reduce frame saturation risk.
+- 2026-03-29 | Build + flash validation for freeze hardening:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - regenerated `proj_cm55.hex` and `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash (cm33_s_signed -> cm33_ns_shifted -> cm55) succeeded,
+  - OpenOCD verification signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 2859008 bytes` / `verified 2857900 bytes`
+    - `** Resetting Target **`
+- 2026-03-29 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260329-phase15-freeze-hardening-fire-throttle-20260329_060056`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260329-phase15-freeze-hardening-fire-throttle-20260329_060056`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-28 | Freeze hardening pass in `drone_hunter_arena.c`:
   - replaced potentially unbounded angle-normalization loops with finite-safe `wrap_angle_pi()` usage,
   - hardened `wrap_angle_pi()` with non-finite guards (`isfinite`) and `remainderf` normalization.

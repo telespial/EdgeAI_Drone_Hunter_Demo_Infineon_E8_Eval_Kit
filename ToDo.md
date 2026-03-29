@@ -1,6 +1,6 @@
 # EdgeAI Drone Hunter - Roadmap and Phase Tracker
 
-Date: 2026-03-28
+Date: 2026-03-29
 Canonical rules source: `rules.md`
 Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -31,7 +31,7 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 
 ## Phase 15 Focus
 1. HUD simplification and cleanup.
-2. Visual-fire realism stabilization.
+2. Visual-fire realism stabilization and freeze-proofing.
 3. Repository and docs hygiene.
 4. Flash/recovery safety hardening.
 
