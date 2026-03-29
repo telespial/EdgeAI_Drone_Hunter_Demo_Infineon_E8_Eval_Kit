@@ -1,24 +1,11 @@
 # START_HERE
 
-## Required read order
-1. `PROJECT_STATE.md`
-2. `STATUS.md`
-3. `RESTORE_POINTS.md`
-4. `OPS_RUNBOOK.md`
-5. `COMMAND_LOG.md`
-6. `TODO.md`
-7. `../rules.md`
-
-## Working rule
-- After each build/flash/config/code change, update:
-  - `docs/PROJECT_STATE.md`
-  - `docs/STATUS.md`
-  - `docs/COMMAND_LOG.md`
-  - `docs/RESTORE_POINTS.md` (when golden/failsafe moves)
-
-## Current focus
-- Phase 15 completion:
-  - HUD simplification,
-  - cleanup/hygiene,
-  - fire-render polish,
-  - flash safety continuity.
+1. Read `README.md` for project overview and current baseline.
+2. Read `ToDo.md` for phase status and next work.
+3. Build:
+   - `cd firmware_kit_epc2/proj_cm55`
+   - `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v`
+4. Flash with validated full sequence:
+   - `bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
+5. If recovery is needed, use artifacts under:
+   - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`

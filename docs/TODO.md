@@ -1,7 +1,4 @@
-# TODO Mirror (Pointer)
+# TODO Mirror
 
-Canonical roadmap file is:
-
-- `../ToDo.md`
-
-This file intentionally remains a pointer to prevent status drift.
+Canonical roadmap is maintained in the repository root:
+- `ToDo.md`

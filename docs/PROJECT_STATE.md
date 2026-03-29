@@ -2,36 +2,39 @@
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
 - Last Updated: 2026-03-28
-- Primary runtime file: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
+- Primary runtime file:
+  - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
-## Current Baseline Summary
-- Phases 1-14 complete.
-- Phase 15 in progress.
+## Baseline Summary
+- Phases `1-14` are complete.
+- Phase `15` is active.
 - Current runtime includes:
-  - stationary CIWS structures with depth-aware stream targeting,
-  - randomized attack opening and adaptive attacker strategy evolution,
-  - settings popup controls (`ATTACKER/DEFENDER/NPU/DIFFICULTY/SPEED++`),
-  - sprite-based fire/explosion layer with depth-aware placement/scaling.
+  - phase-14 movement doctrine,
+  - phase-15 settings controls,
+  - CIWS stationary-structure + dynamic stream behavior,
+  - inventory exhaustion end mode,
+  - deterministic ALGO with EDGEAI layered behavior/fallback model.
 
-## Verified Board + Device
+## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
 - Device: `PSE846GPS2DBZC4A`
-- Debug adapter: `KitProg3`
+- Probe: `KitProg3`
 
-## Verified Recovery Programming Sequence
+## Verified Recovery Program Order
 1. `proj_cm33_s_signed.hex`
 2. `proj_cm33_ns_shifted.hex`
 3. `proj_cm55.hex`
 
-Observed successful signatures:
+Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
 - `wrote 2859008 bytes` / `verified 2854888 bytes`
 - `** Resetting Target **`
 
-## Known-Good Restore Script
+## Active Runbook Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
-## Next Workfront
-- Continue Phase 15 HUD simplification/repo cleanup and flame visual tuning.
-- Start Phase 16 audio layer after Phase 15 closure.
+## Next Execution Focus
+1. Complete Phase 15 cleanup/HUD simplification/visual stabilization.
+2. Promote refreshed golden + failsafe restore snapshots.
+3. Start Phase 16 audio layer.

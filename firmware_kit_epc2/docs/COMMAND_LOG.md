@@ -403,3 +403,13 @@
   - refreshed STATUS/PROJECT_STATE/RESTORE docs with latest validated 3-image programming signatures,
   - created and pushed golden tag `golden-2026-03-28-docs-release`,
   - intentionally left failsafe tags unchanged.
+- 2026-03-28 | Documentation and GitHub README overhaul:
+  - rewrote root `README.md` with expanded project overview, architecture summary, build/flash workflows, and docs index,
+  - refreshed `STATUS.md`, `PROJECT_STATE.md`, `RESTORE_POINTS.md`, `OPS_RUNBOOK.md`, `START_HERE.md`, and `ToDo.md`,
+  - synchronized mirrored docs under `firmware_kit_epc2/docs`.
+- 2026-03-28 | Restore and flash governance refresh:
+  - validated full clean rebuild and full 3-image flash sequence,
+  - promoted new dated golden/failsafe restore point records for current baseline.
+- 2026-03-28 | New restore points created from current validated artifacts:
+  - golden: `golden-20260328-phase15-docs-refresh-20260328_174026`
+  - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-docs-refresh-20260328_174026`
