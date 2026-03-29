@@ -14,6 +14,7 @@
   - CIWS stationary-structure + dynamic stream behavior,
   - inventory exhaustion end mode,
   - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
+  - bright fire visibility pass with even bright-color profile selection,
   - naming normalization (`Stinger`, `Pelican`, `TYTAN`),
   - deterministic ALGO with EDGEAI layered behavior/fallback model.
 
@@ -30,7 +31,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857900 bytes`
+- `wrote 2863104 bytes` / `verified 2858508 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

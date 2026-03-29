@@ -29,6 +29,7 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 ## Current Gameplay Baseline
 - Phase 14 movement doctrine is integrated (attacker evasion + hunter intercept behavior).
 - Skyfall guidance no longer uses hybrid endgame blending (plane steering applied to remove wiggle).
+- Stinger guidance now uses plane steering for smoother non-wiggling pursuit.
 - Hunter labels updated: `Stinger`, `Pelican`, `TYTAN`.
 - Phase 15 settings are integrated in popup:
   - `ATTACKER`: `ALGO/EDGEAI`
@@ -39,6 +40,10 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - CIWS structures are stationary while streams target dynamically.
 - Match doctrine uses inventory exhaustion end mode.
 - Freeze hardening pass is active: reduced city-fire render concurrency and throttled flame sprite updates.
+- Fire palette now includes explicit bright-visible profiles with even bright-color selection:
+  - bright orange,
+  - bright red,
+  - bright red/orange.
 
 ## Build
 ```bash
@@ -63,11 +68,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2857900 bytes`
+- `wrote 2863104 bytes` / `verified 2858508 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,857,900 bytes`.
+- CM55 image verified (external SMIF): `2,858,508 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

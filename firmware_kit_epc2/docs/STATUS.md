@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2859008 bytes`, `verified 2857900 bytes`
+- `wrote 2863104 bytes`, `verified 2858508 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -22,7 +22,10 @@
 - Explosion mapping is enforced by visual drone class:
   - Shahed: large orange, fixed-wing: red, X-wing DJI: small white.
 - Fire palette now blends hot + vivid + smoke families with stronger per-fire variation.
+- Bright fire visibility pass added evenly-selected bright profiles:
+  - bright orange, bright red, bright red/orange.
 - Skyfall steering set to plane model to remove hybrid wiggle behavior.
+- Stinger steering set to plane model to remove wiggle behavior.
 - Hunter labels normalized to: `Stinger`, `Pelican`, `TYTAN`.
 - Additional freeze-hardening deployed:
   - city-fire render budget reduced,
@@ -32,7 +35,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,857,900 bytes`
+- CM55 verified image size (external SMIF): `2,858,508 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
