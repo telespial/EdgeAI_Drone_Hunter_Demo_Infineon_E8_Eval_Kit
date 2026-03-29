@@ -2851,36 +2851,101 @@ static void maybe_apply_mid_wave_shift(drone_hunter_scene_t *s)
 static void update_hunter_deck_ui(drone_hunter_scene_t *s)
 {
     int i;
+    static int cache_ready = 0;
+    static int prev_stock[HUNTER_TYPE_COUNT];
+    static int prev_name_live[HUNTER_TYPE_COUNT];
+    static int prev_count_live[HUNTER_TYPE_COUNT];
+    static int prev_icon_live[HUNTER_TYPE_COUNT];
+    static int prev_in_use[HUNTER_TYPE_COUNT];
+    static int prev_selected[HUNTER_TYPE_COUNT];
+    static int prev_ciws_left = -1;
+    static int prev_ciws_right = -1;
+    static int prev_ciws_live = -1;
+    static uint32_t last_ciws_label_tick = 0U;
+
+    if (!cache_ready)
+    {
+        for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
+        {
+            prev_stock[i] = -1;
+            prev_name_live[i] = -1;
+            prev_count_live[i] = -1;
+            prev_icon_live[i] = -1;
+            prev_in_use[i] = -1;
+            prev_selected[i] = -1;
+        }
+        cache_ready = 1;
+    }
+
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
         int in_use = (s->h_type[0] == (hunter_type_t)i) || (s->h_type[1] == (hunter_type_t)i);
         int selected = (s->manual_selected_hunter == i);
-        lv_obj_set_style_opa(s->deck_icon[i], (s->hunter_stock[i] > 0) ? LV_OPA_COVER : LV_OPA_30, 0);
-        lv_obj_set_style_border_width(s->deck_icon[i], in_use ? 2 : 0, 0);
-        lv_obj_set_style_border_color(s->deck_icon[i], lv_color_hex(0x22D3EE), 0);
-        lv_obj_set_style_radius(s->deck_icon[i], 3, 0);
-        lv_obj_set_style_outline_width(s->deck_icon[i], selected ? 2 : 0, 0);
-        lv_obj_set_style_outline_color(s->deck_icon[i], lv_color_hex(0xFBBF24), 0);
-        lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
-        lv_obj_set_style_text_color(s->deck_count[i],
-                                    (s->hunter_stock[i] > 0) ? lv_color_hex(0xFDE68A) : lv_color_hex(0x6B7280),
-                                    0);
-        lv_obj_set_style_text_color(s->deck_name[i],
-                                    (s->hunter_stock[i] > 0) ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
-                                    0);
+        int stock_live = (s->hunter_stock[i] > 0) ? 1 : 0;
+        if (prev_icon_live[i] != stock_live)
+        {
+            lv_obj_set_style_opa(s->deck_icon[i], stock_live ? LV_OPA_COVER : LV_OPA_30, 0);
+            prev_icon_live[i] = stock_live;
+        }
+        if (prev_in_use[i] != in_use)
+        {
+            lv_obj_set_style_border_width(s->deck_icon[i], in_use ? 2 : 0, 0);
+            lv_obj_set_style_border_color(s->deck_icon[i], lv_color_hex(0x22D3EE), 0);
+            lv_obj_set_style_radius(s->deck_icon[i], 3, 0);
+            prev_in_use[i] = in_use;
+        }
+        if (prev_selected[i] != selected)
+        {
+            lv_obj_set_style_outline_width(s->deck_icon[i], selected ? 2 : 0, 0);
+            lv_obj_set_style_outline_color(s->deck_icon[i], lv_color_hex(0xFBBF24), 0);
+            prev_selected[i] = selected;
+        }
+        if (prev_stock[i] != s->hunter_stock[i])
+        {
+            lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
+            prev_stock[i] = s->hunter_stock[i];
+        }
+        if (prev_count_live[i] != stock_live)
+        {
+            lv_obj_set_style_text_color(s->deck_count[i],
+                                        stock_live ? lv_color_hex(0xFDE68A) : lv_color_hex(0x6B7280),
+                                        0);
+            prev_count_live[i] = stock_live;
+        }
+        if (prev_name_live[i] != stock_live)
+        {
+            lv_obj_set_style_text_color(s->deck_name[i],
+                                        stock_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
+                                        0);
+            prev_name_live[i] = stock_live;
+        }
     }
 
     if (s->deck_ciws_count != NULL)
     {
         int total_ammo = s->ciws_ammo_left + s->ciws_ammo_right;
-        lv_label_set_text_fmt(s->deck_ciws_count, "L%d/R%d", s->ciws_ammo_left, s->ciws_ammo_right);
-        lv_obj_set_style_text_color(s->deck_ciws_count,
-                                    (total_ammo > 0) ? lv_color_hex(0x93C5FD) : lv_color_hex(0x6B7280),
-                                    0);
-        lv_obj_set_style_opa(s->deck_ciws_icon, (total_ammo > 0) ? LV_OPA_COVER : LV_OPA_30, 0);
-        lv_obj_set_style_text_color(s->deck_ciws_name,
-                                    (total_ammo > 0) ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
-                                    0);
+        int ciws_live = (total_ammo > 0) ? 1 : 0;
+        uint32_t now_tick = lv_tick_get();
+        int ciws_changed = (prev_ciws_left != s->ciws_ammo_left) || (prev_ciws_right != s->ciws_ammo_right);
+        int label_due = ((uint32_t)(now_tick - last_ciws_label_tick) >= 180U) || (total_ammo <= 0);
+        if (ciws_changed && label_due)
+        {
+            lv_label_set_text_fmt(s->deck_ciws_count, "L%d/R%d", s->ciws_ammo_left, s->ciws_ammo_right);
+            prev_ciws_left = s->ciws_ammo_left;
+            prev_ciws_right = s->ciws_ammo_right;
+            last_ciws_label_tick = now_tick;
+        }
+        if (prev_ciws_live != ciws_live)
+        {
+            lv_obj_set_style_text_color(s->deck_ciws_count,
+                                        ciws_live ? lv_color_hex(0x93C5FD) : lv_color_hex(0x6B7280),
+                                        0);
+            lv_obj_set_style_text_color(s->deck_ciws_name,
+                                        ciws_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
+                                        0);
+            lv_obj_set_style_opa(s->deck_ciws_icon, ciws_live ? LV_OPA_COVER : LV_OPA_30, 0);
+            prev_ciws_live = ciws_live;
+        }
     }
 }
 
@@ -4571,7 +4636,6 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             lv_obj_set_style_border_color(s->fx_intercept[k], border_color, 0);
             lv_obj_set_style_border_opa(s->fx_intercept[k], border_opa, 0);
             set_obj_center(s->fx_intercept[k], s->fx_intercept_x[k], s->fx_intercept_y[k]);
-            lv_obj_move_foreground(s->fx_intercept[k]);
         }
         else
         {
@@ -4648,7 +4712,6 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             lv_obj_set_style_border_color(s->fx_kill[k], border_color, 0);
             lv_obj_set_style_border_opa(s->fx_kill[k], ring_opa, 0);
             set_obj_center(s->fx_kill[k], s->fx_kill_x[k], s->fx_kill_y[k]);
-            lv_obj_move_foreground(s->fx_kill[k]);
         }
         else
         {
@@ -4985,7 +5048,6 @@ static void update_positions(drone_hunter_scene_t *s)
         lv_obj_set_style_transform_pivot_y(s->hunters[h], (int32_t)(hh / 2), 0);
         lv_obj_set_style_transform_angle(s->hunters[h], angle_tenth, 0);
         lv_obj_add_flag(s->hunter_tail[h], LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(s->hunters[h]);
     }
 
     for (k = 0; k < KILLER_COUNT; ++k)
@@ -5836,6 +5898,10 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     s->npu_enabled = 1;
     s->speed_pp_idx = 0;
     assign_mode(s, MODE_ALGO_VS_EDGEAI);
+
+    /* Keep bottom deck UI above arena action without per-frame z-order changes. */
+    lv_obj_move_foreground(s->deck_bar);
+
     reset_round(s);
 
     s->anim_timer = lv_timer_create(anim_cb, TICK_MS, s);

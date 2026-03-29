@@ -28,7 +28,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2854888 bytes`
+- `wrote 2859008 bytes` / `verified 2856420 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

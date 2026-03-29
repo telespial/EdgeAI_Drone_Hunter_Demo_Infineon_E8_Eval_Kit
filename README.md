@@ -60,11 +60,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2854888 bytes`
+- `wrote 2859008 bytes` / `verified 2856420 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,854,888 bytes`.
+- CM55 image verified (external SMIF): `2,856,420 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

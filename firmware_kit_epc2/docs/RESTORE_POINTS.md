@@ -5,8 +5,8 @@
 - Failsafe rolling label: `failsafe-e8-drone-hunter`
 
 ## Latest Dated Restore Folders (2026-03-28)
-- Golden folder: `golden-20260328-phase15-blast-map-fire-quota-20260328_184209`
-- Failsafe folder: `failsafe-e8-drone-hunter-20260328-phase15-blast-map-fire-quota-20260328_184209`
+- Golden folder: `golden-20260328-phase15-bottom-deck-flicker-fix-20260328_190411`
+- Failsafe folder: `failsafe-e8-drone-hunter-20260328-phase15-bottom-deck-flicker-fix-20260328_190411`
 
 ## Restore Artifacts Location
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`
@@ -28,7 +28,7 @@ Each restore point contains:
 ## Latest Flash Signatures
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2859008 bytes` / `verified 2856016 bytes`
+- `wrote 2859008 bytes` / `verified 2856420 bytes`
 
 ## Recovery Command
 ```bash
