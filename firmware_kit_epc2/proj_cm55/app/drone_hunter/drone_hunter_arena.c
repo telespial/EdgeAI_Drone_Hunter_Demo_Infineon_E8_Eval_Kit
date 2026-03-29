@@ -76,10 +76,23 @@
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_WHITE  (1)
 #define BLAST_STYLE_GIANT_ORANGE  (2)
-#define CITY_FIRE_PROFILE_TORCH   (0)
-#define CITY_FIRE_PROFILE_BURST   (1)
-#define CITY_FIRE_PROFILE_SMOKE   (2)
-#define CITY_FIRE_PROFILE_GROUND  (3)
+/* Flame pack v2 style identity list (manifest-aligned). */
+#define CITY_FIRE_PROFILE_TORCH      (0)
+#define CITY_FIRE_PROFILE_BLUE_JET   (1)
+#define CITY_FIRE_PROFILE_FLICKER    (2)
+#define CITY_FIRE_PROFILE_SPIRAL     (3)
+#define CITY_FIRE_PROFILE_BURST      (4)
+#define CITY_FIRE_PROFILE_PULSE      (5)
+#define CITY_FIRE_PROFILE_SMOKE      (6)
+#define CITY_FIRE_PROFILE_DUAL_JET   (7)
+#define CITY_FIRE_PROFILE_WHIP       (8)
+#define CITY_FIRE_PROFILE_WIDE_TORCH (9)
+#define CITY_FIRE_PROFILE_SPUTTER    (10)
+#define CITY_FIRE_PROFILE_GROUND     (11)
+#define CITY_FIRE_PROFILE_RED_ORANGE (12)
+#define CITY_FIRE_PROFILE_ORANGE_WHITE (13)
+#define CITY_FIRE_PROFILE_BRIGHT_RED (14)
+#define CITY_FIRE_PROFILE_COUNT      (15)
 #define CITY_FIRE_INTENSITY_SMALL (0)
 #define CITY_FIRE_INTENSITY_BIG   (1)
 
@@ -503,13 +516,29 @@ static int scene_rng_range(drone_hunter_scene_t *s, int limit)
 
 static const lv_image_dsc_t **city_fire_profile_frames(int profile)
 {
+    /* Map style identities onto stable sprite families from flame pack v2. */
     switch (profile)
     {
-        case CITY_FIRE_PROFILE_TORCH: return g_flame_profile_torch;
-        case CITY_FIRE_PROFILE_BURST: return g_flame_profile_burst;
-        case CITY_FIRE_PROFILE_SMOKE: return g_flame_profile_smoke;
+        case CITY_FIRE_PROFILE_TORCH:
+        case CITY_FIRE_PROFILE_BLUE_JET:
+        case CITY_FIRE_PROFILE_DUAL_JET:
+        case CITY_FIRE_PROFILE_WIDE_TORCH:
+        case CITY_FIRE_PROFILE_RED_ORANGE:
+        case CITY_FIRE_PROFILE_ORANGE_WHITE:
+            return g_flame_profile_torch;
+        case CITY_FIRE_PROFILE_FLICKER:
+        case CITY_FIRE_PROFILE_BURST:
+        case CITY_FIRE_PROFILE_PULSE:
+        case CITY_FIRE_PROFILE_WHIP:
+        case CITY_FIRE_PROFILE_SPUTTER:
+        case CITY_FIRE_PROFILE_BRIGHT_RED:
+            return g_flame_profile_burst;
+        case CITY_FIRE_PROFILE_SMOKE:
+            return g_flame_profile_smoke;
+        case CITY_FIRE_PROFILE_SPIRAL:
         case CITY_FIRE_PROFILE_GROUND:
-        default: return g_flame_profile_ground;
+        default:
+            return g_flame_profile_ground;
     }
 }
 
@@ -517,22 +546,47 @@ static float city_fire_profile_fps(int profile)
 {
     switch (profile)
     {
-        case CITY_FIRE_PROFILE_TORCH: return 17.5f;
-        case CITY_FIRE_PROFILE_BURST: return 21.0f;
-        case CITY_FIRE_PROFILE_SMOKE: return 8.0f;
+        case CITY_FIRE_PROFILE_TORCH: return 10.5f;
+        case CITY_FIRE_PROFILE_BLUE_JET: return 10.0f;
+        case CITY_FIRE_PROFILE_FLICKER: return 11.0f;
+        case CITY_FIRE_PROFILE_SPIRAL: return 8.2f;
+        case CITY_FIRE_PROFILE_BURST: return 11.8f;
+        case CITY_FIRE_PROFILE_PULSE: return 7.0f;
+        case CITY_FIRE_PROFILE_SMOKE: return 5.4f;
+        case CITY_FIRE_PROFILE_DUAL_JET: return 10.4f;
+        case CITY_FIRE_PROFILE_WHIP: return 9.8f;
+        case CITY_FIRE_PROFILE_WIDE_TORCH: return 9.2f;
+        case CITY_FIRE_PROFILE_SPUTTER: return 8.8f;
+        case CITY_FIRE_PROFILE_RED_ORANGE: return 10.8f;
+        case CITY_FIRE_PROFILE_ORANGE_WHITE: return 10.2f;
+        case CITY_FIRE_PROFILE_BRIGHT_RED: return 11.4f;
         case CITY_FIRE_PROFILE_GROUND:
-        default: return 7.2f;
+        default: return 6.4f;
     }
 }
 
 static int city_fire_pick_profile(float seed, int intensity)
 {
-    int bit = ((int)fabsf(fmodf(seed, 2.0f))) & 0x1;
+    int roll = ((int)fabsf(fmodf(seed * 97.0f, 1024.0f))) % CITY_FIRE_PROFILE_COUNT;
     if (intensity >= CITY_FIRE_INTENSITY_BIG)
     {
-        return bit ? CITY_FIRE_PROFILE_TORCH : CITY_FIRE_PROFILE_BURST;
+        static const uint8_t big_profiles[CITY_FIRE_PROFILE_COUNT] = {
+            CITY_FIRE_PROFILE_TORCH, CITY_FIRE_PROFILE_BURST, CITY_FIRE_PROFILE_WIDE_TORCH,
+            CITY_FIRE_PROFILE_FLICKER, CITY_FIRE_PROFILE_WHIP, CITY_FIRE_PROFILE_DUAL_JET,
+            CITY_FIRE_PROFILE_BLUE_JET, CITY_FIRE_PROFILE_SPIRAL, CITY_FIRE_PROFILE_SPUTTER,
+            CITY_FIRE_PROFILE_PULSE, CITY_FIRE_PROFILE_BURST, CITY_FIRE_PROFILE_TORCH,
+            CITY_FIRE_PROFILE_RED_ORANGE, CITY_FIRE_PROFILE_ORANGE_WHITE, CITY_FIRE_PROFILE_BRIGHT_RED
+        };
+        return (int)big_profiles[roll];
     }
-    return bit ? CITY_FIRE_PROFILE_SMOKE : CITY_FIRE_PROFILE_GROUND;
+    static const uint8_t small_profiles[CITY_FIRE_PROFILE_COUNT] = {
+        CITY_FIRE_PROFILE_SMOKE, CITY_FIRE_PROFILE_GROUND, CITY_FIRE_PROFILE_BLUE_JET,
+        CITY_FIRE_PROFILE_SPIRAL, CITY_FIRE_PROFILE_PULSE, CITY_FIRE_PROFILE_SPUTTER,
+        CITY_FIRE_PROFILE_DUAL_JET, CITY_FIRE_PROFILE_FLICKER, CITY_FIRE_PROFILE_WHIP,
+        CITY_FIRE_PROFILE_SMOKE, CITY_FIRE_PROFILE_GROUND, CITY_FIRE_PROFILE_BLUE_JET,
+        CITY_FIRE_PROFILE_RED_ORANGE, CITY_FIRE_PROFILE_ORANGE_WHITE, CITY_FIRE_PROFILE_BRIGHT_RED
+    };
+    return (int)small_profiles[roll];
 }
 
 static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensity)
@@ -4592,7 +4646,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             if (k < s->city_fire_count)
             {
-                int profile = (int)s->city_fire_style[k] % FLAME_SPRITE_PROFILE_COUNT;
+                int profile = (int)s->city_fire_style[k] % CITY_FIRE_PROFILE_COUNT;
                 const lv_image_dsc_t **frames = city_fire_profile_frames(profile);
                 float fps = city_fire_profile_fps(profile);
                 float phase = s->city_fire_phase[k];
@@ -4606,6 +4660,8 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                 float lift = 0.0f;
                 int intense = (s->city_fire_intensity[k] >= CITY_FIRE_INTENSITY_BIG) ? 1 : 0;
                 lv_opa_t opa = LV_OPA_COVER;
+                lv_color_t tint = lv_color_hex(0xFFFFFF);
+                lv_opa_t tint_opa = LV_OPA_TRANSP;
                 int32_t img_h = 0;
                 int32_t zoom = 256;
                 float wobble = 0.0f;
@@ -4617,25 +4673,165 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                         profile_wobble = 3.8f;
                         lift = 3.5f + (3.2f * sinf((s->t * 4.8f) + phase));
                         opa = (lv_opa_t)(intense ? 252 : 238);
+                        tint = lv_color_hex(0xFFA640);
+                        tint_opa = (lv_opa_t)44;
+                        break;
+                    case CITY_FIRE_PROFILE_BLUE_JET:
+                        profile_scale = intense ? 1.28f : 1.12f;
+                        profile_wobble = 3.4f;
+                        lift = 2.2f + (2.8f * sinf((s->t * 4.2f) + phase));
+                        opa = (lv_opa_t)(intense ? 236 : 222);
+                        tint = lv_color_hex(0x58C8FF);
+                        tint_opa = (lv_opa_t)90;
+                        break;
+                    case CITY_FIRE_PROFILE_FLICKER:
+                        profile_scale = intense ? 1.42f : 1.18f;
+                        profile_wobble = 4.2f;
+                        lift = 2.6f + (3.6f * sinf((s->t * 5.4f) + phase));
+                        opa = (lv_opa_t)(intense ? 248 : 234);
+                        tint = lv_color_hex(0x8CDD55);
+                        tint_opa = (lv_opa_t)72;
+                        break;
+                    case CITY_FIRE_PROFILE_SPIRAL:
+                        profile_scale = intense ? 1.24f : 1.08f;
+                        profile_wobble = 3.9f;
+                        lift = 1.8f + (2.7f * sinf((s->t * 3.4f) + phase));
+                        opa = (lv_opa_t)(intense ? 234 : 220);
+                        tint = lv_color_hex(0xB56AF5);
+                        tint_opa = (lv_opa_t)76;
                         break;
                     case CITY_FIRE_PROFILE_BURST:
                         profile_scale = intense ? 1.54f : 1.24f;
                         profile_wobble = 4.6f;
                         lift = 2.0f + (4.4f * sinf((s->t * 6.0f) + phase));
                         opa = (lv_opa_t)(intense ? 255 : 240);
+                        /* Occasional medium/dark red flame bursts with smoke bias. */
+                        if ((((int)(phase * 37.0f) + k) & 0x7) == 0)
+                        {
+                            tint = lv_color_hex(0x9B2C24);
+                            tint_opa = (lv_opa_t)132;
+                        }
+                        else
+                        {
+                            tint = lv_color_hex(0xFF6B2E);
+                            tint_opa = (lv_opa_t)64;
+                        }
+                        break;
+                    case CITY_FIRE_PROFILE_PULSE:
+                        profile_scale = intense ? 1.28f : 1.06f;
+                        profile_wobble = 2.8f;
+                        lift = 1.2f + (2.4f * sinf((s->t * 2.6f) + phase));
+                        opa = (lv_opa_t)(intense ? 236 : 222);
+                        tint = lv_color_hex(0xFFF2E5);
+                        tint_opa = (lv_opa_t)40;
                         break;
                     case CITY_FIRE_PROFILE_SMOKE:
-                        profile_scale = 1.12f;
-                        profile_wobble = 2.8f;
-                        lift = 0.8f + (1.4f * sinf((s->t * 2.4f) + phase));
-                        opa = 228;
+                        /* Smoke plumes/flumes with darker column feel. */
+                        profile_scale = intense ? 1.36f : 1.20f;
+                        profile_wobble = 2.3f;
+                        lift = intense ? (7.0f + (4.2f * sinf((s->t * 1.7f) + phase)))
+                                       : (3.8f + (1.9f * sinf((s->t * 1.9f) + phase)));
+                        opa = intense ? 208 : 194;
+                        tint = lv_color_hex(0x4A4038);
+                        tint_opa = (lv_opa_t)160;
+                        break;
+                    case CITY_FIRE_PROFILE_DUAL_JET:
+                        profile_scale = intense ? 1.34f : 1.14f;
+                        profile_wobble = 3.8f;
+                        lift = 2.4f + (3.2f * sinf((s->t * 4.1f) + phase));
+                        opa = (lv_opa_t)(intense ? 240 : 226);
+                        tint = lv_color_hex(0x55D4C7);
+                        tint_opa = (lv_opa_t)90;
+                        break;
+                    case CITY_FIRE_PROFILE_WHIP:
+                        profile_scale = intense ? 1.38f : 1.18f;
+                        profile_wobble = 4.1f;
+                        lift = 2.2f + (3.4f * sinf((s->t * 4.7f) + phase));
+                        opa = (lv_opa_t)(intense ? 244 : 230);
+                        tint = lv_color_hex(0xC756F0);
+                        tint_opa = (lv_opa_t)92;
+                        break;
+                    case CITY_FIRE_PROFILE_WIDE_TORCH:
+                        profile_scale = intense ? 1.42f : 1.22f;
+                        profile_wobble = 3.8f;
+                        lift = 2.3f + (3.0f * sinf((s->t * 3.7f) + phase));
+                        opa = (lv_opa_t)(intense ? 246 : 232);
+                        tint = lv_color_hex(0xF3B23F);
+                        tint_opa = (lv_opa_t)56;
+                        break;
+                    case CITY_FIRE_PROFILE_SPUTTER:
+                        profile_scale = intense ? 1.34f : 1.10f;
+                        profile_wobble = 4.0f;
+                        lift = 1.8f + (3.1f * sinf((s->t * 4.0f) + phase));
+                        opa = (lv_opa_t)(intense ? 238 : 224);
+                        tint = lv_color_hex(0x9BCC48);
+                        tint_opa = (lv_opa_t)106;
+                        break;
+                    case CITY_FIRE_PROFILE_RED_ORANGE:
+                        profile_scale = intense ? 1.46f : 1.20f;
+                        profile_wobble = 4.3f;
+                        lift = 2.3f + (3.9f * sinf((s->t * 5.2f) + phase));
+                        opa = (lv_opa_t)(intense ? 250 : 236);
+                        if ((((k + (int)(phase * 31.0f)) & 0x1) == 0))
+                        {
+                            tint = lv_color_hex(0xFF5A1F);
+                            tint_opa = (lv_opa_t)98;
+                        }
+                        else
+                        {
+                            tint = lv_color_hex(0xFF9A3A);
+                            tint_opa = (lv_opa_t)74;
+                        }
+                        break;
+                    case CITY_FIRE_PROFILE_ORANGE_WHITE:
+                        profile_scale = intense ? 1.40f : 1.18f;
+                        profile_wobble = 3.7f;
+                        lift = 2.0f + (3.4f * sinf((s->t * 4.6f) + phase));
+                        opa = (lv_opa_t)(intense ? 246 : 232);
+                        if ((((k + (int)(phase * 29.0f)) & 0x1) == 0))
+                        {
+                            tint = lv_color_hex(0xFFFFFF);
+                            tint_opa = (lv_opa_t)86;
+                        }
+                        else
+                        {
+                            tint = lv_color_hex(0xFFB347);
+                            tint_opa = (lv_opa_t)78;
+                        }
+                        break;
+                    case CITY_FIRE_PROFILE_BRIGHT_RED:
+                        profile_scale = intense ? 1.48f : 1.16f;
+                        profile_wobble = 4.4f;
+                        lift = 2.5f + (4.1f * sinf((s->t * 5.6f) + phase));
+                        opa = (lv_opa_t)(intense ? 252 : 238);
+                        if ((((k + (int)(phase * 41.0f)) & 0x3) == 0))
+                        {
+                            tint = lv_color_hex(0xB91C1C);
+                            tint_opa = (lv_opa_t)126;
+                        }
+                        else
+                        {
+                            tint = lv_color_hex(0xFF2D2D);
+                            tint_opa = (lv_opa_t)110;
+                        }
                         break;
                     case CITY_FIRE_PROFILE_GROUND:
                     default:
-                        profile_scale = 0.98f;
+                        profile_scale = intense ? 1.08f : 0.98f;
                         profile_wobble = 2.2f;
-                        lift = 0.4f + (0.9f * sinf((s->t * 1.8f) + phase));
-                        opa = 214;
+                        lift = 0.4f + (1.0f * sinf((s->t * 1.8f) + phase));
+                        opa = intense ? 222 : 214;
+                        /* Medium to dark red ground fire mixed with smoke tones. */
+                        if ((((k + (int)(phase * 19.0f)) & 0x3) == 0))
+                        {
+                            tint = lv_color_hex(0x7A201A);
+                            tint_opa = (lv_opa_t)138;
+                        }
+                        else
+                        {
+                            tint = lv_color_hex(0xA43A2A);
+                            tint_opa = (lv_opa_t)104;
+                        }
                         break;
                 }
                 zoom = (int32_t)(256.0f * depth * jitter * profile_scale);
@@ -4647,8 +4843,8 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
                     lv_image_set_src(s->city_fire[k], frames[frame_idx]);
                     lv_obj_set_style_transform_zoom(s->city_fire[k], zoom, 0);
                     lv_obj_set_style_opa(s->city_fire[k], opa, 0);
-                    lv_obj_set_style_image_recolor(s->city_fire[k], lv_color_hex(0xFFFFFF), 0);
-                    lv_obj_set_style_image_recolor_opa(s->city_fire[k], LV_OPA_TRANSP, 0);
+                    lv_obj_set_style_image_recolor(s->city_fire[k], tint, 0);
+                    lv_obj_set_style_image_recolor_opa(s->city_fire[k], tint_opa, 0);
                     img_h = lv_obj_get_height(s->city_fire[k]);
                     set_obj_center(s->city_fire[k], s->city_fire_x[k] + wobble, base_y - lift - ((float)img_h * 0.5f));
                 }

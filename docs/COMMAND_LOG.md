@@ -413,3 +413,12 @@
 - 2026-03-28 | New restore points created from current validated artifacts:
   - golden: `golden-20260328-phase15-docs-refresh-20260328_174026`
   - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-docs-refresh-20260328_174026`
+- 2026-03-28 | Fire-choice palette pass rebuild + flash validation:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash succeeded (`erase_all; program cm33_s; program cm33_ns; program cm55`),
+  - signatures: `wrote 32768/verified 30456`, `wrote 12288/verified 8732`, `wrote 2859008/verified 2857104`.
+- 2026-03-28 | New restore points created from current validated fire-choice baseline:
+  - golden: `golden-20260328-phase15-fire-choices-20260328_180136`
+  - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-fire-choices-20260328_180136`
+  - rolling links `current_golden` and `current_failsafe` updated.
