@@ -21,7 +21,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3850240 bytes`, `verified 3847704 bytes`
+- `wrote 3932160 bytes`, `verified 3927688 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -47,6 +47,11 @@
   - CIWS firing now uses dedicated gun event routing with burst-style playback,
   - CIWS fire clip offset is forced to start beyond 3 seconds into source audio,
   - master output level is increased to latest requested loudness target.
+- City background loop policy update:
+  - city ambient clip is now max-fit for linker-safe runtime footprint,
+  - city bed runs continuously in-game,
+  - random city segment timing window is `40-55` seconds,
+  - each segment boundary forces a crossfade return to clip start.
 - Top HUD text rows and `SET | HELP` button are removed.
 - Explosion mapping is enforced by visual drone class:
   - Shahed: large orange, fixed-wing: red, X-wing DJI: small white.
@@ -71,7 +76,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,847,704 bytes`
+- CM55 verified image size (external SMIF): `3,927,688 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

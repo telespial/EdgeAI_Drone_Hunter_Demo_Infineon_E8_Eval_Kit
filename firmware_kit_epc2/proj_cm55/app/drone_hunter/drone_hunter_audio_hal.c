@@ -38,6 +38,8 @@ extern cy_stc_scb_i2c_context_t disp_touch_i2c_controller_context;
 #define DH_AUDIO_FADE_IN_MS       (120u)
 #define DH_AUDIO_FADE_OUT_MS      (180u)
 #define DH_AUDIO_LOOP_XFADE_MS    (140u)
+#define DH_CITY_SEGMENT_MIN_S     (40u)
+#define DH_CITY_SEGMENT_MAX_S     (55u)
 
 typedef enum
 {
@@ -74,6 +76,8 @@ typedef struct
     dh_voice_t voice[DH_VOICE_COUNT];
     uint8_t bg_drone_event;
     uint32_t rng_state;
+    uint32_t city_segment_target_samples;
+    uint32_t city_segment_elapsed_samples;
 } dh_audio_state_t;
 
 static dh_audio_state_t s_audio;
@@ -82,6 +86,7 @@ static const bool s_audio_all_muted = false;
 static int16_t dh_audio_next_sample(void);
 static void dh_audio_fill_tx_fifo(void);
 static void dh_audio_tdm_tx_isr(void);
+static uint32_t dh_audio_pick_city_segment_samples(void);
 
 static uint32_t dh_rand_next(void)
 {
@@ -93,6 +98,13 @@ static uint32_t dh_rand_next(void)
     x = (x * 1664525u) + 1013904223u;
     s_audio.rng_state = x;
     return x;
+}
+
+static uint32_t dh_audio_pick_city_segment_samples(void)
+{
+    uint32_t span = (DH_CITY_SEGMENT_MAX_S - DH_CITY_SEGMENT_MIN_S) + 1u;
+    uint32_t sec = DH_CITY_SEGMENT_MIN_S + (dh_rand_next() % span);
+    return sec * DH_AUDIO_SAMPLE_RATE_HZ;
 }
 
 static uint16_t dh_gain_from_float(float gain)
@@ -196,6 +208,30 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
     played_samples = v->pos_bytes / 2u;
     clip_samples = v->len_bytes / 2u;
 
+    if ((v == &s_audio.voice[DH_VOICE_BG_CITY]) && v->loop)
+    {
+        if (s_audio.city_segment_target_samples == 0u)
+        {
+            s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+            s_audio.city_segment_elapsed_samples = 0u;
+        }
+
+        if (s_audio.city_segment_elapsed_samples >= s_audio.city_segment_target_samples)
+        {
+            /* Force a smooth return to file start at random 40-55 second boundaries. */
+            if ((v->loop_xfade_samples > 0u) && (clip_samples > v->loop_xfade_samples))
+            {
+                uint32_t xfade_start = clip_samples - v->loop_xfade_samples;
+                if (played_samples < xfade_start)
+                {
+                    v->pos_bytes = xfade_start * 2u;
+                    played_samples = xfade_start;
+                }
+            }
+            v->loop_start_sample = 0u;
+        }
+    }
+
     if (v->max_samples > 0u && played_samples >= v->max_samples)
     {
         v->gain_target_q12 = 0;
@@ -226,6 +262,11 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
             }
             v->pos_bytes = v->loop_start_sample * 2u;
             played_samples = v->pos_bytes / 2u;
+            if (v == &s_audio.voice[DH_VOICE_BG_CITY])
+            {
+                s_audio.city_segment_elapsed_samples = 0u;
+                s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+            }
         }
         else
         {
@@ -293,6 +334,10 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
         }
         out = (int16_t)scaled;
         v->pos_bytes += 2u;
+        if ((v == &s_audio.voice[DH_VOICE_BG_CITY]) && v->loop)
+        {
+            s_audio.city_segment_elapsed_samples++;
+        }
     }
 
     return out;
@@ -533,6 +578,8 @@ void drone_hunter_audio_play_event(uint32_t event_id, const char *asset_name, fl
                 {
                     /* Loop with built-in crossfade for seamless end-to-begin restarts. */
                     dh_voice_start(&s_audio.voice[DH_VOICE_BG_CITY], &city_clip, true, gain_q12, 0u);
+                    s_audio.city_segment_elapsed_samples = 0u;
+                    s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
                 }
             }
         }

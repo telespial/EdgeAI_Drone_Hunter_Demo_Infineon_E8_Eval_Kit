@@ -32,7 +32,9 @@
     - delayed ambulance response 8-15 seconds after each successful attacker hit,
     - randomized 3-6 second city/gunfire background segment scheduling,
     - elevated drone bed levels for persistent audibility,
-    - latest requested master gain uplift.
+    - latest requested master gain uplift,
+    - max-fit city ambient asset footprint for linker-safe runtime,
+    - continuous city bed with random `40-55` second segment windows and crossfade-to-start at segment boundary.
   - known active issue:
     - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
 
@@ -49,7 +51,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3850240 bytes` / `verified 3847704 bytes`
+- `wrote 3932160 bytes` / `verified 3927688 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

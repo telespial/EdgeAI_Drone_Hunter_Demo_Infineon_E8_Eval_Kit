@@ -1,5 +1,23 @@
 # COMMAND_LOG
 
+- 2026-03-30 | City ambient max-fit loop policy + flash validation:
+  - converted city ambient source to linker-safe max-fit embedded clip size:
+    - `dh_clip_city_traffic.inc` -> `131072` bytes (`4.096s` at 16 kHz mono PCM),
+  - updated audio runtime city-loop behavior in `drone_hunter_audio_hal.c`:
+    - continuous city playback during gameplay,
+    - random segment window `40-55` seconds,
+    - forced crossfade return to clip start at segment boundary,
+  - full build + flash validation succeeded.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3932160 bytes` / `verified 3927688 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-city-maxfit-rand40-55-crossfade-20260330_131722`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-city-maxfit-rand40-55-crossfade-20260330_131722`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Siren source-length rebuild + flash verification:
   - rebuilt emergency siren assets from original MP3 sources:
     - `dh_clip_siren_a.inc` -> 12 seconds (`384000` bytes),
