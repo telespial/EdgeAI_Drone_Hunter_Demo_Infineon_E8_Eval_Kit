@@ -1,5 +1,67 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Audio mix refinement pass (fade + loudness + duration + persistent bed):
+  - regenerated selected embedded PCM clip blobs for longer duration:
+    - extended explosions (`attack_success`, `hunter_kill`, `ciws_kill`),
+    - significantly extended ambulance (`siren_b`),
+  - rewrote `drone_hunter_audio_hal.c` to use a small mixer with:
+    - fade-in/fade-out envelopes on all voices,
+    - always-on low background loops for city traffic + drone bed,
+    - queued foreground SFX playback,
+    - lower global output gain.
+  - reduced per-event gain values in `drone_hunter_arena.c` to prevent overly loud playback.
+- 2026-03-30 | Build validation for audio refinement:
+  - `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success).
+
+- 2026-03-30 | Roadmap update:
+  - added TODO item for subtle city liveliness lighting:
+    - tiny white/tungsten ground-level flickers,
+    - `1px` to `3px` square flicker size target,
+    - low-intensity randomized timing/placement.
+
+- 2026-03-30 | Full recovery flash after actual audio-out integration:
+  - regenerated CM55 artifacts from latest ELF:
+    - `proj_cm55.hex` and `proj_cm55.bin`
+  - executed validated full sequence:
+    - `bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh <repo>`
+  - OpenOCD signatures:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 3137536 bytes` / `verified 3132872 bytes`
+    - `** Resetting Target **`
+
+- 2026-03-30 | Actual audio-out enablement (PCM clip playback):
+  - decoded project MP3 assets into short 16 kHz mono PCM clip blobs and embedded them under:
+    - `firmware_kit_epc2/proj_cm55/app/drone_hunter/audio_assets/generated/*.inc`
+  - added asset map layer:
+    - `firmware_kit_epc2/proj_cm55/app/drone_hunter/audio_assets/drone_hunter_audio_assets.h`
+    - `firmware_kit_epc2/proj_cm55/app/drone_hunter/audio_assets/drone_hunter_audio_assets.c`
+  - rewrote `drone_hunter_audio_hal.c` event path to queue and stream real PCM samples through TDM codec output,
+  - preserved arena event-driven scheduler (city/drone/emergency/kill events) while switching playback from synthetic tones to clip samples.
+- 2026-03-30 | Build validation for actual audio-out path:
+  - first link attempt failed (`m55_data_INTERNAL` overflow) due clip blobs in writable `.data`,
+  - fixed by converting generated blob symbols to `static const` so audio blobs reside in flash/rodata,
+  - rebuild command succeeded:
+    - `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v`.
+
+- 2026-03-30 | City + drone audio mapping pass in `drone_hunter_arena.c` + `drone_hunter_audio_hal.c`:
+  - fixed sound asset paths to actual repo folder casing (`sounds/city sounds/...`),
+  - added drone audio event classes for fixed-wing and FPV flyby cues,
+  - added timed drone sound scheduling from active attacker composition in `sound_tick()`,
+  - extended audio HAL event map with distinct drone tone patterns for immediate on-board playback.
+- 2026-03-30 | Build validation for city+drone audio pass:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` from `firmware_kit_epc2/proj_cm55` (success),
+  - warnings observed: existing/known unused static helper functions in arena module.
+
+- 2026-03-30 | Priority backlog and planning docs update:
+  - updated `ToDo.md` with requested four-item fix backlog:
+    - audio overhaul replacing pong speaker test,
+    - `ALGO` strategy improvement on both sides,
+    - settings/help file addition,
+    - flame redraw placeholder task.
+  - added concrete execution plan section for item `#1` (audio mapping/timing/layering/escalation/validation).
+  - refreshed `docs/STATUS.md` and `docs/PROJECT_STATE.md` with new priorities and next execution focus.
+
 - 2026-03-29 | Fire animation + palette doctrine restoration in `drone_hunter_arena.c`:
   - reverted forced flame-demo boot mode to restore normal game boot,
   - re-enabled full animated city-fire renderer (`RENDER_STABILITY_SAFE_MODE=0`),
@@ -661,4 +723,21 @@
 - 2026-03-29 | New restore points created from hunter flicker stabilization baseline:
   - golden: `golden-20260329-phase15-hunter-flicker-stability-20260329_183309`
   - failsafe: `failsafe-e8-drone-hunter-20260329-phase15-hunter-flicker-stability-20260329_183309`
+  - rolling links `current_golden` and `current_failsafe` updated.
+- 2026-03-30 | Audio event routing + CIWS gun pass:
+  - CIWS fire path moved to dedicated event (`DH_SOUND_CIWS_FIRE`) emitted on each burst,
+  - CIWS kill path restored to light explosion effect,
+  - CIWS fire clip regenerated with source offset >= 3 seconds.
+- 2026-03-30 | Master gain and drone audibility pass:
+  - master mixer gain increased to requested loudness target,
+  - drone background gains raised for stronger audibility under city/SFX bed,
+  - CIWS fire SFX playback constrained to short burst length for per-trigger punch.
+- 2026-03-30 | Build + flash validation for audio baseline refresh:
+  - rebuilt `proj_cm55` via `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v`,
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from rebuilt ELF,
+  - full recovery flash succeeded (`erase_all; program cm33_s; program cm33_ns; program cm55`),
+  - signatures: `wrote 32768/verified 30456`, `wrote 12288/verified 8732`, `wrote 3932160/verified 3927384`.
+- 2026-03-30 | New restore points created from audio CIWS/master-gain baseline:
+  - golden: `golden-20260330-phase15-audio-ciws-mastergain3x-20260330_082620`
+  - failsafe: `failsafe-e8-drone-hunter-20260330-phase15-audio-ciws-mastergain3x-20260330_082620`
   - rolling links `current_golden` and `current_failsafe` updated.

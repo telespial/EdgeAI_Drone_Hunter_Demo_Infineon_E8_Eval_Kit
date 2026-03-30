@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-29
+- Last Updated: 2026-03-30
 - Primary runtime file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -23,7 +23,16 @@
   - bottom deck liquid-glass opacity increased for readability,
   - bright fire visibility pass with even bright-color profile selection,
   - naming normalization (`Stinger`, `Pelican`, `TYTAN`),
-  - deterministic ALGO with EDGEAI layered behavior/fallback model.
+  - deterministic ALGO with EDGEAI layered behavior/fallback model,
+  - audio scheduler now includes city ambience/emergency plus attacker drone flyby cues (fixed-wing + FPV cadence),
+  - actual PCM sample playback pipeline is active on codec/TDM output (embedded clips sourced from `sounds/`),
+  - audio runtime now includes:
+    - CIWS fire mapped to dedicated gun-sound event path (separate from kill explosion path),
+    - CIWS source clip start offset constrained to >=3 seconds into the source file,
+    - delayed ambulance response 8-15 seconds after each successful attacker hit,
+    - randomized 3-6 second city/gunfire background segment scheduling,
+    - elevated drone bed levels for persistent audibility,
+    - latest requested master gain uplift.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -38,13 +47,15 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2867200 bytes` / `verified 2864500 bytes`
+- `wrote 3932160 bytes` / `verified 3927384 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Execution Focus
-1. Complete Phase 15 cleanup/HUD simplification/visual stabilization.
-2. Promote refreshed golden + failsafe restore snapshots.
-3. Start Phase 16 audio layer.
+1. Audio overhaul kickoff:
+   - replace speaker-test/pong audio with mapped gameplay soundscape (city/drone/explosion/emergency timing model).
+2. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
+3. Add project settings/help files and integrate with current workflow.
+4. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).

@@ -8,8 +8,11 @@
 #include "drone_hunter_ciws.h"
 #include "drone_hunter_attack_images.h"
 #include "drone_hunter_flame_sprites.h"
+#include "drone_hunter_audio_hal.h"
 /* Keep sprite frames in this translation unit for fixed ninja graphs that don't auto-pick new .c files. */
 #include "drone_hunter_flame_sprites.c"
+/* Keep audio HAL in this translation unit for fixed ninja graphs that don't auto-pick new .c files. */
+#include "drone_hunter_audio_hal.c"
 
 #include <math.h>
 #include <stdio.h>
@@ -222,6 +225,22 @@ typedef enum
     HUNTER_FLIGHT_PLANE = 1,
     HUNTER_FLIGHT_HYBRID = 2
 } hunter_flight_model_t;
+
+typedef enum
+{
+    DH_SOUND_ATTACK_SUCCESS_LOUD = 0,
+    DH_SOUND_HUNTER_KILL_MEDIUM,
+    DH_SOUND_CIWS_KILL_LIGHT,
+    DH_SOUND_CITY_SIREN_A,
+    DH_SOUND_CITY_SIREN_B,
+    DH_SOUND_CITY_TRAFFIC_AMBIENT,
+    DH_SOUND_CITY_FIRE_LOOP,
+    DH_SOUND_DRONE_FIXED_WING_LOOP,
+    DH_SOUND_DRONE_FPV_LOOP,
+    /* Reserve 9/10 for HAL-only random background gunfire events. */
+    DH_SOUND_CIWS_FIRE = 11,
+    DH_SOUND_COUNT = 12
+} dh_sound_event_t;
 
 typedef struct
 {
@@ -501,6 +520,16 @@ typedef struct
     difficulty_t difficulty_sel;
     int npu_enabled;
     int speed_pp_idx;
+    int sound_enabled;
+    float sound_cd[DH_SOUND_COUNT];
+    float sound_next_traffic_t;
+    float sound_next_siren_t;
+    float sound_next_fire_t;
+    float sound_next_drone_fixed_t;
+    float sound_next_drone_fpv_t;
+    float sound_next_ambulance_t;
+    uint32_t sound_ambulance_pending;
+    uint32_t sound_emit_count[DH_SOUND_COUNT];
     uint32_t rng_state;
     uint32_t strategy_replan_tick;
 
@@ -550,6 +579,9 @@ static void hud_defend_card_cb(lv_event_t *e);
 static void update_hud(drone_hunter_scene_t *s);
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k);
 static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k);
+static void sound_tick(drone_hunter_scene_t *s);
+static void sound_emit(drone_hunter_scene_t *s, dh_sound_event_t ev, float cooldown_sec);
+static void sound_schedule_ambulance(drone_hunter_scene_t *s);
 static void reset_round(drone_hunter_scene_t *s);
 
 static uint32_t runtime_entropy32(void)
@@ -595,6 +627,184 @@ static int scene_rng_range(drone_hunter_scene_t *s, int limit)
         return 0;
     }
     return (int)(scene_rng_next(s) % (uint32_t)limit);
+}
+
+static const char *sound_asset_name(dh_sound_event_t ev)
+{
+    switch (ev)
+    {
+        case DH_SOUND_ATTACK_SUCCESS_LOUD:
+            return "sounds/city sounds/freesound_community-explosion-42132.mp3";
+        case DH_SOUND_HUNTER_KILL_MEDIUM:
+            return "sounds/city sounds/freesound_community-medium-explosion-40472.mp3";
+        case DH_SOUND_CIWS_KILL_LIGHT:
+            return "sounds/city sounds/soundreality-explosion-fx-343683.mp3";
+        case DH_SOUND_CITY_SIREN_A:
+            return "sounds/city sounds/freesound_community-firetruck-78910.mp3";
+        case DH_SOUND_CITY_SIREN_B:
+            return "sounds/city sounds/youssefmizani-ambulance-sound-451364.mp3";
+        case DH_SOUND_CITY_TRAFFIC_AMBIENT:
+            return "sounds/city sounds/jadeallencook-night-city-side-street-with-passing-cars-and-distant-urban-ambience-339223.mp3";
+        case DH_SOUND_CITY_FIRE_LOOP:
+            return "sounds/city sounds/soundreality-fire-sound-334130.mp3";
+        case DH_SOUND_DRONE_FIXED_WING_LOOP:
+            return "sounds/drone sounds/Shahed1.mp3";
+        case DH_SOUND_DRONE_FPV_LOOP:
+            return "sounds/drone sounds/xwing.mp3";
+        case DH_SOUND_CIWS_FIRE:
+            return "sounds/misc sounds/CIWS firing.mp3";
+        case DH_SOUND_COUNT:
+        default:
+            return "";
+    }
+}
+
+static float sound_gain(dh_sound_event_t ev)
+{
+    switch (ev)
+    {
+        case DH_SOUND_ATTACK_SUCCESS_LOUD: return 0.55f;
+        case DH_SOUND_HUNTER_KILL_MEDIUM: return 0.46f;
+        case DH_SOUND_CIWS_KILL_LIGHT: return 0.34f;
+        case DH_SOUND_CITY_SIREN_A: return 0.34f;
+        case DH_SOUND_CITY_SIREN_B: return 0.34f;
+        case DH_SOUND_CITY_TRAFFIC_AMBIENT: return 0.20f;
+        case DH_SOUND_CITY_FIRE_LOOP: return 0.22f;
+        case DH_SOUND_DRONE_FIXED_WING_LOOP: return 0.18f;
+        case DH_SOUND_DRONE_FPV_LOOP: return 0.16f;
+        case DH_SOUND_CIWS_FIRE: return 0.44f;
+        case DH_SOUND_COUNT:
+        default: return 0.50f;
+    }
+}
+
+static uint8_t sound_is_loop(dh_sound_event_t ev)
+{
+    return (ev == DH_SOUND_CITY_TRAFFIC_AMBIENT ||
+            ev == DH_SOUND_CITY_FIRE_LOOP ||
+            ev == DH_SOUND_DRONE_FIXED_WING_LOOP ||
+            ev == DH_SOUND_DRONE_FPV_LOOP) ? 1u : 0u;
+}
+
+static void sound_emit(drone_hunter_scene_t *s, dh_sound_event_t ev, float cooldown_sec)
+{
+    if ((s == NULL) || !s->sound_enabled)
+    {
+        return;
+    }
+    if ((ev < 0) || (ev >= DH_SOUND_COUNT))
+    {
+        return;
+    }
+    if (s->sound_cd[(int)ev] > 0.0f)
+    {
+        return;
+    }
+    s->sound_cd[(int)ev] = cooldown_sec;
+    s->sound_emit_count[(int)ev]++;
+    drone_hunter_audio_play_event((uint32_t)ev, sound_asset_name(ev), sound_gain(ev), sound_is_loop(ev));
+}
+
+static void sound_schedule_ambulance(drone_hunter_scene_t *s)
+{
+    float delay_sec;
+    if (s == NULL)
+    {
+        return;
+    }
+    s->sound_ambulance_pending++;
+    if (s->sound_ambulance_pending > 1u)
+    {
+        return;
+    }
+
+    /* Trigger ambulance 8-15 seconds after each successful attacker hit. */
+    delay_sec = 8.0f + (float)scene_rng_range(s, 8);
+    s->sound_next_ambulance_t = s->t + delay_sec;
+}
+
+static void sound_tick(drone_hunter_scene_t *s)
+{
+    int i;
+    int active_fixed = 0;
+    int active_fpv = 0;
+    if (s == NULL)
+    {
+        return;
+    }
+    for (i = 0; i < DH_SOUND_COUNT; ++i)
+    {
+        s->sound_cd[i] = clampf(s->sound_cd[i] - DT_SEC, 0.0f, 120.0f);
+    }
+    if (!s->sound_enabled)
+    {
+        return;
+    }
+
+    if (s->t >= s->sound_next_traffic_t)
+    {
+        sound_emit(s, DH_SOUND_CITY_TRAFFIC_AMBIENT, 10.0f);
+        s->sound_next_traffic_t = s->t + 26.0f;
+    }
+    if ((s->sound_ambulance_pending > 0u) && (s->t >= s->sound_next_ambulance_t))
+    {
+        sound_emit(s, DH_SOUND_CITY_SIREN_B, 0.25f);
+        s->sound_ambulance_pending--;
+        if (s->sound_ambulance_pending > 0u)
+        {
+            float delay_sec = 8.0f + (float)scene_rng_range(s, 8);
+            s->sound_next_ambulance_t = s->t + delay_sec;
+        }
+    }
+    if ((s->city_fire_count > 0) && (s->t >= s->sound_next_fire_t))
+    {
+        sound_emit(s, DH_SOUND_CITY_FIRE_LOOP, 8.0f);
+        s->sound_next_fire_t = s->t + 12.0f;
+    }
+
+    for (i = 0; i < KILLER_COUNT; ++i)
+    {
+        if (!s->killer_active[i] || s->k_dying[i])
+        {
+            continue;
+        }
+        if (s->ktype[i] == TARGET_FIXED_WING)
+        {
+            active_fixed++;
+        }
+        else
+        {
+            active_fpv++;
+        }
+    }
+
+    if (active_fixed > 0)
+    {
+        if (s->t >= s->sound_next_drone_fixed_t)
+        {
+            float cadence = clampf(7.0f - ((float)active_fixed * 1.2f), 3.0f, 7.0f);
+            sound_emit(s, DH_SOUND_DRONE_FIXED_WING_LOOP, 2.0f);
+            s->sound_next_drone_fixed_t = s->t + cadence;
+        }
+    }
+    else
+    {
+        s->sound_next_drone_fixed_t = s->t + 1.6f;
+    }
+
+    if (active_fpv > 0)
+    {
+        if (s->t >= s->sound_next_drone_fpv_t)
+        {
+            float cadence = clampf(5.2f - ((float)active_fpv * 0.9f), 2.2f, 5.2f);
+            sound_emit(s, DH_SOUND_DRONE_FPV_LOOP, 1.2f);
+            s->sound_next_drone_fpv_t = s->t + cadence;
+        }
+    }
+    else
+    {
+        s->sound_next_drone_fpv_t = s->t + 1.1f;
+    }
 }
 
 static const lv_image_dsc_t **city_fire_profile_frames(int profile)
@@ -1554,6 +1764,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     }
     *ammo -= ammo_spent;
     s->ciws_shots++;
+    sound_emit(s, DH_SOUND_CIWS_FIRE, 0.06f);
     if ((d_px > effective_px) || (lock_q < CIWS_LOCK_BAD_THRESH))
     {
         if ((s->ciws_shots % 8) == 0)
@@ -1612,6 +1823,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
         s->fx_kill_t[k] = shahed_kill ? (FX_KILL_SEC * 1.40f) : FX_KILL_SEC;
         s->fx_kill_x[k] = hit_x;
         s->fx_kill_y[k] = hit_y;
+        sound_emit(s, DH_SOUND_CIWS_KILL_LIGHT, 0.10f);
         set_diag_stage(s, shahed_kill ? "DBG:CIWS_KILL_SHAHED" : "DBG:CIWS_KILL_OTHER");
         if (shahed_kill)
         {
@@ -4017,6 +4229,19 @@ static void reset_round(drone_hunter_scene_t *s)
     s->round_start_tick_ms = lv_tick_get();
     s->hud_refresh_t = HUD_REFRESH_SEC;
     s->t = 0.0f;
+    s->sound_enabled = 1;
+    s->sound_next_traffic_t = 0.20f;
+    s->sound_next_siren_t = 6.0f;
+    s->sound_next_fire_t = 4.0f;
+    s->sound_next_drone_fixed_t = 1.2f;
+    s->sound_next_drone_fpv_t = 0.8f;
+    s->sound_next_ambulance_t = 0.0f;
+    s->sound_ambulance_pending = 0u;
+    for (i = 0; i < DH_SOUND_COUNT; ++i)
+    {
+        s->sound_cd[i] = 0.0f;
+        s->sound_emit_count[i] = 0u;
+    }
     s->rng_state = (uint32_t)(lv_tick_get() ^ (uint32_t)(uintptr_t)s ^ ((uint32_t)s->wave_idx * 2654435761u) ^ runtime_entropy32());
     if (s->rng_state == 0U)
     {
@@ -4612,6 +4837,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->fx_intercept_x[k] = s->k_goal_x[k];
             s->fx_intercept_y[k] = s->k_goal_y[k];
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
+            sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
+            sound_schedule_ambulance(s);
             set_diag_stage(s, "DBG:ATTACKER_RESPAWN");
             respawn_killer(s, k, -1);
         }
@@ -5108,6 +5335,8 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                         s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
                         s->iff_recovery_ttl = 4.0f;
                         add_city_fire(s, hx, hy, CITY_FIRE_INTENSITY_SMALL);
+                        sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
+                        sound_schedule_ambulance(s);
                         note_failure(s, "IFF failure: blue-on-blue event, recovery in progress", NULL);
 
                         s->hunter_loaded[h] = 0;
@@ -5147,6 +5376,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     s->fx_kill_t[committed] = shahed_kill ? (FX_KILL_SEC * 1.40f) : FX_KILL_SEC;
                     s->fx_kill_x[committed] = hit_x;
                     s->fx_kill_y[committed] = hit_y;
+                    sound_emit(s, DH_SOUND_HUNTER_KILL_MEDIUM, 0.10f);
                     if (shahed_kill)
                     {
                         /* Shahed kills should visibly erupt before despawn. */
@@ -6228,6 +6458,8 @@ static void anim_cb(lv_timer_t *timer)
 
     s->t += 0.040f * speed_pp_mult(s);
     set_diag_stage(s, "DBG:ANIM_TICK");
+    drone_hunter_audio_heartbeat();
+    sound_tick(s);
 
     if (!s->round_over)
     {

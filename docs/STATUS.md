@@ -1,6 +1,6 @@
 # STATUS
 
-- Date: 2026-03-29
+- Date: 2026-03-30
 - Branch: `main`
 - Runtime baseline: full clean rebuild and full 3-image flash validated on hardware.
 
@@ -9,10 +9,18 @@
 - In progress: `15`
 - Planned next: `16`
 
+## Current Priority Queue (2026-03-30)
+1. Replace speaker-test (`pong`) audio behavior with gameplay event soundscape:
+   - explosions, city ambience, drone sounds, sirens, firetruck, ambulance,
+   - event-timed layering and escalation rules.
+2. Improve attacker + defender `ALGO` strategy depth and fun factor.
+3. Add settings/help documentation files and wire them into workflow.
+4. Schedule flame redraw phase (detailed redraw scope pending kickoff).
+
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2867200 bytes`, `verified 2864500 bytes`
+- `wrote 3932160 bytes`, `verified 3927384 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -22,6 +30,22 @@
 - Top-center `DBG:*` stage banner is foregrounded for freeze localization.
 - Settings popup controls are integrated and active:
   - attacker mode, defender mode, NPU toggle, difficulty, speed++.
+- City + drone sound scheduling is active:
+  - city ambience, fire loop, and emergency siren cadence remain event-driven,
+  - drone flyby audio now triggers from active attacker composition (fixed-wing and FPV cadences).
+- Actual audio output path is now active (sample playback):
+  - short PCM clips are embedded from `sounds/` assets and streamed over TDM/DAC,
+  - runtime now emits real sample audio per event instead of synthesized test tones.
+- Audio mix and event routing pass applied:
+  - all sounds now use fade in/out envelopes,
+  - explosions were extended for longer tails,
+  - ambulance clip was extended significantly,
+  - successful attacks now schedule delayed ambulance response (8-15 seconds),
+  - city traffic + random gunfire beds play in 3-6 second randomized segments,
+  - drone + city ambience remain persistent low background layers,
+  - CIWS firing now uses dedicated gun event routing with burst-style playback,
+  - CIWS fire clip offset is forced to start beyond 3 seconds into source audio,
+  - master output level is increased to latest requested loudness target.
 - Top HUD text rows and `SET | HELP` button are removed.
 - Explosion mapping is enforced by visual drone class:
   - Shahed: large orange, fixed-wing: red, X-wing DJI: small white.
@@ -46,7 +70,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `2,863,908 bytes`
+- CM55 verified image size (external SMIF): `3,927,384 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
