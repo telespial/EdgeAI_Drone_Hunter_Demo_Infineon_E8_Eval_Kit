@@ -12,7 +12,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2867200 bytes`, `verified 2863908 bytes`
+- `wrote 2867200 bytes`, `verified 2864500 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -37,6 +37,9 @@
 - Animated city-fire rendering is re-enabled (safe fallback mode disabled).
 - Fire profile mapping is now centralized with weighted selection:
   - 75% bright bucket, 25% dark bucket.
+- Hunter icon anti-flicker stabilization pass:
+  - unloaded hunter sprites no longer hide/show thrash per frame,
+  - deck hunter icons use stable opacity.
 - Bottom deck liquid-glass bar opacity increased by ~20% for better readability.
 - CIWS structures remain fixed while bullet streams target dynamically.
 - Exhaustion-mode battle ending is active.

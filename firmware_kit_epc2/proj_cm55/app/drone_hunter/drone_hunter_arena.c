@@ -59,7 +59,7 @@
 #define CIWS_TOP_GRID_BLOCK_FRAC  (0.58f)
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
-#define CITY_FIRE_RENDER_MAX      (8)
+#define CITY_FIRE_RENDER_MAX      (64)
 #define RENDER_STABILITY_SAFE_MODE (0)
 #define FREEZE_DIAG_EFFECTS_BYPASS (0)
 #define FREEZE_DIAG_LOGIC_BYPASS   (0)
@@ -545,6 +545,9 @@ static void iff_toggle_cb(lv_event_t *e);
 static void quick_menu_close_cb(lv_event_t *e);
 static void quick_menu_body_cb(lv_event_t *e);
 static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body);
+static void hud_attack_card_cb(lv_event_t *e);
+static void hud_defend_card_cb(lv_event_t *e);
+static void update_hud(drone_hunter_scene_t *s);
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k);
 static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k);
 static void reset_round(drone_hunter_scene_t *s);
@@ -751,6 +754,21 @@ static int city_fire_pick_profile(float seed, int intensity)
     return (int)g_city_fire_dark_profiles[roll % 8];
 }
 
+static float city_fire_nearest_d2(const drone_hunter_scene_t *s, float x, float y)
+{
+    int i;
+    float best = 1.0e30f;
+    for (i = 0; i < s->city_fire_count; ++i)
+    {
+        float d2 = dist2(x, y, s->city_fire_x[i], s->city_fire_y[i]);
+        if (d2 < best)
+        {
+            best = d2;
+        }
+    }
+    return best;
+}
+
 static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensity)
 {
     int idx;
@@ -760,9 +778,51 @@ static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensi
     float min_y = (float)s->arena_y + ((float)s->arena_h * 0.20f);
     float max_y = floor_y - 2.0f;
     int style_pick;
+    float best_x;
+    float best_y;
+    float best_d2;
+    float spacing = (intensity >= CITY_FIRE_INTENSITY_BIG) ? 32.0f : 20.0f;
+    float spacing2 = spacing * spacing;
+    int attempt;
 
     x = clampf(x, min_x, max_x);
     y = clampf(y, min_y, max_y);
+    best_x = x;
+    best_y = y;
+    best_d2 = city_fire_nearest_d2(s, x, y);
+
+    /* Prevent stacked fires at the same impact pixel so each successful strike remains visible. */
+    for (attempt = 0; attempt < 7; ++attempt)
+    {
+        float cand_x = x;
+        float cand_y = y;
+        if (attempt > 0)
+        {
+            float a = ((float)scene_rng_range(s, 628) / 100.0f);
+            float r = spacing * (0.65f + ((float)scene_rng_range(s, 75) / 100.0f));
+            cand_x += cosf(a) * r;
+            cand_y += sinf(a) * (r * 0.64f);
+            cand_x = clampf(cand_x, min_x, max_x);
+            cand_y = clampf(cand_y, min_y, max_y);
+        }
+        {
+            float d2 = city_fire_nearest_d2(s, cand_x, cand_y);
+            if ((d2 > best_d2) || ((attempt == 0) && (best_d2 <= 0.1f)))
+            {
+                best_x = cand_x;
+                best_y = cand_y;
+                best_d2 = d2;
+            }
+            if (d2 >= spacing2)
+            {
+                best_x = cand_x;
+                best_y = cand_y;
+                break;
+            }
+        }
+    }
+    x = best_x;
+    y = best_y;
 
     if (s->city_fire_count < CITY_FIRE_MAX)
     {
@@ -809,6 +869,112 @@ static int lane_site_edge(int site)
 static int lane_site_lane(int site)
 {
     return site & 0x3;
+}
+
+static float goal_nearest_existing_d2(const drone_hunter_scene_t *s, int self_k, float gx, float gy)
+{
+    int i;
+    float best = 1.0e30f;
+    for (i = 0; i < KILLER_COUNT; ++i)
+    {
+        if ((i == self_k) || !s->killer_active[i] || s->k_dying[i])
+        {
+            continue;
+        }
+        {
+            float d2 = dist2(gx, gy, s->k_goal_x[i], s->k_goal_y[i]);
+            if (d2 < best)
+            {
+                best = d2;
+            }
+        }
+    }
+    for (i = 0; i < s->city_fire_count; ++i)
+    {
+        float d2 = dist2(gx, gy, s->city_fire_x[i], s->city_fire_y[i]);
+        if (d2 < best)
+        {
+            best = d2;
+        }
+    }
+    return best;
+}
+
+static void choose_attack_goal(drone_hunter_scene_t *s, int k,
+                               float goal_min_x, float goal_max_x,
+                               float goal_min_y, float goal_max_y)
+{
+    float span_x = (goal_max_x - goal_min_x > 1.0f) ? (goal_max_x - goal_min_x) : 1.0f;
+    float span_y = (goal_max_y - goal_min_y > 1.0f) ? (goal_max_y - goal_min_y) : 1.0f;
+    float best_x = goal_min_x + (float)scene_rng_range(s, 1000) * 0.001f * span_x;
+    float best_y = goal_min_y + (float)scene_rng_range(s, 1000) * 0.001f * span_y;
+    float best_score = -1.0e30f;
+    int tries = 12;
+    int t;
+
+    for (t = 0; t < tries; ++t)
+    {
+        float ux = (float)scene_rng_range(s, 1000) * 0.001f;
+        float uy = (float)scene_rng_range(s, 1000) * 0.001f;
+        float gx;
+        float gy;
+        float center_bias;
+        float spread_d2;
+        float score;
+
+        if (s->attack_strategy_live == ATTACK_STRATEGY_CENTER_PRESSURE)
+        {
+            ux = 0.5f + ((ux - 0.5f) * 0.56f);
+        }
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_FLANK_PRESSURE)
+        {
+            if (ux < 0.5f)
+            {
+                ux *= 0.64f;
+            }
+            else
+            {
+                ux = 1.0f - ((1.0f - ux) * 0.64f);
+            }
+        }
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_TERMINAL_SATURATION)
+        {
+            uy = 0.40f + (uy * 0.60f);
+        }
+
+        gx = goal_min_x + (ux * span_x);
+        gy = goal_min_y + (uy * span_y);
+        spread_d2 = goal_nearest_existing_d2(s, k, gx, gy);
+        center_bias = 1.0f - fabsf(((gx - goal_min_x) / span_x) - 0.5f) * 2.0f;
+        score = spread_d2 * 0.90f;
+
+        if (s->attack_strategy_live == ATTACK_STRATEGY_CENTER_PRESSURE)
+        {
+            score += center_bias * 2400.0f;
+        }
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_FLANK_PRESSURE)
+        {
+            score += (1.0f - center_bias) * 2400.0f;
+        }
+        else if (s->attack_strategy_live == ATTACK_STRATEGY_MIXED_LURE_STRIKE)
+        {
+            score += fabsf(sinf((s->t * 0.72f) + (float)(k * 1.7f) + (float)t)) * 1200.0f;
+        }
+        else
+        {
+            score += 850.0f * uy;
+        }
+
+        if (score > best_score)
+        {
+            best_score = score;
+            best_x = gx;
+            best_y = gy;
+        }
+    }
+
+    s->k_goal_x[k] = clampf(best_x, goal_min_x, goal_max_x);
+    s->k_goal_y[k] = clampf(best_y, goal_min_y, goal_max_y);
 }
 
 static const char *attack_strategy_short_name(attack_strategy_t st)
@@ -3293,7 +3459,8 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
         int stock_live = (s->hunter_stock[i] > 0) ? 1 : 0;
         if (prev_icon_live[i] != stock_live)
         {
-            lv_obj_set_style_opa(s->deck_icon[i], stock_live ? LV_OPA_COVER : LV_OPA_70, 0);
+            /* Keep deck icons visually stable; avoid periodic opacity flicker. */
+            lv_obj_set_style_opa(s->deck_icon[i], LV_OPA_COVER, 0);
             prev_icon_live[i] = stock_live;
         }
         if (prev_in_use[i] != in_use)
@@ -3388,9 +3555,6 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     float goal_max_x = (float)(s->arena_x + s->arena_w - 14);
     float goal_min_y = (float)s->arena_y + ((float)s->arena_h * 0.16f);
     float goal_max_y = (float)s->arena_y + ((float)s->arena_h * 0.84f);
-    float goal_span_x = (goal_max_x - goal_min_x > 1.0f) ? (goal_max_x - goal_min_x) : 1.0f;
-    float goal_span_y = (goal_max_y - goal_min_y > 1.0f) ? (goal_max_y - goal_min_y) : 1.0f;
-    float edge_phase = (float)((s->killer_spawn_tick * 47) + (k * 29) + scene_rng_range(s, 997));
     int edge;
     int lane;
     float lane_t;
@@ -3534,8 +3698,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
 
     style_target(s, k);
 
-    s->k_goal_x[k] = goal_min_x + fmodf((edge_phase * 1.21f) + (float)(k * 23) + (float)scene_rng_range(s, 173), goal_span_x);
-    s->k_goal_y[k] = goal_min_y + fmodf((edge_phase * 0.83f) + (float)(k * 19) + (float)scene_rng_range(s, 191), goal_span_y);
+    choose_attack_goal(s, k, goal_min_x, goal_max_x, goal_min_y, goal_max_y);
 
     {
         int site = (side >= 0 && side < 16) ? side : choose_spawn_site(s, k, s->k_goal_x[k], s->k_goal_y[k]);
@@ -3794,6 +3957,40 @@ static void quick_menu_body_cb(lv_event_t *e)
         return;
     }
     cycle_setting_row(s, row);
+}
+
+static void hud_attack_card_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    if ((s == NULL) || (lv_event_get_code(e) != LV_EVENT_CLICKED))
+    {
+        return;
+    }
+    s->attacker_mode_sel = (s->attacker_mode_sel == CTRL_ALGO) ? CTRL_EDGEAI : CTRL_ALGO;
+    apply_control_settings(s);
+    update_mode_button_label(s);
+    if (s->quick_menu_settings_active)
+    {
+        refresh_settings_menu(s);
+    }
+    update_hud(s);
+}
+
+static void hud_defend_card_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    if ((s == NULL) || (lv_event_get_code(e) != LV_EVENT_CLICKED))
+    {
+        return;
+    }
+    s->defender_mode_sel = (defender_mode_t)(((int)s->defender_mode_sel + 1) % 3);
+    apply_control_settings(s);
+    update_mode_button_label(s);
+    if (s->quick_menu_settings_active)
+    {
+        refresh_settings_menu(s);
+    }
+    update_hud(s);
 }
 
 static void reset_round(drone_hunter_scene_t *s)
@@ -4415,9 +4612,6 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->fx_intercept_x[k] = s->k_goal_x[k];
             s->fx_intercept_y[k] = s->k_goal_y[k];
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
-            add_city_fire(s, s->k_goal_x[k] - 8.0f, s->k_goal_y[k] + 6.0f, CITY_FIRE_INTENSITY_BIG);
-            add_city_fire(s, s->k_goal_x[k] + 9.0f, s->k_goal_y[k] + 5.0f, CITY_FIRE_INTENSITY_BIG);
-            add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k] - 7.0f, CITY_FIRE_INTENSITY_BIG);
             set_diag_stage(s, "DBG:ATTACKER_RESPAWN");
             respawn_killer(s, k, -1);
         }
@@ -4914,7 +5108,6 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                         s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
                         s->iff_recovery_ttl = 4.0f;
                         add_city_fire(s, hx, hy, CITY_FIRE_INTENSITY_SMALL);
-                        add_city_fire(s, hx + 6.0f, hy + 4.0f, CITY_FIRE_INTENSITY_SMALL);
                         note_failure(s, "IFF failure: blue-on-blue event, recovery in progress", NULL);
 
                         s->hunter_loaded[h] = 0;
@@ -5305,8 +5498,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             }
         }
 #else
-        int target_fire_count = s->attack_leaked + ((s->attacker_points - s->hunter_points > 0) ? ((s->attacker_points - s->hunter_points) / 2) : 0);
+        int target_fire_count = s->attacker_goal_detonations;
         int guard;
+        /* Keep post-impact fires persistent for the round; do not decay by score drift. */
+        if (target_fire_count < s->city_fire_count)
+        {
+            target_fire_count = s->city_fire_count;
+        }
         if (target_fire_count > CITY_FIRE_RENDER_MAX)
         {
             target_fire_count = CITY_FIRE_RENDER_MAX;
@@ -5315,18 +5513,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         {
             target_fire_count = 0;
         }
-        if (s->city_fire_count > target_fire_count)
-        {
-            s->city_fire_count = target_fire_count;
-        }
-        for (guard = 0; (s->city_fire_count < target_fire_count) && (guard < CITY_FIRE_RENDER_MAX); ++guard)
-        {
-            float spread = (float)(s->city_fire_count + 1);
-            float fx = (float)s->arena_x + 12.0f + fmodf((s->t * 41.0f) + (spread * 37.0f), (float)s->arena_w - 24.0f);
-            float fy = (float)s->arena_y + ((float)s->arena_h * 0.28f) +
-                       fmodf((s->t * 23.0f) + (spread * 29.0f), (float)s->arena_h * 0.64f);
-            add_city_fire(s, fx, fy, CITY_FIRE_INTENSITY_SMALL);
-        }
+        (void)guard;
         {
             uint32_t now_tick = lv_tick_get();
             static uint32_t fire_anim_tick = 0U;
@@ -5654,6 +5841,7 @@ static void update_positions(drone_hunter_scene_t *s)
 
     for (h = 0; h < HUNTER_COUNT; ++h)
     {
+        int hunter_visible = s->hunter_loaded[h] || (s->h_falling[h] != 0);
         int16_t angle_tenth = (int16_t)(s->h_heading[h] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
         float depth = depth_zoom_factor_for_y(s, s->hy[h]);
         uint16_t base_zoom = (uint16_t)clampf((float)s->h_base_zoom[h], 150.0f, 340.0f);
@@ -5695,6 +5883,15 @@ static void update_positions(drone_hunter_scene_t *s)
             s->hy[h] = clampf(s->hy[h], (float)s->arena_y + 6.0f, floor_y);
         }
         s->hx[h] = clampf(s->hx[h], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
+
+        if (!hunter_visible)
+        {
+            /* Avoid hide/show flag thrash; drive invisibility through alpha for stable rendering. */
+            lv_obj_set_style_opa(s->hunters[h], LV_OPA_TRANSP, 0);
+            lv_obj_set_style_image_opa(s->hunters[h], LV_OPA_TRANSP, 0);
+            lv_obj_add_flag(s->hunter_tail[h], LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
 
         lv_obj_set_style_transform_zoom(s->hunters[h], zoom, 0);
         lv_obj_set_style_transform_width(s->hunters[h], 0, 0);
@@ -6293,6 +6490,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_shadow_color(s->hud_attack_panel, lv_color_hex(0x6BBEFF), 0);
     lv_obj_set_style_shadow_opa(s->hud_attack_panel, (lv_opa_t)38, 0);
     lv_obj_set_style_shadow_width(s->hud_attack_panel, 12, 0);
+    lv_obj_add_flag(s->hud_attack_panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s->hud_attack_panel, hud_attack_card_cb, LV_EVENT_CLICKED, s);
 
     s->hud_defend_panel = lv_obj_create(s->arena);
     lv_obj_remove_style_all(s->hud_defend_panel);
@@ -6307,6 +6506,8 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_shadow_color(s->hud_defend_panel, lv_color_hex(0x6BBEFF), 0);
     lv_obj_set_style_shadow_opa(s->hud_defend_panel, (lv_opa_t)38, 0);
     lv_obj_set_style_shadow_width(s->hud_defend_panel, 12, 0);
+    lv_obj_add_flag(s->hud_defend_panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s->hud_defend_panel, hud_defend_card_cb, LV_EVENT_CLICKED, s);
 
     s->hud_attack_label = lv_label_create(s->hud_attack_panel);
     lv_label_set_text(s->hud_attack_label, "ATTACK");
@@ -6348,21 +6549,9 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xD1ECFF), 0);
     lv_obj_align(s->hud_defend_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
 
-    s->hud_diag_stage = lv_label_create(s->arena);
-    lv_label_set_text(s->hud_diag_stage, "DBG:BOOT");
-    lv_obj_set_style_text_font(s->hud_diag_stage, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(s->hud_diag_stage, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_bg_color(s->hud_diag_stage, lv_color_hex(0x991B1B), 0);
-    lv_obj_set_style_bg_opa(s->hud_diag_stage, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_left(s->hud_diag_stage, 6, 0);
-    lv_obj_set_style_pad_right(s->hud_diag_stage, 6, 0);
-    lv_obj_set_style_pad_top(s->hud_diag_stage, 2, 0);
-    lv_obj_set_style_pad_bottom(s->hud_diag_stage, 2, 0);
-    lv_obj_set_style_text_align(s->hud_diag_stage, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(s->hud_diag_stage, s->arena_w - 8);
-    lv_obj_align(s->hud_diag_stage, LV_ALIGN_TOP_MID, 0, 2);
-    lv_obj_move_foreground(s->hud_diag_stage);
-    (void)snprintf(s->hud_diag_text, sizeof(s->hud_diag_text), "%s", "DBG:BOOT");
+    /* Debug banner fully disabled in normal runtime UX. */
+    s->hud_diag_stage = NULL;
+    s->hud_diag_text[0] = '\0';
 
     s->mode_btn = NULL;
     s->mode_btn_label = NULL;

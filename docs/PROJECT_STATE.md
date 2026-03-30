@@ -19,6 +19,7 @@
   - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
   - full animated city-fire rendering active (safe-mode fallback disabled),
   - centralized fire profile mapping with weighted selection (75% bright, 25% dark),
+  - hunter icon anti-flicker stabilization for both in-flight sprites and deck icons,
   - bottom deck liquid-glass opacity increased for readability,
   - bright fire visibility pass with even bright-color profile selection,
   - naming normalization (`Stinger`, `Pelican`, `TYTAN`),
@@ -37,7 +38,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2867200 bytes` / `verified 2863908 bytes`
+- `wrote 2867200 bytes` / `verified 2864500 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

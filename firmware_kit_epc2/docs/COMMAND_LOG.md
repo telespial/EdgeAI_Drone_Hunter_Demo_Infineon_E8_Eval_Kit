@@ -651,3 +651,14 @@
   - golden: `golden-20260328-phase15-blast-map-fire-quota-20260328_184209`
   - failsafe: `failsafe-e8-drone-hunter-20260328-phase15-blast-map-fire-quota-20260328_184209`
   - rolling links `current_golden` and `current_failsafe` updated.
+- 2026-03-29 | Hunter icon anti-flicker stabilization pass:
+  - in-flight hunter sprites: prevent per-frame hide/show thrash by using stable visibility alpha when inactive,
+  - bottom deck hunter icons: stabilized to fixed full opacity to avoid periodic icon flashing.
+- 2026-03-29 | Fresh rebuild/relink + full 3-image flash validation:
+  - forced recompile of `drone_hunter_arena.c`, relinked `proj_cm55.elf`, regenerated `proj_cm55.hex/bin`,
+  - full recovery flash succeeded (`erase_all; program cm33_s; program cm33_ns; program cm55`),
+  - signatures: `wrote 32768/verified 30456`, `wrote 12288/verified 8732`, `wrote 2867200/verified 2864500`.
+- 2026-03-29 | New restore points created from hunter flicker stabilization baseline:
+  - golden: `golden-20260329-phase15-hunter-flicker-stability-20260329_183309`
+  - failsafe: `failsafe-e8-drone-hunter-20260329-phase15-hunter-flicker-stability-20260329_183309`
+  - rolling links `current_golden` and `current_failsafe` updated.
