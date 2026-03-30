@@ -21,7 +21,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3923968 bytes`, `verified 3919672 bytes`
+- `wrote 3923968 bytes`, `verified 3920440 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -66,7 +66,13 @@
 - Additional freeze-hardening deployed:
   - city-fire render budget reduced,
   - flame sprite/style updates throttled.
-- Animated city-fire rendering is re-enabled (safe fallback mode disabled).
+- Render stability safe mode is enabled for city-fire drawing path.
+- Additional runtime hardening for freeze risk:
+  - per-tick hunter target-index sanitization before hunter updates.
+- Latest engagement/targeting behavior updates:
+  - hunters now persist in terminal intercept and retry close-range attacks before disengage,
+  - long-range commit gate loosened so distant uncovered threats are engaged earlier,
+  - lock boxes now use arena-local coordinates and correctly surround x-wing/small attack drones.
 - Fire profile mapping is now centralized with weighted selection:
   - 75% bright bucket, 25% dark bucket.
 - Hunter icon anti-flicker stabilization pass:

@@ -17,7 +17,7 @@
   - CIWS stationary-structure + dynamic stream behavior,
   - inventory exhaustion end mode,
   - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
-  - full animated city-fire rendering active (safe-mode fallback disabled),
+  - render stability safe mode active for city-fire path to reduce freeze risk during active gameplay,
   - centralized fire profile mapping with weighted selection (75% bright, 25% dark),
   - hunter icon anti-flicker stabilization for both in-flight sprites and deck icons,
   - bottom deck liquid-glass opacity increased for readability,
@@ -41,8 +41,13 @@
     - CIWS fire audio emit now triggers on every real burst (no shared cooldown suppression).
   - UI/runtime hardening:
     - hunter deck icon hidden flags are force-cleared each refresh to prevent random icon disappearance.
+  - targeting/runtime fixes from latest pass:
+    - persistent hunter terminal engagement (retry instead of immediate turn-away egress) with bounded forced-kill attempt cap,
+    - lock-box coordinate-space fix for x-wing/small attack drones (arena-local alignment),
+    - long-range commit-gate relaxation so distant uncovered threats are targeted earlier,
+    - per-tick hunter target-index sanitization guard.
   - known active issue:
-    - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
+    - freeze severity reduced with safe-mode + state guards, but extended soak still required to fully clear intermittent long-run stalls.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -57,7 +62,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3923968 bytes` / `verified 3919672 bytes`
+- `wrote 3923968 bytes` / `verified 3920440 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
@@ -69,4 +74,4 @@ Observed success signatures:
 2. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
 3. Add project settings/help files and integrate with current workflow.
 4. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
-5. Investigate/fix intermittent runtime freeze and publish a stabilized soak-tested baseline.
+5. Run extended soak validation to confirm freeze resolution under current stability guard settings.

@@ -65,7 +65,7 @@
 #define CIWS_MAX_VERTICAL_FRAC    (0.44f)
 #define CITY_FIRE_MAX             (64)
 #define CITY_FIRE_RENDER_MAX      (64)
-#define RENDER_STABILITY_SAFE_MODE (0)
+#define RENDER_STABILITY_SAFE_MODE (1)
 #define FREEZE_DIAG_EFFECTS_BYPASS (0)
 #define FREEZE_DIAG_LOGIC_BYPASS   (0)
 #define FREEZE_DIAG_MINIMAL_LOOP   (0)
@@ -80,10 +80,14 @@
 #define H_LOCK_PERSIST_EDGE_SEC   (0.42f)
 #define H_SWITCH_COOLDOWN_ALGO    (0.54f)
 #define H_SWITCH_COOLDOWN_EDGE    (0.34f)
+#define H_TERMINAL_MAX_ATTEMPTS   (3)
 #define ATTACK_EVADE_RADIUS_FRAC  (0.23f)
 #define SETTINGS_ROW_COUNT        (5)
 #define BOOT_FLAME_GALLERY_MODE   (0)
 #define BOOT_FLAME_PROFILE_SEC    (5.0f)
+#define LOCK_BOX_SEG_COUNT        (8)
+#define LOCK_BOX_THICK_PX         (2)
+#define LOCK_BOX_PAD_PX           (6)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_RED    (1)
@@ -277,6 +281,7 @@ typedef struct
     lv_obj_t *hunter_prop_lower[HUNTER_COUNT];
 
     lv_obj_t *killers[KILLER_COUNT];
+    lv_obj_t *killer_lock_box[KILLER_COUNT][LOCK_BOX_SEG_COUNT];
     lv_obj_t *killer_wing[KILLER_COUNT];
     lv_obj_t *killer_wing_upper[KILLER_COUNT];
     lv_obj_t *killer_wing_lower[KILLER_COUNT];
@@ -363,6 +368,7 @@ typedef struct
     float h_overshoot_cooldown[HUNTER_COUNT];
     float h_lock_persist_t[HUNTER_COUNT];
     float h_switch_cooldown_t[HUNTER_COUNT];
+    int h_terminal_attempts[HUNTER_COUNT];
 
     float kx[KILLER_COUNT];
     float ky[KILLER_COUNT];
@@ -3433,9 +3439,23 @@ static int attack_variant_idx(const drone_hunter_scene_t *s, int k)
     return variant;
 }
 
+static int target_use_red_fixed_visual(const drone_hunter_scene_t *s, int k)
+{
+    if (s->ktype[k] != TARGET_FIXED_WING)
+    {
+        return 0;
+    }
+    if (s->threat_faction == THREAT_FACTION_USA)
+    {
+        return 1;
+    }
+    /* In Russia-themed waves, keep a mixed visual roster so red fixed-wing remains present. */
+    return (((s->k_serial[k] + (k * 3)) & 0x1) != 0);
+}
+
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k)
 {
-    return (s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA);
+    return (s->ktype[k] == TARGET_FIXED_WING) && !target_use_red_fixed_visual(s, k);
 }
 
 static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k)
@@ -3474,7 +3494,7 @@ static const lv_image_dsc_t *attack_image_src(const drone_hunter_scene_t *s, int
     (void)k;
     return &attack_shahed_yellow;
 #else
-    if ((s->ktype[k] == TARGET_FIXED_WING) && (s->threat_faction == THREAT_FACTION_RUSSIA))
+    if ((s->ktype[k] == TARGET_FIXED_WING) && !target_use_red_fixed_visual(s, k))
     {
         return &attack_shahed_yellow;
     }
@@ -4035,6 +4055,7 @@ static void reset_hunters(drone_hunter_scene_t *s)
         s->h_overshoot_cooldown[i] = 0.0f;
         s->h_lock_persist_t[i] = 0.0f;
         s->h_switch_cooldown_t[i] = 0.0f;
+        s->h_terminal_attempts[i] = 0;
         apply_hunter_profile(s, i);
     }
 }
@@ -4980,6 +5001,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->commit_attempts++;
         if (!s->k_commit_ok[target])
         {
+            int target_covered = target_has_assigned_hunter(s, target);
             switch (s->k_commit_reason[target])
             {
                 case COMMIT_REASON_DETECT_LOW:
@@ -4999,8 +5021,11 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     s->commit_hold_conf++;
                     break;
             }
-            /* Keep demo playable: launch anyway for urgent or high-threat tracks. */
-            if ((s->k_eta_to_goal[target] > 3.2f) && (s->k_threat_score[target] < 1.25f))
+            /* Long-range doctrine: do not stall if no hunter is covering this target. */
+            if ((s->k_eta_to_goal[target] > 6.0f) &&
+                (s->k_threat_score[target] < 0.95f) &&
+                (s->k_commit_conf[target] < 0.28f) &&
+                target_covered)
             {
                 return;
             }
@@ -5111,6 +5136,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_launch_penalty[h] = 0.0f;
         s->h_last_target_d2[h] = 0.0f;
         s->h_overshoot_cooldown[h] = 0.0f;
+        s->h_terminal_attempts[h] = 0;
         s->hx[h] = s->launch_sector_x[launch_sector];
         s->hy[h] = s->launch_sector_y[launch_sector];
         update_hunter_deck_ui(s);
@@ -5239,6 +5265,10 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     /* Prevent top-edge skating: if a hunter reaches the top arena boundary while climbing,
      * force horizon egress so it shrinks/fades out instead of sliding along the line. */
     if ((s->h_falling[h] == 0) &&
+        ((s->h_target_idx[h] < 0) ||
+         !s->killer_active[s->h_target_idx[h]] ||
+         s->k_dying[s->h_target_idx[h]] ||
+         (s->k_serial[s->h_target_idx[h]] != s->h_target_serial[h])) &&
         (s->hy[h] <= ((float)s->arena_y + 8.0f)) &&
         (s->hvy[h] < -0.05f))
     {
@@ -5246,6 +5276,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_target_idx[h] = -1;
         s->h_target_serial[h] = 0;
         s->h_reselect_sec[h] = 0.0f;
+        s->h_terminal_attempts[h] = 0;
         s->hvx[h] *= 0.28f;
         s->hvy[h] = -1.35f;
     }
@@ -5290,6 +5321,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 s->h_lock_persist_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_LOCK_PERSIST_EDGE_SEC : H_LOCK_PERSIST_ALGO_SEC;
                 s->h_switch_cooldown_t[h] = (s->team_ctrl[h] == CTRL_EDGEAI) ? H_SWITCH_COOLDOWN_EDGE : H_SWITCH_COOLDOWN_ALGO;
                 s->h_last_target_d2[h] = 0.0f;
+                s->h_terminal_attempts[h] = 0;
                 s->h_reacquire_events++;
                 note_failure(s, "Hunter reacquire: switched to nearby active threat", NULL);
             }
@@ -5299,6 +5331,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 note_failure(s, "Hunter miss: target lost and no viable reacquire", NULL);
                 s->h_falling[h] = 1;
                 s->h_last_target_d2[h] = 0.0f;
+                s->h_terminal_attempts[h] = 0;
                 if (s->hvy[h] < 0.0f)
                 {
                     s->hvy[h] *= 0.35f;
@@ -5333,7 +5366,14 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                 int manual_override = ((h == 0) && ((s->manual_selected_hunter >= 0) || (s->manual_selected_target >= 0))) ? 1 : 0;
                 int low_conf = (s->k_commit_conf[committed] < 0.45f) ? 1 : 0;
                 int ff_gate = (s->iff_advanced_mode && s->iff_degraded && s->iff_merged_tracks && manual_override && low_conf) ? 1 : 0;
+                int forced_kill = 0;
                 p_kill = clampf(p_kill - s->h_launch_penalty[h], 0.05f, 0.95f);
+                s->h_terminal_attempts[h]++;
+                if (s->h_terminal_attempts[h] > H_TERMINAL_MAX_ATTEMPTS)
+                {
+                    s->h_terminal_attempts[h] = H_TERMINAL_MAX_ATTEMPTS;
+                }
+                forced_kill = (s->h_terminal_attempts[h] >= H_TERMINAL_MAX_ATTEMPTS) ? 1 : 0;
 
                 if ((d2_now >= r2) && (d2_swept < r2))
                 {
@@ -5366,6 +5406,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                         s->h_last_target_d2[h] = 0.0f;
                         s->h_lock_persist_t[h] = 0.0f;
                         s->h_switch_cooldown_t[h] = 0.0f;
+                        s->h_terminal_attempts[h] = 0;
                         s->hvx[h] = 0.0f;
                         s->hvy[h] = 0.0f;
                         s->hx[h] = hunter_regroup_x(s, h, core_x);
@@ -5375,7 +5416,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     }
                 }
 
-                if (roll <= p_kill)
+                if ((roll <= p_kill) || forced_kill)
                 {
                     int pts = (s->ktype[committed] == TARGET_FIXED_WING) ? p->points_fixed : p->points_fpv;
                     float hit_x;
@@ -5426,6 +5467,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     s->h_last_target_d2[h] = 0.0f;
                     s->h_lock_persist_t[h] = 0.0f;
                     s->h_switch_cooldown_t[h] = 0.0f;
+                    s->h_terminal_attempts[h] = 0;
                     s->hvx[h] = 0.0f;
                     s->hvy[h] = 0.0f;
                     s->hx[h] = hunter_regroup_x(s, h, core_x);
@@ -5445,15 +5487,13 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                     {
                         note_failure(s, "Hunter miss: target evaded in terminal window", NULL);
                     }
-                    s->h_falling[h] = 1;
-                    s->h_last_target_d2[h] = 0.0f;
-                    s->h_lock_persist_t[h] = 0.0f;
-                    s->h_switch_cooldown_t[h] = 0.0f;
-                    if (s->hvy[h] < 0.0f)
-                    {
-                        s->hvy[h] *= 0.30f;
-                    }
-                    s->hvy[h] += 0.20f;
+                    /* Keep terminal pressure and retry instead of immediately dropping out. */
+                    s->h_reselect_sec[h] = 0.03f;
+                    s->h_lock_persist_t[h] = 0.10f;
+                    s->h_switch_cooldown_t[h] = 0.10f;
+                    s->h_overshoot_cooldown[h] = 0.20f;
+                    s->hvx[h] *= 0.72f;
+                    s->hvy[h] *= 0.72f;
                 }
             }
         }
@@ -5472,6 +5512,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_overshoot_cooldown[h] = 0.0f;
         s->h_lock_persist_t[h] = 0.0f;
         s->h_switch_cooldown_t[h] = 0.0f;
+        s->h_terminal_attempts[h] = 0;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;
@@ -5493,6 +5534,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_overshoot_cooldown[h] = 0.0f;
         s->h_lock_persist_t[h] = 0.0f;
         s->h_switch_cooldown_t[h] = 0.0f;
+        s->h_terminal_attempts[h] = 0;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;
@@ -5514,6 +5556,7 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
         s->h_overshoot_cooldown[h] = 0.0f;
         s->h_lock_persist_t[h] = 0.0f;
         s->h_switch_cooldown_t[h] = 0.0f;
+        s->h_terminal_attempts[h] = 0;
         s->hx[h] = regroup_x;
         s->hy[h] = regroup_y;
         s->hvx[h] = 0.0f;
@@ -6163,10 +6206,18 @@ static void update_positions(drone_hunter_scene_t *s)
     for (k = 0; k < KILLER_COUNT; ++k)
     {
         const lv_image_dsc_t *src = attack_image_src(s, k);
+        int lock_on = 0;
 
         if (!s->killer_active[k])
         {
             lv_obj_add_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
+            {
+                int si;
+                for (si = 0; si < LOCK_BOX_SEG_COUNT; ++si)
+                {
+                    lv_obj_add_flag(s->killer_lock_box[k][si], LV_OBJ_FLAG_HIDDEN);
+                }
+            }
             continue;
         }
         lv_image_set_src(s->killers[k], src);
@@ -6210,6 +6261,71 @@ static void update_positions(drone_hunter_scene_t *s)
         s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
         lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
         set_obj_center(s->killers[k], s->kx[k], s->ky[k]);
+
+        /* Red corner-only lock box while any hunter has this target locked. */
+        lock_on = target_has_assigned_hunter(s, k) && !s->k_dying[k];
+        if (lock_on)
+        {
+            lv_area_t ka;
+            lv_area_t aa;
+            float left;
+            float top;
+            float right;
+            float bottom;
+            float bw;
+            float bh;
+            int32_t t = LOCK_BOX_THICK_PX;
+            int32_t seg;
+
+            lv_obj_get_coords(s->killers[k], &ka);
+            lv_obj_get_coords(s->arena, &aa);
+            left = (float)(ka.x1 - aa.x1) - (float)LOCK_BOX_PAD_PX;
+            top = (float)(ka.y1 - aa.y1) - (float)LOCK_BOX_PAD_PX;
+            right = (float)(ka.x2 - aa.x1) + 1.0f + (float)LOCK_BOX_PAD_PX;
+            bottom = (float)(ka.y2 - aa.y1) + 1.0f + (float)LOCK_BOX_PAD_PX;
+            bw = clampf(right - left, 18.0f, 260.0f);
+            bh = clampf(bottom - top, 18.0f, 260.0f);
+            right = left + bw;
+            bottom = top + bh;
+            seg = (int32_t)clampf(((bw < bh) ? bw : bh) * 0.34f, 7.0f, 22.0f);
+
+            /* top-left */
+            lv_obj_set_pos(s->killer_lock_box[k][0], (int32_t)left, (int32_t)top);
+            lv_obj_set_size(s->killer_lock_box[k][0], seg, t);
+            lv_obj_set_pos(s->killer_lock_box[k][1], (int32_t)left, (int32_t)top);
+            lv_obj_set_size(s->killer_lock_box[k][1], t, seg);
+            /* top-right */
+            lv_obj_set_pos(s->killer_lock_box[k][2], (int32_t)(right - seg), (int32_t)top);
+            lv_obj_set_size(s->killer_lock_box[k][2], seg, t);
+            lv_obj_set_pos(s->killer_lock_box[k][3], (int32_t)(right - t), (int32_t)top);
+            lv_obj_set_size(s->killer_lock_box[k][3], t, seg);
+            /* bottom-left */
+            lv_obj_set_pos(s->killer_lock_box[k][4], (int32_t)left, (int32_t)(bottom - t));
+            lv_obj_set_size(s->killer_lock_box[k][4], seg, t);
+            lv_obj_set_pos(s->killer_lock_box[k][5], (int32_t)left, (int32_t)(bottom - seg));
+            lv_obj_set_size(s->killer_lock_box[k][5], t, seg);
+            /* bottom-right */
+            lv_obj_set_pos(s->killer_lock_box[k][6], (int32_t)(right - seg), (int32_t)(bottom - t));
+            lv_obj_set_size(s->killer_lock_box[k][6], seg, t);
+            lv_obj_set_pos(s->killer_lock_box[k][7], (int32_t)(right - t), (int32_t)(bottom - seg));
+            lv_obj_set_size(s->killer_lock_box[k][7], t, seg);
+
+            {
+                int si;
+                for (si = 0; si < LOCK_BOX_SEG_COUNT; ++si)
+                {
+                    lv_obj_clear_flag(s->killer_lock_box[k][si], LV_OBJ_FLAG_HIDDEN);
+                }
+            }
+        }
+        else
+        {
+            int si;
+            for (si = 0; si < LOCK_BOX_SEG_COUNT; ++si)
+            {
+                lv_obj_add_flag(s->killer_lock_box[k][si], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
     }
 
     set_obj_center(s->ciws, ciws_x, ciws_y);
@@ -6501,6 +6617,14 @@ static void anim_cb(lv_timer_t *timer)
         set_diag_stage(s, "DBG:UPDATE_HUNTERS");
         for (h = 0; h < HUNTER_COUNT; ++h)
         {
+            if ((s->h_target_idx[h] < -1) || (s->h_target_idx[h] >= KILLER_COUNT))
+            {
+                s->h_target_idx[h] = -1;
+                s->h_target_serial[h] = 0;
+                s->h_last_target_d2[h] = 0.0f;
+                s->h_overshoot_cooldown[h] = 0.0f;
+                s->h_terminal_attempts[h] = 0;
+            }
             if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
             {
                 int manual_gate = (h == 0) &&
@@ -6986,6 +7110,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
 
     for (i = 0; i < KILLER_COUNT; ++i)
     {
+        int seg_i;
         s->killers[i] = lv_image_create(s->arena);
         lv_obj_remove_style_all(s->killers[i]);
         lv_image_set_src(s->killers[i], &attack_shahed_yellow);
@@ -7007,6 +7132,15 @@ void drone_hunter_arena_start(lv_obj_t *screen)
         lv_obj_remove_style_all(s->killer_body[i]);
 
         s->killer_nose[i] = lv_obj_create(s->killers[i]);
+
+        for (seg_i = 0; seg_i < LOCK_BOX_SEG_COUNT; ++seg_i)
+        {
+            s->killer_lock_box[i][seg_i] = lv_obj_create(s->arena);
+            lv_obj_remove_style_all(s->killer_lock_box[i][seg_i]);
+            lv_obj_set_style_bg_color(s->killer_lock_box[i][seg_i], lv_color_hex(0xFF2020), 0);
+            lv_obj_set_style_bg_opa(s->killer_lock_box[i][seg_i], LV_OPA_COVER, 0);
+            lv_obj_add_flag(s->killer_lock_box[i][seg_i], LV_OBJ_FLAG_HIDDEN);
+        }
         lv_obj_remove_style_all(s->killer_nose[i]);
 
         s->fx_intercept[i] = lv_obj_create(s->arena);

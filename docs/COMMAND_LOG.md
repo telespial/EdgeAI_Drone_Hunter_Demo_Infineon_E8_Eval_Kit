@@ -1,5 +1,28 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Targeting/engagement/stability hardening pass in `drone_hunter_arena.c`:
+  - fixed red fixed-wing visibility composition by mixing fixed-wing visuals in Russia-themed waves,
+  - added persistent hunter terminal engagement behavior:
+    - hunters now retry in kill window instead of immediate egress on first miss,
+    - forced kill after bounded terminal attempts (`H_TERMINAL_MAX_ATTEMPTS=3`),
+  - corrected lock-box placement:
+    - switched to rendered-object bounds and converted from screen-space to arena-local coordinates,
+    - resolved severe x-wing/small-drone box offset,
+  - relaxed long-range commit gating:
+    - distant uncovered threats now launch earlier instead of waiting for close/urgent thresholds,
+  - freeze-risk mitigation:
+    - enabled render stability safe mode for city-fire path,
+    - added per-tick hunter target-index sanitization guard before `update_hunter()`.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3920440 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Hunter icon + CIWS fire audio reliability fix:
   - hardened deck icon stability in `update_hunter_deck_ui()` by force-clearing hidden flags and enforcing icon opacity per refresh tick,
   - changed CIWS fire audio emit policy in `ciws_fire_at()`:
