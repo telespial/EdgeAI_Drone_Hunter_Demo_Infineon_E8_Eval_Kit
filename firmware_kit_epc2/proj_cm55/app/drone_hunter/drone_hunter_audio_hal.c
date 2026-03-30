@@ -78,6 +78,7 @@ typedef struct
     uint32_t rng_state;
     uint32_t city_segment_target_samples;
     uint32_t city_segment_elapsed_samples;
+    bool city_segment_retarget_pending;
 } dh_audio_state_t;
 
 static dh_audio_state_t s_audio;
@@ -214,10 +215,12 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
         {
             s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
             s_audio.city_segment_elapsed_samples = 0u;
+            s_audio.city_segment_retarget_pending = false;
         }
 
         if (s_audio.city_segment_elapsed_samples >= s_audio.city_segment_target_samples)
         {
+            s_audio.city_segment_retarget_pending = true;
             /* Force a smooth return to file start at random 40-55 second boundaries. */
             if ((v->loop_xfade_samples > 0u) && (clip_samples > v->loop_xfade_samples))
             {
@@ -264,8 +267,12 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
             played_samples = v->pos_bytes / 2u;
             if (v == &s_audio.voice[DH_VOICE_BG_CITY])
             {
-                s_audio.city_segment_elapsed_samples = 0u;
-                s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+                if (s_audio.city_segment_retarget_pending)
+                {
+                    s_audio.city_segment_elapsed_samples = 0u;
+                    s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+                    s_audio.city_segment_retarget_pending = false;
+                }
             }
         }
         else
@@ -570,6 +577,9 @@ void drone_hunter_audio_play_event(uint32_t event_id, const char *asset_name, fl
             if (gain_q12 == 0u)
             {
                 s_audio.voice[DH_VOICE_BG_CITY].active = false;
+                s_audio.city_segment_elapsed_samples = 0u;
+                s_audio.city_segment_target_samples = 0u;
+                s_audio.city_segment_retarget_pending = false;
             }
             else
             {
@@ -580,6 +590,7 @@ void drone_hunter_audio_play_event(uint32_t event_id, const char *asset_name, fl
                     dh_voice_start(&s_audio.voice[DH_VOICE_BG_CITY], &city_clip, true, gain_q12, 0u);
                     s_audio.city_segment_elapsed_samples = 0u;
                     s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+                    s_audio.city_segment_retarget_pending = false;
                 }
             }
         }

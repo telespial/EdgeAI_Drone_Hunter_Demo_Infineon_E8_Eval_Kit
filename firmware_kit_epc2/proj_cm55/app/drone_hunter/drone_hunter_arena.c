@@ -758,14 +758,6 @@ static void sound_tick(drone_hunter_scene_t *s)
                                       sound_gain(DH_SOUND_CITY_TRAFFIC_AMBIENT), 1u);
         s->sound_city_loop_active = 1u;
     }
-    if (s->sound_city_loop_active && (s->t > 60.0f))
-    {
-        /* Stop city loop after first minute. */
-        drone_hunter_audio_play_event((uint32_t)DH_SOUND_CITY_TRAFFIC_AMBIENT,
-                                      sound_asset_name(DH_SOUND_CITY_TRAFFIC_AMBIENT),
-                                      0.0f, 1u);
-        s->sound_city_loop_active = 0u;
-    }
     if ((s->sound_ambulance_pending > 0u) && (s->t >= s->sound_next_ambulance_t))
     {
         dh_sound_event_t siren_ev = (scene_rng_range(s, 2) == 0) ? DH_SOUND_CITY_SIREN_A : DH_SOUND_CITY_SIREN_B;

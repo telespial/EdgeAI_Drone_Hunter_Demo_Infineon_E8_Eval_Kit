@@ -1,5 +1,26 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Explosion duration/fade extension + city wobble fix:
+  - regenerated explosion embedded clips with longer playback and tail fade-out:
+    - `dh_clip_attack_success.inc` -> `3.0s`,
+    - `dh_clip_hunter_kill.inc` -> `3.0s`,
+    - `dh_clip_ciws_kill.inc` -> `1.5s`,
+  - active explosion mapping now uses both recordings:
+    - `freesound_community-explosion-42132.mp3`,
+    - `freesound_community-medium-explosion-40472.mp3`,
+  - corrected city ambience quality regression by rebalancing embedded asset sizes:
+    - city ambient clip restored to `131072` bytes (`4.096s`) from source recording,
+    - siren clips resized to preserve linker fit.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3919672 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | City ambient max-fit loop policy + flash validation:
   - converted city ambient source to linker-safe max-fit embedded clip size:
     - `dh_clip_city_traffic.inc` -> `131072` bytes (`4.096s` at 16 kHz mono PCM),

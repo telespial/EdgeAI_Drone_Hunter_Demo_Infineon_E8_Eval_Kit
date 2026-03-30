@@ -21,7 +21,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3932160 bytes`, `verified 3927688 bytes`
+- `wrote 3923968 bytes`, `verified 3919672 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -39,7 +39,8 @@
   - runtime now emits real sample audio per event instead of synthesized test tones.
 - Audio mix and event routing pass applied:
   - all sounds now use fade in/out envelopes,
-  - explosions were extended for longer tails,
+  - explosions were extended to ~2x duration with longer fade-out tails,
+  - two explosion source recordings are actively mapped across explosion events,
   - ambulance clip was extended significantly,
   - successful attacks now schedule delayed ambulance response (8-15 seconds),
   - city traffic + random gunfire beds play in 3-6 second randomized segments,
@@ -52,6 +53,7 @@
   - city bed runs continuously in-game,
   - random city segment timing window is `40-55` seconds,
   - each segment boundary forces a crossfade return to clip start.
+  - city/ambulance clip-size rebalance applied to remove audible micro-loop wobble while preserving fit.
 - Top HUD text rows and `SET | HELP` button are removed.
 - Explosion mapping is enforced by visual drone class:
   - Shahed: large orange, fixed-wing: red, X-wing DJI: small white.
@@ -76,7 +78,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,927,688 bytes`
+- CM55 verified image size (external SMIF): `3,919,672 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

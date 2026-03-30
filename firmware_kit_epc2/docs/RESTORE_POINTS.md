@@ -5,8 +5,8 @@
 - Failsafe rolling label: `failsafe-e8-drone-hunter`
 
 ## Latest Dated Restore Folders (2026-03-30)
-- Golden folder: `golden-20260330-phase15-city-maxfit-rand40-55-crossfade-20260330_131722`
-- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-city-maxfit-rand40-55-crossfade-20260330_131722`
+- Golden folder: `golden-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`
+- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`
 
 ## Restore Artifacts Location
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`
@@ -28,7 +28,7 @@ Each restore point contains:
 ## Latest Flash Signatures
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3932160 bytes` / `verified 3927688 bytes`
+- `wrote 3923968 bytes` / `verified 3919672 bytes`
 
 ## Recovery Command
 ```bash

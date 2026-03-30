@@ -35,6 +35,9 @@
     - latest requested master gain uplift,
     - max-fit city ambient asset footprint for linker-safe runtime,
     - continuous city bed with random `40-55` second segment windows and crossfade-to-start at segment boundary.
+    - explosion assets extended to ~2x prior duration with stronger fade-out tails,
+    - explosion mapping now actively uses two source recordings,
+    - asset-size rebalance to remove city micro-loop wobble while maintaining build fit.
   - known active issue:
     - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
 
@@ -51,7 +54,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3932160 bytes` / `verified 3927688 bytes`
+- `wrote 3923968 bytes` / `verified 3919672 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
