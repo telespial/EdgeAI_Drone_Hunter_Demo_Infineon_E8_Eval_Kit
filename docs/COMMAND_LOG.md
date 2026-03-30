@@ -1,5 +1,25 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Siren source-length rebuild + flash verification:
+  - rebuilt emergency siren assets from original MP3 sources:
+    - `dh_clip_siren_a.inc` -> 12 seconds (`384000` bytes),
+    - `dh_clip_siren_b.inc` -> 12 seconds (`384000` bytes),
+  - retained runtime behavior:
+    - random siren playback window (`3-6` seconds),
+    - fade-in/fade-out handling from audio voice envelope logic,
+  - regenerated top-level CM55 artifacts from latest ELF and ran full validated flash flow.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3850240 bytes` / `verified 3847704 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Planning/docs refresh:
+  - added new priority TODO step for intermittent game freeze investigation/hardening baseline delivery.
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-audio-sirens12s-freeze-todo-20260330_123055`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-audio-sirens12s-freeze-todo-20260330_123055`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Audio mix refinement pass (fade + loudness + duration + persistent bed):
   - regenerated selected embedded PCM clip blobs for longer duration:
     - extended explosions (`attack_success`, `hunter_kill`, `ciws_kill`),

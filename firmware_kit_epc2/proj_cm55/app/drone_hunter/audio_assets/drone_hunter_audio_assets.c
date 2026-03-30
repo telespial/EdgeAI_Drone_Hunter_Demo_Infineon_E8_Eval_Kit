@@ -11,6 +11,7 @@
 #include "generated/dh_clip_city_fire.inc"
 #include "generated/dh_clip_drone_fixed.inc"
 #include "generated/dh_clip_drone_fpv.inc"
+#include "generated/dh_clip_drone_shahed.inc"
 #include "generated/dh_clip_gunfire1.inc"
 #include "generated/dh_clip_gunfire2.inc"
 #include "generated/dh_clip_ciws_fire.inc"
@@ -25,9 +26,10 @@
 #define DH_AUDIO_EVENT_CITY_FIRE_LOOP        (6u)
 #define DH_AUDIO_EVENT_DRONE_FIXED_WING_LOOP (7u)
 #define DH_AUDIO_EVENT_DRONE_FPV_LOOP        (8u)
-#define DH_AUDIO_EVENT_GUNFIRE1              (9u)
-#define DH_AUDIO_EVENT_GUNFIRE2              (10u)
-#define DH_AUDIO_EVENT_CIWS_FIRE             (11u)
+#define DH_AUDIO_EVENT_DRONE_SHAHED_LOOP     (9u)
+#define DH_AUDIO_EVENT_GUNFIRE1              (10u)
+#define DH_AUDIO_EVENT_GUNFIRE2              (11u)
+#define DH_AUDIO_EVENT_CIWS_FIRE             (12u)
 
 bool dh_audio_get_clip(uint32_t event_id, dh_audio_clip_t *out_clip)
 {
@@ -71,8 +73,13 @@ bool dh_audio_get_clip(uint32_t event_id, dh_audio_clip_t *out_clip)
             out_clip->len_bytes = (uint32_t)dh_clip_drone_fixed_len;
             return true;
         case DH_AUDIO_EVENT_DRONE_FPV_LOOP:
-            out_clip->data = dh_clip_drone_fpv;
-            out_clip->len_bytes = (uint32_t)dh_clip_drone_fpv_len;
+            /* Avoid short-loop artifacts from the tiny FPV clip by using the longer drone bed. */
+            out_clip->data = dh_clip_drone_fixed;
+            out_clip->len_bytes = (uint32_t)dh_clip_drone_fixed_len;
+            return true;
+        case DH_AUDIO_EVENT_DRONE_SHAHED_LOOP:
+            out_clip->data = dh_clip_drone_shahed;
+            out_clip->len_bytes = (uint32_t)dh_clip_drone_shahed_len;
             return true;
         case DH_AUDIO_EVENT_GUNFIRE1:
             out_clip->data = dh_clip_gunfire1;

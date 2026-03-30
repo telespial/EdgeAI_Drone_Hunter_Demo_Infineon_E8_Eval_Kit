@@ -16,11 +16,12 @@
 2. Improve attacker + defender `ALGO` strategy depth and fun factor.
 3. Add settings/help documentation files and wire them into workflow.
 4. Schedule flame redraw phase (detailed redraw scope pending kickoff).
+5. Investigate intermittent gameplay freeze and deliver hardened no-freeze baseline.
 
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3932160 bytes`, `verified 3927384 bytes`
+- `wrote 3850240 bytes`, `verified 3847704 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -70,7 +71,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,927,384 bytes`
+- CM55 verified image size (external SMIF): `3,847,704 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy

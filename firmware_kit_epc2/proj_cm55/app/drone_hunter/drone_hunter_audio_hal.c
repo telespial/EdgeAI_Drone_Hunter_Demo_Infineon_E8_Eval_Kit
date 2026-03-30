@@ -24,24 +24,27 @@ extern cy_stc_scb_i2c_context_t disp_touch_i2c_controller_context;
 #define DH_AUDIO_EVENT_CITY_FIRE_LOOP        (6u)
 #define DH_AUDIO_EVENT_DRONE_FIXED_WING_LOOP (7u)
 #define DH_AUDIO_EVENT_DRONE_FPV_LOOP        (8u)
-#define DH_AUDIO_EVENT_GUNFIRE1              (9u)
-#define DH_AUDIO_EVENT_GUNFIRE2              (10u)
-#define DH_AUDIO_EVENT_CIWS_FIRE             (11u)
+#define DH_AUDIO_EVENT_DRONE_SHAHED_LOOP     (9u)
+#define DH_AUDIO_EVENT_GUNFIRE1              (10u)
+#define DH_AUDIO_EVENT_GUNFIRE2              (11u)
+#define DH_AUDIO_EVENT_CIWS_FIRE             (12u)
 
 #define DH_AUDIO_SAMPLE_RATE_HZ   (16000u)
 #define DH_AUDIO_I2C_ADDR_CODEC   (0x18u)
 #define DH_AUDIO_I2C_TIMEOUT_MS   (12u)
 #define DH_AUDIO_I2C_RETRIES      (3u)
-#define DH_AUDIO_EVENT_MAX        (12u)
+#define DH_AUDIO_EVENT_MAX        (13u)
 #define DH_AUDIO_QUEUE_MASK       (31u)
 #define DH_AUDIO_FADE_IN_MS       (120u)
 #define DH_AUDIO_FADE_OUT_MS      (180u)
+#define DH_AUDIO_LOOP_XFADE_MS    (140u)
 
 typedef enum
 {
     DH_VOICE_BG_CITY = 0,
     DH_VOICE_BG_DRONE,
-    DH_VOICE_SFX,
+    DH_VOICE_SFX_A,
+    DH_VOICE_SFX_B,
     DH_VOICE_COUNT
 } dh_voice_id_t;
 
@@ -56,6 +59,8 @@ typedef struct
     int32_t gain_cur_q12;
     int32_t gain_target_q12;
     int32_t gain_step_q12;
+    uint32_t loop_xfade_samples;
+    uint32_t loop_start_sample;
 } dh_voice_t;
 
 typedef struct
@@ -72,6 +77,7 @@ typedef struct
 } dh_audio_state_t;
 
 static dh_audio_state_t s_audio;
+static const bool s_audio_all_muted = false;
 
 static int16_t dh_audio_next_sample(void);
 static void dh_audio_fill_tx_fifo(void);
@@ -144,6 +150,8 @@ static void dh_voice_apply_fade(dh_voice_t *v)
 
 static void dh_voice_start(dh_voice_t *v, const dh_audio_clip_t *clip, bool loop, uint16_t gain_q12, uint32_t max_samples)
 {
+    uint32_t clip_samples;
+
     v->data = clip->data;
     v->len_bytes = clip->len_bytes & ~1u;
     v->pos_bytes = 0u;
@@ -153,6 +161,19 @@ static void dh_voice_start(dh_voice_t *v, const dh_audio_clip_t *clip, bool loop
     v->gain_cur_q12 = 0;
     v->gain_target_q12 = (int32_t)gain_q12;
     v->gain_step_q12 = dh_gain_step_q12(DH_AUDIO_FADE_IN_MS);
+    v->loop_xfade_samples = 0u;
+    v->loop_start_sample = 0u;
+    clip_samples = v->len_bytes / 2u;
+    if (loop && (clip_samples > 8u))
+    {
+        uint32_t want = (DH_AUDIO_SAMPLE_RATE_HZ * DH_AUDIO_LOOP_XFADE_MS) / 1000u;
+        uint32_t cap = clip_samples / 3u;
+        if (want > cap)
+        {
+            want = cap;
+        }
+        v->loop_xfade_samples = (want > 0u) ? want : 1u;
+    }
 }
 
 static int16_t dh_voice_next_sample(dh_voice_t *v)
@@ -185,8 +206,26 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
     {
         if (v->loop)
         {
-            v->pos_bytes = 0u;
-            played_samples = 0u;
+            if ((v == &s_audio.voice[DH_VOICE_BG_DRONE]) && (clip_samples > (v->loop_xfade_samples + 128u)))
+            {
+                /* De-periodize short drone loops by rotating loop start per wrap. */
+                uint32_t min_start = clip_samples / 10u;
+                uint32_t max_start = clip_samples - v->loop_xfade_samples - 1u;
+                if (max_start > min_start)
+                {
+                    v->loop_start_sample = min_start + (dh_rand_next() % (max_start - min_start + 1u));
+                }
+                else
+                {
+                    v->loop_start_sample = 0u;
+                }
+            }
+            else
+            {
+                v->loop_start_sample = 0u;
+            }
+            v->pos_bytes = v->loop_start_sample * 2u;
+            played_samples = v->pos_bytes / 2u;
         }
         else
         {
@@ -216,7 +255,33 @@ static int16_t dh_voice_next_sample(dh_voice_t *v)
     if (v->pos_bytes + 1u < v->len_bytes)
     {
         uint32_t p = v->pos_bytes;
-        int16_t raw = (int16_t)((uint16_t)v->data[p] | ((uint16_t)v->data[p + 1u] << 8));
+        int16_t raw;
+        uint32_t pos_sample = v->pos_bytes / 2u;
+
+        if (v->loop && (v->loop_xfade_samples > 0u) && (clip_samples > v->loop_xfade_samples))
+        {
+            uint32_t xfade_start = clip_samples - v->loop_xfade_samples;
+            if (pos_sample >= xfade_start)
+            {
+                uint32_t phase = pos_sample - xfade_start;
+                uint32_t head_sample = v->loop_start_sample + phase;
+                uint32_t tail_p = pos_sample * 2u;
+                uint32_t head_p = head_sample * 2u;
+                int32_t tail_raw = (int16_t)((uint16_t)v->data[tail_p] | ((uint16_t)v->data[tail_p + 1u] << 8));
+                int32_t head_raw = (int16_t)((uint16_t)v->data[head_p] | ((uint16_t)v->data[head_p + 1u] << 8));
+                int32_t tail_w = (int32_t)(v->loop_xfade_samples - phase);
+                int32_t head_w = (int32_t)phase;
+                raw = (int16_t)((tail_raw * tail_w + head_raw * head_w) / (int32_t)v->loop_xfade_samples);
+            }
+            else
+            {
+                raw = (int16_t)((uint16_t)v->data[p] | ((uint16_t)v->data[p + 1u] << 8));
+            }
+        }
+        else
+        {
+            raw = (int16_t)((uint16_t)v->data[p] | ((uint16_t)v->data[p + 1u] << 8));
+        }
         int32_t scaled = ((int32_t)raw * v->gain_cur_q12) / 4096;
         if (scaled > 32767)
         {
@@ -353,25 +418,20 @@ static void dh_audio_set_bg_drone(uint8_t event_id, uint16_t gain_q12)
 static void dh_audio_start_random_city_segment(void)
 {
     dh_audio_clip_t clip;
-    uint8_t pick = (uint8_t)(dh_rand_next() % 3u);
-    uint8_t ev = DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT;
+    uint8_t pick = (uint8_t)(dh_rand_next() % 2u);
+    uint8_t ev = DH_AUDIO_EVENT_GUNFIRE1;
     uint32_t seg_sec = 3u + (dh_rand_next() % 4u); /* 3..6 sec */
-    float gain = 0.10f;
+    float gain = 0.09f;
 
-    if (pick == 1u)
+    if (pick == 0u)
     {
         ev = DH_AUDIO_EVENT_GUNFIRE1;
         gain = 0.09f;
     }
-    else if (pick == 2u)
+    else
     {
         ev = DH_AUDIO_EVENT_GUNFIRE2;
         gain = 0.09f;
-    }
-    else
-    {
-        ev = DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT;
-        gain = 0.11f;
     }
 
     if (!dh_audio_get_clip(ev, &clip))
@@ -414,10 +474,13 @@ static bool dh_audio_init_once(void)
     Cy_AudioTDM_ActivateTx(CYBSP_TDM_CONTROLLER_0_TX_HW);
 
     s_audio.master_gain_q12 = 44010u; /* 3x louder than previous master setting. */
-    s_audio.bg_drone_event = DH_AUDIO_EVENT_DRONE_FIXED_WING_LOOP;
+    s_audio.bg_drone_event = DH_AUDIO_EVENT_DRONE_SHAHED_LOOP;
 
-    dh_audio_start_random_city_segment();
-    dh_audio_set_bg_drone(DH_AUDIO_EVENT_DRONE_FIXED_WING_LOOP, dh_gain_from_float(0.42f));
+    /* Global mute profile: keep all voices inactive. */
+    s_audio.voice[DH_VOICE_BG_CITY].active = false;
+    s_audio.voice[DH_VOICE_BG_DRONE].active = false;
+    s_audio.voice[DH_VOICE_SFX_A].active = false;
+    s_audio.voice[DH_VOICE_SFX_B].active = false;
 
     s_audio.init_ok = true;
     return true;
@@ -436,25 +499,44 @@ void drone_hunter_audio_play_event(uint32_t event_id, const char *asset_name, fl
     {
         return;
     }
+    if (s_audio_all_muted)
+    {
+        return;
+    }
+
+    /* Keep only: explosions, CIWS fire, ambulance, firetruck. */
+    if ((event_id != DH_AUDIO_EVENT_ATTACK_SUCCESS_LOUD) &&
+        (event_id != DH_AUDIO_EVENT_HUNTER_KILL_MEDIUM) &&
+        (event_id != DH_AUDIO_EVENT_CIWS_KILL_LIGHT) &&
+        (event_id != DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT) &&
+        (event_id != DH_AUDIO_EVENT_CITY_SIREN_A) &&
+        (event_id != DH_AUDIO_EVENT_CITY_SIREN_B) &&
+        (event_id != DH_AUDIO_EVENT_CIWS_FIRE))
+    {
+        return;
+    }
 
     gain_q12 = dh_gain_from_float(gain);
 
     if (looped)
     {
-        if ((event_id == DH_AUDIO_EVENT_DRONE_FIXED_WING_LOOP) || (event_id == DH_AUDIO_EVENT_DRONE_FPV_LOOP))
-        {
-            float bg_gain = (event_id == DH_AUDIO_EVENT_DRONE_FPV_LOOP) ? 0.36f : 0.42f;
-            if (s_audio.bg_drone_event != (uint8_t)event_id)
-            {
-                dh_audio_set_bg_drone((uint8_t)event_id, dh_gain_from_float(bg_gain));
-            }
-            return;
-        }
         if (event_id == DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT)
         {
-            /* City bed is already random (traffic/gunfire1/gunfire2 segments). */
-            return;
+            if (gain_q12 == 0u)
+            {
+                s_audio.voice[DH_VOICE_BG_CITY].active = false;
+            }
+            else
+            {
+                dh_audio_clip_t city_clip;
+                if (dh_audio_get_clip(event_id, &city_clip))
+                {
+                    /* Loop with built-in crossfade for seamless end-to-begin restarts. */
+                    dh_voice_start(&s_audio.voice[DH_VOICE_BG_CITY], &city_clip, true, gain_q12, 0u);
+                }
+            }
         }
+        return;
     }
 
     (void)dh_audio_queue_push((uint8_t)event_id, gain_q12);
@@ -473,34 +555,49 @@ static int16_t dh_audio_next_sample(void)
 {
     int32_t mix = 0;
 
-    if (!s_audio.voice[DH_VOICE_BG_CITY].active)
+    if (s_audio_all_muted)
     {
-        dh_audio_start_random_city_segment();
+        return 0;
     }
 
-    if (!s_audio.voice[DH_VOICE_SFX].active)
+    /* Explosions-only profile: no autonomous background bed playback. */
+
+    while (!s_audio.voice[DH_VOICE_SFX_A].active || !s_audio.voice[DH_VOICE_SFX_B].active)
     {
         uint8_t ev;
         uint16_t g;
-        if (dh_audio_queue_pop(&ev, &g))
+        dh_voice_t *slot;
+        dh_audio_clip_t clip;
+        uint32_t max_samples = 0u;
+
+        if (!dh_audio_queue_pop(&ev, &g))
         {
-            dh_audio_clip_t clip;
-            uint32_t max_samples = 0u;
-            if (dh_audio_get_clip(ev, &clip))
-            {
-                if (ev == DH_AUDIO_EVENT_CIWS_FIRE)
-                {
-                    /* Keep CIWS fire as a short, punchy burst per trigger. */
-                    max_samples = DH_AUDIO_SAMPLE_RATE_HZ / 2u; /* 0.5 s */
-                }
-                dh_voice_start(&s_audio.voice[DH_VOICE_SFX], &clip, false, g, max_samples);
-            }
+            break;
         }
+
+        if (!dh_audio_get_clip(ev, &clip))
+        {
+            continue;
+        }
+
+        slot = !s_audio.voice[DH_VOICE_SFX_A].active ? &s_audio.voice[DH_VOICE_SFX_A] : &s_audio.voice[DH_VOICE_SFX_B];
+        if (ev == DH_AUDIO_EVENT_CIWS_FIRE)
+        {
+            /* Keep CIWS fire as a short, punchy burst per trigger. */
+            max_samples = DH_AUDIO_SAMPLE_RATE_HZ / 2u; /* 0.5 s */
+        }
+        else if ((ev == DH_AUDIO_EVENT_CITY_SIREN_A) || (ev == DH_AUDIO_EVENT_CITY_SIREN_B))
+        {
+            /* Emergency bed duration randomized to 3..6 seconds. */
+            max_samples = (3u + (dh_rand_next() % 4u)) * DH_AUDIO_SAMPLE_RATE_HZ;
+        }
+        dh_voice_start(slot, &clip, false, g, max_samples);
     }
 
     mix += (int32_t)dh_voice_next_sample(&s_audio.voice[DH_VOICE_BG_CITY]);
     mix += (int32_t)dh_voice_next_sample(&s_audio.voice[DH_VOICE_BG_DRONE]);
-    mix += (int32_t)dh_voice_next_sample(&s_audio.voice[DH_VOICE_SFX]);
+    mix += (int32_t)dh_voice_next_sample(&s_audio.voice[DH_VOICE_SFX_A]);
+    mix += (int32_t)dh_voice_next_sample(&s_audio.voice[DH_VOICE_SFX_B]);
 
     mix = (int32_t)(((int64_t)mix * (int64_t)s_audio.master_gain_q12) / 4096LL);
     if (mix > 32767)

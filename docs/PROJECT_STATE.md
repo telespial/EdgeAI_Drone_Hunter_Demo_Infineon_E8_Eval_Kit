@@ -33,6 +33,8 @@
     - randomized 3-6 second city/gunfire background segment scheduling,
     - elevated drone bed levels for persistent audibility,
     - latest requested master gain uplift.
+  - known active issue:
+    - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -47,7 +49,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3932160 bytes` / `verified 3927384 bytes`
+- `wrote 3850240 bytes` / `verified 3847704 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
@@ -59,3 +61,4 @@ Observed success signatures:
 2. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
 3. Add project settings/help files and integrate with current workflow.
 4. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
+5. Investigate/fix intermittent runtime freeze and publish a stabilized soak-tested baseline.

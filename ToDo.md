@@ -54,6 +54,10 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
    - tiny white/tungsten ground-level flickers across city footprint,
    - flicker sprite size target: `1px` to `3px` squares,
    - low-intensity, randomized timing/placement to avoid visual noise.
+6. Investigate and fix intermittent gameplay freeze:
+   - capture freeze stage using `DBG:*` banner and timestamped logs,
+   - isolate whether freeze is render-loop, audio mixer, or scheduling related,
+   - deliver a hardened no-freeze baseline plus soak-test checklist.
 
 ## Plan For #1 (Audio Overhaul)
 1. Audio asset inventory pass:

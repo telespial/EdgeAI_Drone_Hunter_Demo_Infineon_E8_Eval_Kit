@@ -49,10 +49,12 @@
 #define CIWS_AMMO_PER_GUN         (CIWS_MAG_CAPACITY * CIWS_MAGS_PER_GUN)
 #define CIWS_TRACER_COUNT         (160)
 #define CIWS_TRACER_LIFE_SEC      (0.30f)
+#define CIWS_TRACER_DELAY_SEC     (0.05f)
 #define CIWS_FIRE_COOLDOWN_SEC    (0.006f)
 #define CIWS_BURST_PELLETS        (14)
 #define CIWS_AMMO_PER_TRIGGER     (24)
 #define CIWS_LOCK_BAD_THRESH      (0.35f)
+#define CIWS_LOCK_SOUND_THRESH    (0.55f)
 #define CIWS_RANGE_FRAC           (0.75f)
 #define CIWS_SWEEP_SPEED_RAD      (1.9f)
 #define CIWS_SWEEP_HALF_CONE      (0.14f)
@@ -237,9 +239,10 @@ typedef enum
     DH_SOUND_CITY_FIRE_LOOP,
     DH_SOUND_DRONE_FIXED_WING_LOOP,
     DH_SOUND_DRONE_FPV_LOOP,
-    /* Reserve 9/10 for HAL-only random background gunfire events. */
-    DH_SOUND_CIWS_FIRE = 11,
-    DH_SOUND_COUNT = 12
+    DH_SOUND_DRONE_SHAHED_LOOP,
+    /* Reserve 10/11 for HAL-only random background gunfire events. */
+    DH_SOUND_CIWS_FIRE = 12,
+    DH_SOUND_COUNT = 13
 } dh_sound_event_t;
 
 typedef struct
@@ -402,6 +405,7 @@ typedef struct
     float ciws_tracer_y1[CIWS_TRACER_COUNT];
     float ciws_tracer_g[CIWS_TRACER_COUNT];
     float ciws_tracer_scale[CIWS_TRACER_COUNT];
+    float ciws_tracer_delay[CIWS_TRACER_COUNT];
 
     int killer_spawn_tick;
     target_type_t ktype[KILLER_COUNT];
@@ -529,6 +533,7 @@ typedef struct
     float sound_next_drone_fpv_t;
     float sound_next_ambulance_t;
     uint32_t sound_ambulance_pending;
+    uint8_t sound_city_loop_active;
     uint32_t sound_emit_count[DH_SOUND_COUNT];
     uint32_t rng_state;
     uint32_t strategy_replan_tick;
@@ -644,13 +649,15 @@ static const char *sound_asset_name(dh_sound_event_t ev)
         case DH_SOUND_CITY_SIREN_B:
             return "sounds/city sounds/youssefmizani-ambulance-sound-451364.mp3";
         case DH_SOUND_CITY_TRAFFIC_AMBIENT:
-            return "sounds/city sounds/jadeallencook-night-city-side-street-with-passing-cars-and-distant-urban-ambience-339223.mp3";
+            return "sounds/city sounds/night-city-side-street-with-passing-cars-and-distant-urban-ambience.mp3";
         case DH_SOUND_CITY_FIRE_LOOP:
             return "sounds/city sounds/soundreality-fire-sound-334130.mp3";
         case DH_SOUND_DRONE_FIXED_WING_LOOP:
-            return "sounds/drone sounds/Shahed1.mp3";
+            return "sounds/drone sounds/drone1.mp3";
         case DH_SOUND_DRONE_FPV_LOOP:
             return "sounds/drone sounds/xwing.mp3";
+        case DH_SOUND_DRONE_SHAHED_LOOP:
+            return "sounds/drone sounds/Shahed1.mp3";
         case DH_SOUND_CIWS_FIRE:
             return "sounds/misc sounds/CIWS firing.mp3";
         case DH_SOUND_COUNT:
@@ -667,11 +674,12 @@ static float sound_gain(dh_sound_event_t ev)
         case DH_SOUND_HUNTER_KILL_MEDIUM: return 0.46f;
         case DH_SOUND_CIWS_KILL_LIGHT: return 0.34f;
         case DH_SOUND_CITY_SIREN_A: return 0.34f;
-        case DH_SOUND_CITY_SIREN_B: return 0.34f;
+        case DH_SOUND_CITY_SIREN_B: return 0.20f; /* -4.5 dB from prior 0.34 gain */
         case DH_SOUND_CITY_TRAFFIC_AMBIENT: return 0.20f;
         case DH_SOUND_CITY_FIRE_LOOP: return 0.22f;
-        case DH_SOUND_DRONE_FIXED_WING_LOOP: return 0.18f;
-        case DH_SOUND_DRONE_FPV_LOOP: return 0.16f;
+        case DH_SOUND_DRONE_FIXED_WING_LOOP: return 0.22f;
+        case DH_SOUND_DRONE_FPV_LOOP: return 0.24f;
+        case DH_SOUND_DRONE_SHAHED_LOOP: return 0.00f;
         case DH_SOUND_CIWS_FIRE: return 0.44f;
         case DH_SOUND_COUNT:
         default: return 0.50f;
@@ -683,7 +691,8 @@ static uint8_t sound_is_loop(dh_sound_event_t ev)
     return (ev == DH_SOUND_CITY_TRAFFIC_AMBIENT ||
             ev == DH_SOUND_CITY_FIRE_LOOP ||
             ev == DH_SOUND_DRONE_FIXED_WING_LOOP ||
-            ev == DH_SOUND_DRONE_FPV_LOOP) ? 1u : 0u;
+            ev == DH_SOUND_DRONE_FPV_LOOP ||
+            ev == DH_SOUND_DRONE_SHAHED_LOOP) ? 1u : 0u;
 }
 
 static void sound_emit(drone_hunter_scene_t *s, dh_sound_event_t ev, float cooldown_sec)
@@ -718,16 +727,17 @@ static void sound_schedule_ambulance(drone_hunter_scene_t *s)
         return;
     }
 
-    /* Trigger ambulance 8-15 seconds after each successful attacker hit. */
-    delay_sec = 8.0f + (float)scene_rng_range(s, 8);
+    /* Trigger emergency siren 2-4 seconds after each successful attacker hit. */
+    delay_sec = 2.0f + (float)scene_rng_range(s, 3);
     s->sound_next_ambulance_t = s->t + delay_sec;
 }
 
 static void sound_tick(drone_hunter_scene_t *s)
 {
     int i;
-    int active_fixed = 0;
+    int active_other = 0;
     int active_fpv = 0;
+    int active_shahed = 0;
     if (s == NULL)
     {
         return;
@@ -741,18 +751,29 @@ static void sound_tick(drone_hunter_scene_t *s)
         return;
     }
 
-    if (s->t >= s->sound_next_traffic_t)
+    if (!s->sound_city_loop_active && (s->t <= 60.0f))
     {
-        sound_emit(s, DH_SOUND_CITY_TRAFFIC_AMBIENT, 10.0f);
-        s->sound_next_traffic_t = s->t + 26.0f;
+        drone_hunter_audio_play_event((uint32_t)DH_SOUND_CITY_TRAFFIC_AMBIENT,
+                                      sound_asset_name(DH_SOUND_CITY_TRAFFIC_AMBIENT),
+                                      sound_gain(DH_SOUND_CITY_TRAFFIC_AMBIENT), 1u);
+        s->sound_city_loop_active = 1u;
+    }
+    if (s->sound_city_loop_active && (s->t > 60.0f))
+    {
+        /* Stop city loop after first minute. */
+        drone_hunter_audio_play_event((uint32_t)DH_SOUND_CITY_TRAFFIC_AMBIENT,
+                                      sound_asset_name(DH_SOUND_CITY_TRAFFIC_AMBIENT),
+                                      0.0f, 1u);
+        s->sound_city_loop_active = 0u;
     }
     if ((s->sound_ambulance_pending > 0u) && (s->t >= s->sound_next_ambulance_t))
     {
-        sound_emit(s, DH_SOUND_CITY_SIREN_B, 0.25f);
+        dh_sound_event_t siren_ev = (scene_rng_range(s, 2) == 0) ? DH_SOUND_CITY_SIREN_A : DH_SOUND_CITY_SIREN_B;
+        sound_emit(s, siren_ev, 0.25f);
         s->sound_ambulance_pending--;
         if (s->sound_ambulance_pending > 0u)
         {
-            float delay_sec = 8.0f + (float)scene_rng_range(s, 8);
+            float delay_sec = 2.0f + (float)scene_rng_range(s, 3);
             s->sound_next_ambulance_t = s->t + delay_sec;
         }
     }
@@ -770,7 +791,14 @@ static void sound_tick(drone_hunter_scene_t *s)
         }
         if (s->ktype[i] == TARGET_FIXED_WING)
         {
-            active_fixed++;
+            if (target_is_shahed_visual(s, i))
+            {
+                active_shahed++;
+            }
+            else
+            {
+                active_other++;
+            }
         }
         else
         {
@@ -778,32 +806,23 @@ static void sound_tick(drone_hunter_scene_t *s)
         }
     }
 
-    if (active_fixed > 0)
+    if ((active_shahed > 0) || (active_fpv > 0) || (active_other > 0))
     {
         if (s->t >= s->sound_next_drone_fixed_t)
         {
-            float cadence = clampf(7.0f - ((float)active_fixed * 1.2f), 3.0f, 7.0f);
-            sound_emit(s, DH_SOUND_DRONE_FIXED_WING_LOOP, 2.0f);
-            s->sound_next_drone_fixed_t = s->t + cadence;
+            /* Use one stable long drone bed for all non-Shahed targets to avoid short-loop switching artifacts. */
+            dh_sound_event_t drone_ev = DH_SOUND_DRONE_FIXED_WING_LOOP;
+            if ((active_other <= 0) && (active_fpv <= 0) && (active_shahed > 0))
+            {
+                drone_ev = DH_SOUND_DRONE_SHAHED_LOOP;
+            }
+            sound_emit(s, drone_ev, 0.0f);
+            s->sound_next_drone_fixed_t = s->t + 0.75f;
         }
     }
     else
     {
-        s->sound_next_drone_fixed_t = s->t + 1.6f;
-    }
-
-    if (active_fpv > 0)
-    {
-        if (s->t >= s->sound_next_drone_fpv_t)
-        {
-            float cadence = clampf(5.2f - ((float)active_fpv * 0.9f), 2.2f, 5.2f);
-            sound_emit(s, DH_SOUND_DRONE_FPV_LOOP, 1.2f);
-            s->sound_next_drone_fpv_t = s->t + cadence;
-        }
-    }
-    else
-    {
-        s->sound_next_drone_fpv_t = s->t + 1.1f;
+        s->sound_next_drone_fixed_t = s->t + 0.4f;
     }
 }
 
@@ -1764,7 +1783,11 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     }
     *ammo -= ammo_spent;
     s->ciws_shots++;
-    sound_emit(s, DH_SOUND_CIWS_FIRE, 0.06f);
+    /* Only play CIWS fire audio for in-envelope, high-lock bursts to avoid phantom fire sound. */
+    if ((d_px <= effective_px) && (lock_q >= CIWS_LOCK_SOUND_THRESH))
+    {
+        sound_emit(s, DH_SOUND_CIWS_FIRE, 0.20f);
+    }
     if ((d_px > effective_px) || (lock_q < CIWS_LOCK_BAD_THRESH))
     {
         if ((s->ciws_shots % 8) == 0)
@@ -1790,6 +1813,7 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
 
             s->ciws_tracer_head++;
             s->ciws_tracer_t[ti] = tracer_life;
+            s->ciws_tracer_delay[ti] = CIWS_TRACER_DELAY_SEC;
             s->ciws_tracer_x0[ti] = gun_x + (dir_x * 6.0f);
             s->ciws_tracer_y0[ti] = gun_y + (dir_y * 6.0f);
             s->ciws_tracer_x1[ti] = (dir_x - (dir_y * spread)) * speed;
@@ -4237,6 +4261,7 @@ static void reset_round(drone_hunter_scene_t *s)
     s->sound_next_drone_fpv_t = 0.8f;
     s->sound_next_ambulance_t = 0.0f;
     s->sound_ambulance_pending = 0u;
+    s->sound_city_loop_active = 0u;
     for (i = 0; i < DH_SOUND_COUNT; ++i)
     {
         s->sound_cd[i] = 0.0f;
@@ -4311,6 +4336,7 @@ static void reset_round(drone_hunter_scene_t *s)
         s->ciws_tracer_t[i] = 0.0f;
         s->ciws_tracer_g[i] = 0.0f;
         s->ciws_tracer_scale[i] = 1.0f;
+        s->ciws_tracer_delay[i] = 0.0f;
     }
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
@@ -6039,6 +6065,11 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     {
         if (s->ciws_tracer_t[k] > 0.0f)
         {
+            if (s->ciws_tracer_delay[k] > 0.0f)
+            {
+                lv_obj_add_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
+                continue;
+            }
             float life_ratio = clampf(s->ciws_tracer_t[k] / CIWS_TRACER_LIFE_SEC, 0.0f, 1.0f);
             float depth = clampf(depth_zoom_factor_for_y(s, s->ciws_tracer_y0[k]), 0.58f, 1.34f);
             float stream_scale = clampf((s->ciws_tracer_scale[k] * 0.55f) + (depth * 0.45f), 0.52f, 1.35f);
@@ -6505,9 +6536,13 @@ static void anim_cb(lv_timer_t *timer)
         {
             if (s->ciws_tracer_t[k] > 0.0f)
             {
-                s->ciws_tracer_x0[k] += s->ciws_tracer_x1[k] * DT_SEC;
-                s->ciws_tracer_y0[k] += s->ciws_tracer_y1[k] * DT_SEC;
-                s->ciws_tracer_y1[k] += s->ciws_tracer_g[k] * DT_SEC;
+                s->ciws_tracer_delay[k] = clampf(s->ciws_tracer_delay[k] - DT_SEC, 0.0f, CIWS_TRACER_DELAY_SEC);
+                if (s->ciws_tracer_delay[k] <= 0.0f)
+                {
+                    s->ciws_tracer_x0[k] += s->ciws_tracer_x1[k] * DT_SEC;
+                    s->ciws_tracer_y0[k] += s->ciws_tracer_y1[k] * DT_SEC;
+                    s->ciws_tracer_y1[k] += s->ciws_tracer_g[k] * DT_SEC;
+                }
             }
             s->ciws_tracer_t[k] = clampf(s->ciws_tracer_t[k] - DT_SEC, 0.0f, CIWS_TRACER_LIFE_SEC);
         }
