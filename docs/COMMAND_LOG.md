@@ -1,5 +1,22 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Freeze investigation pass (strategy/launch transition focus):
+  - reviewed launch/strategy paths in `update_hunter()` and city-fire accumulation flow,
+  - added explicit launch-target bounds guard before commit/launch branch (`target` must be in `[0, KILLER_COUNT)`),
+  - hardened fire-state bounds:
+    - `city_fire_nearest_d2()` now clamps loop bound to `CITY_FIRE_MAX`,
+    - `anim_cb()` now clamps `city_fire_count` and `city_fire_head` every tick.
+  - intent: remove potential out-of-range/state-drift freeze vectors observed around strategy shifts and launch events.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3920440 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Targeting/engagement/stability hardening pass in `drone_hunter_arena.c`:
   - fixed red fixed-wing visibility composition by mixing fixed-wing visuals in Russia-themed waves,
   - added persistent hunter terminal engagement behavior:

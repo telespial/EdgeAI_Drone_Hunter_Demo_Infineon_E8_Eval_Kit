@@ -5,8 +5,8 @@
 - Failsafe rolling label: `failsafe-e8-drone-hunter`
 
 ## Latest Dated Restore Folders (2026-03-30)
-- Golden folder: `golden-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`
-- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`
+- Golden folder: `golden-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`
+- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`
 
 ## Restore Artifacts Location
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`

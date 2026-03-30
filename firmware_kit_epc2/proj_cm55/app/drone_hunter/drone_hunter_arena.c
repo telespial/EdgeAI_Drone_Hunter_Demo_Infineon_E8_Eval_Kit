@@ -984,8 +984,17 @@ static int city_fire_pick_profile(float seed, int intensity)
 static float city_fire_nearest_d2(const drone_hunter_scene_t *s, float x, float y)
 {
     int i;
+    int n = s->city_fire_count;
     float best = 1.0e30f;
-    for (i = 0; i < s->city_fire_count; ++i)
+    if (n < 0)
+    {
+        n = 0;
+    }
+    if (n > CITY_FIRE_MAX)
+    {
+        n = CITY_FIRE_MAX;
+    }
+    for (i = 0; i < n; ++i)
     {
         float d2 = dist2(x, y, s->city_fire_x[i], s->city_fire_y[i]);
         if (d2 < best)
@@ -2568,9 +2577,18 @@ static int hunter_is_high_speed_tier(hunter_type_t h)
 static int target_has_assigned_hunter(const drone_hunter_scene_t *s, int target)
 {
     int h;
+    if ((target < 0) || (target >= KILLER_COUNT) || !s->killer_active[target] || s->k_dying[target])
+    {
+        return 0;
+    }
     for (h = 0; h < HUNTER_COUNT; ++h)
     {
-        if (s->hunter_loaded[h] && (s->h_target_idx[h] == target))
+        if (!s->hunter_loaded[h] || (s->h_falling[h] != 0))
+        {
+            continue;
+        }
+        if ((s->h_target_idx[h] == target) &&
+            (s->h_target_serial[h] == s->k_serial[target]))
         {
             return 1;
         }
@@ -4994,6 +5012,10 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     {
         target = s->manual_selected_target;
     }
+    if ((target < 0) || (target >= KILLER_COUNT))
+    {
+        return;
+    }
 
     /* Commit gate: launch only when staged pipeline marks target as committable. */
     if (!s->hunter_loaded[h])
@@ -6597,6 +6619,14 @@ static void anim_cb(lv_timer_t *timer)
 #endif
 
     s->t += 0.040f * speed_pp_mult(s);
+    if ((s->city_fire_count < 0) || (s->city_fire_count > CITY_FIRE_MAX))
+    {
+        s->city_fire_count = (s->city_fire_count < 0) ? 0 : CITY_FIRE_MAX;
+    }
+    if ((s->city_fire_head < 0) || (s->city_fire_head >= CITY_FIRE_MAX))
+    {
+        s->city_fire_head = 0;
+    }
     set_diag_stage(s, "DBG:ANIM_TICK");
     drone_hunter_audio_heartbeat();
     sound_tick(s);

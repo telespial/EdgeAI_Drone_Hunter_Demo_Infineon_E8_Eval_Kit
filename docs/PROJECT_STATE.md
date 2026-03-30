@@ -46,8 +46,12 @@
     - lock-box coordinate-space fix for x-wing/small attack drones (arena-local alignment),
     - long-range commit-gate relaxation so distant uncovered threats are targeted earlier,
     - per-tick hunter target-index sanitization guard.
+  - freeze investigation update (strategy/launch transition focus):
+    - added explicit launch-target bounds guard in `update_hunter()` to prevent invalid target-slot access,
+    - clamped city-fire loop cardinality/head state each tick (`city_fire_count`/`city_fire_head`) to prevent array overrun if state drifts,
+    - clamped nearest-fire scan loop bound to `CITY_FIRE_MAX`.
   - known active issue:
-    - freeze severity reduced with safe-mode + state guards, but extended soak still required to fully clear intermittent long-run stalls.
+    - freeze severity reduced with safe-mode + launch/state guards; extended soak still required to confirm full resolution.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`

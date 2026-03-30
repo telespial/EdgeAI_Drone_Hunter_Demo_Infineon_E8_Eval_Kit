@@ -69,6 +69,10 @@
 - Render stability safe mode is enabled for city-fire drawing path.
 - Additional runtime hardening for freeze risk:
   - per-tick hunter target-index sanitization before hunter updates.
+  - strategy/launch transition guards:
+    - explicit launch-target index bounds check before commit/launch flow,
+    - per-tick `city_fire_count`/`city_fire_head` clamp to valid bounds,
+    - bounded nearest-fire scan loop (`<= CITY_FIRE_MAX`).
 - Latest engagement/targeting behavior updates:
   - hunters now persist in terminal intercept and retry close-range attacks before disengage,
   - long-range commit gate loosened so distant uncovered threats are engaged earlier,
