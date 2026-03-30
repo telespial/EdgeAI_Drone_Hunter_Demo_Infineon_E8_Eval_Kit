@@ -1775,11 +1775,8 @@ static int ciws_fire_at(drone_hunter_scene_t *s, int k, float gun_x, float gun_y
     }
     *ammo -= ammo_spent;
     s->ciws_shots++;
-    /* Only play CIWS fire audio for in-envelope, high-lock bursts to avoid phantom fire sound. */
-    if ((d_px <= effective_px) && (lock_q >= CIWS_LOCK_SOUND_THRESH))
-    {
-        sound_emit(s, DH_SOUND_CIWS_FIRE, 0.20f);
-    }
+    /* Play CIWS fire on every real burst; no shared cooldown so both guns can sound. */
+    sound_emit(s, DH_SOUND_CIWS_FIRE, 0.0f);
     if ((d_px > effective_px) || (lock_q < CIWS_LOCK_BAD_THRESH))
     {
         if ((s->ciws_shots % 8) == 0)
@@ -3685,6 +3682,10 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
         int in_use = (s->h_type[0] == (hunter_type_t)i) || (s->h_type[1] == (hunter_type_t)i);
         int selected = (s->manual_selected_hunter == i);
         int stock_live = (s->hunter_stock[i] > 0) ? 1 : 0;
+        /* Keep deck icons pinned visible each refresh to avoid random hide/show glitches. */
+        lv_obj_clear_flag(s->deck_icon[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_opa(s->deck_icon[i], LV_OPA_COVER, 0);
+        lv_obj_set_style_image_opa(s->deck_icon[i], LV_OPA_COVER, 0);
         if (prev_icon_live[i] != stock_live)
         {
             /* Keep deck icons visually stable; avoid periodic opacity flicker. */

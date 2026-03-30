@@ -72,8 +72,13 @@
 - Hunter icon anti-flicker stabilization pass:
   - unloaded hunter sprites no longer hide/show thrash per frame,
   - deck hunter icons use stable opacity.
+  - additional deck icon hardening:
+    - icon hidden flags are force-cleared each UI refresh to prevent random disappear/reappear.
 - Bottom deck liquid-glass bar opacity increased by ~20% for better readability.
 - CIWS structures remain fixed while bullet streams target dynamically.
+- CIWS audio reliability hardening:
+  - CIWS fire sound is now emitted on every real burst trigger,
+  - shared event cooldown suppression removed so left/right guns can both produce fire audio.
 - Exhaustion-mode battle ending is active.
 - Restore script path remains stable and validated.
 

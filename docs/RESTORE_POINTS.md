@@ -5,8 +5,8 @@
 - Failsafe rolling label: `failsafe-e8-drone-hunter`
 
 ## Latest Dated Restore Folders (2026-03-30)
-- Golden folder: `golden-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`
-- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-explosion2x-citywobble-fix-20260330_133456`
+- Golden folder: `golden-20260330-phase15-hunter-icon-ciws-audio-fix-20260330_135213`
+- Failsafe folder: `failsafe-e8-drone-hunter-20260330-phase15-hunter-icon-ciws-audio-fix-20260330_135213`
 
 ## Restore Artifacts Location
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`

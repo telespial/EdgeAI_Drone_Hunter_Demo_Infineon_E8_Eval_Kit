@@ -1,5 +1,20 @@
 # COMMAND_LOG
 
+- 2026-03-30 | Hunter icon + CIWS fire audio reliability fix:
+  - hardened deck icon stability in `update_hunter_deck_ui()` by force-clearing hidden flags and enforcing icon opacity per refresh tick,
+  - changed CIWS fire audio emit policy in `ciws_fire_at()`:
+    - emit CIWS fire sound on every real burst trigger,
+    - removed shared `0.20s` cooldown gate for CIWS fire event to prevent left/right gun suppression.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3919672 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-hunter-icon-ciws-audio-fix-20260330_135213`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-hunter-icon-ciws-audio-fix-20260330_135213`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Explosion duration/fade extension + city wobble fix:
   - regenerated explosion embedded clips with longer playback and tail fade-out:
     - `dh_clip_attack_success.inc` -> `3.0s`,

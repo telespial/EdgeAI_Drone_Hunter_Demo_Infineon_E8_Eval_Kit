@@ -38,6 +38,9 @@
     - explosion assets extended to ~2x prior duration with stronger fade-out tails,
     - explosion mapping now actively uses two source recordings,
     - asset-size rebalance to remove city micro-loop wobble while maintaining build fit.
+    - CIWS fire audio emit now triggers on every real burst (no shared cooldown suppression).
+  - UI/runtime hardening:
+    - hunter deck icon hidden flags are force-cleared each refresh to prevent random icon disappearance.
   - known active issue:
     - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
 
