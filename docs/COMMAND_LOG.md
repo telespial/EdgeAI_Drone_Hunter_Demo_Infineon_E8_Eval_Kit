@@ -1,5 +1,25 @@
 # COMMAND_LOG
 
+- 2026-04-01 | Freeze hardening pass (audio/runtime race + tracer):
+  - `drone_hunter_audio_hal.c`:
+    - bounded `dh_audio_fill_tx_fifo()` loop with write cap + no-progress break,
+    - removed heartbeat-side FIFO refill to keep mixer mutation ISR-driven,
+    - made queue push IRQ-safe (`PRIMASK` lock/unlock),
+    - routed looped city-event start/stop through queue/sample path (single audio context).
+  - `drone_hunter_arena.c`:
+    - added always-visible top arena `DBG:*` tracer label for freeze-stage capture.
+  - `wrap_angle()` cleanup retained from freeze pass: removed unbounded while normalization.
+- 2026-04-01 | Build/artifact refresh:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (`no work to do`),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from current ELF via `arm-none-eabi-objcopy`.
+- 2026-04-01 | Flash attempt status:
+  - direct flashing retried but blocked by probe detection:
+    - `Error: unable to find a matching CMSIS-DAP device`.
+- 2026-04-01 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260401-phase15-freeze-audio-race-tracer-20260401_104044`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`,
+  - moved `current_golden` and `current_failsafe` symlinks to this baseline.
+
 - 2026-03-30 | Freeze investigation pass (strategy/launch transition focus):
   - reviewed launch/strategy paths in `update_hunter()` and city-fire accumulation flow,
   - added explicit launch-target bounds guard before commit/launch branch (`target` must be in `[0, KILLER_COUNT)`),

@@ -1,6 +1,6 @@
 # EdgeAI Drone Hunter - Roadmap and Phase Tracker
 
-Date: 2026-03-30
+Date: 2026-04-01
 Canonical rules source: `rules.md`
 Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -58,6 +58,7 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
    - capture freeze stage using `DBG:*` banner and timestamped logs,
    - isolate whether freeze is render-loop, audio mixer, or scheduling related,
    - deliver a hardened no-freeze baseline plus soak-test checklist.
+   - status: freeze tracer now forced visible; latest pass hardened audio race paths (FIFO bounds + IRQ-safe queue + single-context mixer mutation).
 
 ## Plan For #1 (Audio Overhaul)
 1. Audio asset inventory pass:

@@ -1,6 +1,6 @@
 # STATUS
 
-- Date: 2026-03-30
+- Date: 2026-04-01
 - Branch: `main`
 - Runtime baseline: full clean rebuild and full 3-image flash validated on hardware.
 
@@ -9,7 +9,7 @@
 - In progress: `15`
 - Planned next: `16`
 
-## Current Priority Queue (2026-03-30)
+## Current Priority Queue (2026-04-01)
 1. Replace speaker-test (`pong`) audio behavior with gameplay event soundscape:
    - explosions, city ambience, drone sounds, sirens, firetruck, ambulance,
    - event-timed layering and escalation rules.
@@ -21,10 +21,16 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3923968 bytes`, `verified 3919672 bytes`
+- `wrote 3923968 bytes`, `verified 3920440 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
+- Freeze investigation hardening (latest):
+  - audio FIFO fill loop now has bounded writes and no-progress escape guards,
+  - audio heartbeat no longer mutates mixer state outside ISR context,
+  - queued event push is IRQ-safe to avoid ISR/main-context queue races,
+  - city loop event handling is applied in single audio context (sample path),
+  - `DBG:*` tracer is now always visible on arena for freeze-stage capture.
 - Opening attacker sequences now use strategic stochastic composition (not fixed replay):
   - splash start reseeds and resets the round,
   - doctrine biases are preserved while release order varies run-to-run.
@@ -66,7 +72,17 @@
 - Additional freeze-hardening deployed:
   - city-fire render budget reduced,
   - flame sprite/style updates throttled.
-- Animated city-fire rendering is re-enabled (safe fallback mode disabled).
+- Render stability safe mode is enabled for city-fire drawing path.
+- Additional runtime hardening for freeze risk:
+  - per-tick hunter target-index sanitization before hunter updates.
+  - strategy/launch transition guards:
+    - explicit launch-target index bounds check before commit/launch flow,
+    - per-tick `city_fire_count`/`city_fire_head` clamp to valid bounds,
+    - bounded nearest-fire scan loop (`<= CITY_FIRE_MAX`).
+- Latest engagement/targeting behavior updates:
+  - hunters now persist in terminal intercept and retry close-range attacks before disengage,
+  - long-range commit gate loosened so distant uncovered threats are engaged earlier,
+  - lock boxes now use arena-local coordinates and correctly surround x-wing/small attack drones.
 - Fire profile mapping is now centralized with weighted selection:
   - 75% bright bucket, 25% dark bucket.
 - Hunter icon anti-flicker stabilization pass:
@@ -89,3 +105,8 @@
 ## Restore Policy
 - Golden: latest validated milestone baseline.
 - Failsafe: latest validated direct-recovery baseline.
+
+## Restore Snapshot (2026-04-01)
+- Golden label: `golden-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
+- Failsafe label: `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
+- Current flash availability note: direct flash on 2026-04-01 was blocked by probe detection (`unable to find a matching CMSIS-DAP device`).

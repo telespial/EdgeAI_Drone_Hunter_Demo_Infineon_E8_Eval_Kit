@@ -101,6 +101,18 @@ static uint32_t dh_rand_next(void)
     return x;
 }
 
+static uint32_t dh_irq_lock(void)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    return primask;
+}
+
+static void dh_irq_unlock(uint32_t primask)
+{
+    __set_PRIMASK(primask);
+}
+
 static uint32_t dh_audio_pick_city_segment_samples(void)
 {
     uint32_t span = (DH_CITY_SEGMENT_MAX_S - DH_CITY_SEGMENT_MIN_S) + 1u;
@@ -433,14 +445,17 @@ static bool dh_audio_codec_init_tlv320dac3100(void)
 
 static bool dh_audio_queue_push(uint8_t event_id, uint16_t gain_q12)
 {
+    uint32_t irq_key = dh_irq_lock();
     uint8_t next_tail = (uint8_t)((s_audio.q_tail + 1u) & DH_AUDIO_QUEUE_MASK);
     if (next_tail == s_audio.q_head)
     {
+        dh_irq_unlock(irq_key);
         return false;
     }
     s_audio.q_event[s_audio.q_tail] = event_id;
     s_audio.q_gain_q12[s_audio.q_tail] = gain_q12;
     s_audio.q_tail = next_tail;
+    dh_irq_unlock(irq_key);
     return true;
 }
 
@@ -570,33 +585,10 @@ void drone_hunter_audio_play_event(uint32_t event_id, const char *asset_name, fl
 
     gain_q12 = dh_gain_from_float(gain);
 
-    if (looped)
+    if (looped && (event_id != DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT))
     {
-        if (event_id == DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT)
-        {
-            if (gain_q12 == 0u)
-            {
-                s_audio.voice[DH_VOICE_BG_CITY].active = false;
-                s_audio.city_segment_elapsed_samples = 0u;
-                s_audio.city_segment_target_samples = 0u;
-                s_audio.city_segment_retarget_pending = false;
-            }
-            else
-            {
-                dh_audio_clip_t city_clip;
-                if (dh_audio_get_clip(event_id, &city_clip))
-                {
-                    /* Loop with built-in crossfade for seamless end-to-begin restarts. */
-                    dh_voice_start(&s_audio.voice[DH_VOICE_BG_CITY], &city_clip, true, gain_q12, 0u);
-                    s_audio.city_segment_elapsed_samples = 0u;
-                    s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
-                    s_audio.city_segment_retarget_pending = false;
-                }
-            }
-        }
         return;
     }
-
     (void)dh_audio_queue_push((uint8_t)event_id, gain_q12);
 }
 
@@ -606,7 +598,8 @@ void drone_hunter_audio_heartbeat(void)
     {
         return;
     }
-    dh_audio_fill_tx_fifo();
+    /* Keep audio state mutation single-context (ISR only) to avoid races that can
+     * corrupt queue/voice state under heavy gameplay event bursts. */
 }
 
 static int16_t dh_audio_next_sample(void)
@@ -635,6 +628,25 @@ static int16_t dh_audio_next_sample(void)
 
         if (!dh_audio_get_clip(ev, &clip))
         {
+            continue;
+        }
+
+        if (ev == DH_AUDIO_EVENT_CITY_TRAFFIC_AMBIENT)
+        {
+            if (g == 0u)
+            {
+                s_audio.voice[DH_VOICE_BG_CITY].active = false;
+                s_audio.city_segment_elapsed_samples = 0u;
+                s_audio.city_segment_target_samples = 0u;
+                s_audio.city_segment_retarget_pending = false;
+            }
+            else
+            {
+                dh_voice_start(&s_audio.voice[DH_VOICE_BG_CITY], &clip, true, g, 0u);
+                s_audio.city_segment_elapsed_samples = 0u;
+                s_audio.city_segment_target_samples = dh_audio_pick_city_segment_samples();
+                s_audio.city_segment_retarget_pending = false;
+            }
             continue;
         }
 
@@ -672,11 +684,35 @@ static int16_t dh_audio_next_sample(void)
 
 static void dh_audio_fill_tx_fifo(void)
 {
-    while (Cy_AudioTDM_GetNumInTxFifo(CYBSP_TDM_CONTROLLER_0_TX_HW) < 120u)
+    uint32_t level = Cy_AudioTDM_GetNumInTxFifo(CYBSP_TDM_CONTROLLER_0_TX_HW);
+    uint32_t writes = 0u;
+    uint32_t no_progress = 0u;
+    const uint32_t target_level = 120u;
+    const uint32_t max_writes = 256u;
+
+    while ((level < target_level) && (writes < max_writes))
     {
         uint16_t u = (uint16_t)dh_audio_next_sample();
         Cy_AudioTDM_WriteTxData(CYBSP_TDM_CONTROLLER_0_TX_HW, (uint32_t)u);
         Cy_AudioTDM_WriteTxData(CYBSP_TDM_CONTROLLER_0_TX_HW, (uint32_t)u);
+        writes++;
+
+        {
+            uint32_t next_level = Cy_AudioTDM_GetNumInTxFifo(CYBSP_TDM_CONTROLLER_0_TX_HW);
+            if (next_level <= level)
+            {
+                no_progress++;
+                if (no_progress >= 32u)
+                {
+                    break;
+                }
+            }
+            else
+            {
+                no_progress = 0u;
+            }
+            level = next_level;
+        }
     }
 }
 

@@ -3082,11 +3082,12 @@ static float wrap_angle(float a)
     {
         return 0.0f;
     }
-    while (a > PI_F)
+
+    if (a > PI_F)
     {
         a -= 2.0f * PI_F;
     }
-    while (a < -PI_F)
+    else if (a < -PI_F)
     {
         a += 2.0f * PI_F;
     }
@@ -6963,9 +6964,23 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xD1ECFF), 0);
     lv_obj_align(s->hud_defend_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
 
-    /* Debug banner fully disabled in normal runtime UX. */
-    s->hud_diag_stage = NULL;
+    /* Freeze tracer: always-visible stage label for field debugging. */
+    s->hud_diag_stage = lv_label_create(s->arena);
     s->hud_diag_text[0] = '\0';
+    lv_label_set_text(s->hud_diag_stage, "DBG:BOOT");
+    lv_obj_set_style_text_font(s->hud_diag_stage, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(s->hud_diag_stage, lv_color_hex(0xFDE68A), 0);
+    lv_obj_set_style_bg_color(s->hud_diag_stage, lv_color_hex(0x111827), 0);
+    lv_obj_set_style_bg_opa(s->hud_diag_stage, (lv_opa_t)160, 0);
+    lv_obj_set_style_pad_left(s->hud_diag_stage, 4, 0);
+    lv_obj_set_style_pad_right(s->hud_diag_stage, 4, 0);
+    lv_obj_set_style_pad_top(s->hud_diag_stage, 1, 0);
+    lv_obj_set_style_pad_bottom(s->hud_diag_stage, 1, 0);
+    lv_obj_set_style_radius(s->hud_diag_stage, 3, 0);
+    lv_obj_set_width(s->hud_diag_stage, s->arena_w - 8);
+    lv_obj_align(s->hud_diag_stage, LV_ALIGN_TOP_MID, 0, 2);
+    lv_obj_clear_flag(s->hud_diag_stage, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(s->hud_diag_stage);
 
     s->mode_btn = NULL;
     s->mode_btn_label = NULL;

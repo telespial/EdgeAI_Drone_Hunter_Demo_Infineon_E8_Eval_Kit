@@ -1,5 +1,65 @@
 # COMMAND_LOG
 
+- 2026-04-01 | Freeze hardening pass (audio/runtime race + tracer):
+  - `drone_hunter_audio_hal.c`:
+    - bounded `dh_audio_fill_tx_fifo()` loop with write cap + no-progress break,
+    - removed heartbeat-side FIFO refill to keep mixer mutation ISR-driven,
+    - made queue push IRQ-safe (`PRIMASK` lock/unlock),
+    - routed looped city-event start/stop through queue/sample path (single audio context).
+  - `drone_hunter_arena.c`:
+    - added always-visible top arena `DBG:*` tracer label for freeze-stage capture.
+  - `wrap_angle()` cleanup retained from freeze pass: removed unbounded while normalization.
+- 2026-04-01 | Build/artifact refresh:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (`no work to do`),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from current ELF via `arm-none-eabi-objcopy`.
+- 2026-04-01 | Flash attempt status:
+  - direct flashing retried but blocked by probe detection:
+    - `Error: unable to find a matching CMSIS-DAP device`.
+- 2026-04-01 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260401-phase15-freeze-audio-race-tracer-20260401_104044`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`,
+  - moved `current_golden` and `current_failsafe` symlinks to this baseline.
+
+- 2026-03-30 | Freeze investigation pass (strategy/launch transition focus):
+  - reviewed launch/strategy paths in `update_hunter()` and city-fire accumulation flow,
+  - added explicit launch-target bounds guard before commit/launch branch (`target` must be in `[0, KILLER_COUNT)`),
+  - hardened fire-state bounds:
+    - `city_fire_nearest_d2()` now clamps loop bound to `CITY_FIRE_MAX`,
+    - `anim_cb()` now clamps `city_fire_count` and `city_fire_head` every tick.
+  - intent: remove potential out-of-range/state-drift freeze vectors observed around strategy shifts and launch events.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3920440 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-freeze-strategy-launch-guard-20260330_151631`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
+- 2026-03-30 | Targeting/engagement/stability hardening pass in `drone_hunter_arena.c`:
+  - fixed red fixed-wing visibility composition by mixing fixed-wing visuals in Russia-themed waves,
+  - added persistent hunter terminal engagement behavior:
+    - hunters now retry in kill window instead of immediate egress on first miss,
+    - forced kill after bounded terminal attempts (`H_TERMINAL_MAX_ATTEMPTS=3`),
+  - corrected lock-box placement:
+    - switched to rendered-object bounds and converted from screen-space to arena-local coordinates,
+    - resolved severe x-wing/small-drone box offset,
+  - relaxed long-range commit gating:
+    - distant uncovered threats now launch earlier instead of waiting for close/urgent thresholds,
+  - freeze-risk mitigation:
+    - enabled render stability safe mode for city-fire path,
+    - added per-tick hunter target-index sanitization guard before `update_hunter()`.
+- 2026-03-30 | Flash verification signatures (latest):
+  - `wrote 32768 bytes` / `verified 30456 bytes`
+  - `wrote 12288 bytes` / `verified 8732 bytes`
+  - `wrote 3923968 bytes` / `verified 3920440 bytes`
+  - `** Resetting Target **`
+- 2026-03-30 | Restore-point promotion refresh:
+  - promoted golden: `golden-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`,
+  - promoted failsafe: `failsafe-e8-drone-hunter-20260330-phase15-targeting-lockbox-freeze-stability-20260330_145332`,
+  - moved `current_golden` and `current_failsafe` symlinks to this validated baseline.
+
 - 2026-03-30 | Hunter icon + CIWS fire audio reliability fix:
   - hardened deck icon stability in `update_hunter_deck_ui()` by force-clearing hidden flags and enforcing icon opacity per refresh tick,
   - changed CIWS fire audio emit policy in `ciws_fire_at()`:

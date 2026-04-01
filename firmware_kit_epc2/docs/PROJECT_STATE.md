@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-30
+- Last Updated: 2026-04-01
 - Primary runtime file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -17,7 +17,7 @@
   - CIWS stationary-structure + dynamic stream behavior,
   - inventory exhaustion end mode,
   - flame/render freeze-hardening pass (reduced fire render budget + sprite update throttle),
-  - full animated city-fire rendering active (safe-mode fallback disabled),
+  - render stability safe mode active for city-fire path to reduce freeze risk during active gameplay,
   - centralized fire profile mapping with weighted selection (75% bright, 25% dark),
   - hunter icon anti-flicker stabilization for both in-flight sprites and deck icons,
   - bottom deck liquid-glass opacity increased for readability,
@@ -41,8 +41,23 @@
     - CIWS fire audio emit now triggers on every real burst (no shared cooldown suppression).
   - UI/runtime hardening:
     - hunter deck icon hidden flags are force-cleared each refresh to prevent random icon disappearance.
+  - targeting/runtime fixes from latest pass:
+    - persistent hunter terminal engagement (retry instead of immediate turn-away egress) with bounded forced-kill attempt cap,
+    - lock-box coordinate-space fix for x-wing/small attack drones (arena-local alignment),
+    - long-range commit-gate relaxation so distant uncovered threats are targeted earlier,
+    - per-tick hunter target-index sanitization guard.
+  - freeze investigation update (strategy/launch transition focus):
+    - added explicit launch-target bounds guard in `update_hunter()` to prevent invalid target-slot access,
+    - clamped city-fire loop cardinality/head state each tick (`city_fire_count`/`city_fire_head`) to prevent array overrun if state drifts,
+    - clamped nearest-fire scan loop bound to `CITY_FIRE_MAX`.
+  - freeze investigation update (audio/runtime race focus):
+    - bounded audio FIFO fill with no-progress break conditions,
+    - removed non-ISR heartbeat mixer mutation,
+    - made audio event queue push IRQ-safe,
+    - moved looped city event application into single audio context path,
+    - enabled always-visible arena `DBG:*` tracer label for freeze-stage capture.
   - known active issue:
-    - intermittent gameplay freeze still observed in some runs; freeze-hardening remains an active priority item.
+    - freeze severity reduced with safe-mode + launch/state guards; extended soak still required to confirm full resolution.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -57,8 +72,10 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3923968 bytes` / `verified 3919672 bytes`
+- `wrote 3923968 bytes` / `verified 3920440 bytes`
 - `** Resetting Target **`
+- 2026-04-01 flash note:
+  - direct flash retry blocked by probe detection (`unable to find a matching CMSIS-DAP device`).
 
 ## Active Runbook Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
@@ -69,4 +86,4 @@ Observed success signatures:
 2. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
 3. Add project settings/help files and integrate with current workflow.
 4. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
-5. Investigate/fix intermittent runtime freeze and publish a stabilized soak-tested baseline.
+5. Run extended soak validation to confirm freeze resolution under current stability guard settings.

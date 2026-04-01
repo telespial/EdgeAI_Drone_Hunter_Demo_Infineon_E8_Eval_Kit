@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-03-30
+- Last Updated: 2026-04-01
 - Primary runtime file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -50,6 +50,12 @@
     - added explicit launch-target bounds guard in `update_hunter()` to prevent invalid target-slot access,
     - clamped city-fire loop cardinality/head state each tick (`city_fire_count`/`city_fire_head`) to prevent array overrun if state drifts,
     - clamped nearest-fire scan loop bound to `CITY_FIRE_MAX`.
+  - freeze investigation update (audio/runtime race focus):
+    - bounded audio FIFO fill with no-progress break conditions,
+    - removed non-ISR heartbeat mixer mutation,
+    - made audio event queue push IRQ-safe,
+    - moved looped city event application into single audio context path,
+    - enabled always-visible arena `DBG:*` tracer label for freeze-stage capture.
   - known active issue:
     - freeze severity reduced with safe-mode + launch/state guards; extended soak still required to confirm full resolution.
 
@@ -68,6 +74,8 @@ Observed success signatures:
 - `wrote 12288 bytes` / `verified 8732 bytes`
 - `wrote 3923968 bytes` / `verified 3920440 bytes`
 - `** Resetting Target **`
+- 2026-04-01 flash note:
+  - direct flash retry blocked by probe detection (`unable to find a matching CMSIS-DAP device`).
 
 ## Active Runbook Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
