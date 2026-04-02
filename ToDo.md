@@ -43,22 +43,23 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 - Explosion and CIWS burst audio cues.
 - Mix priority/ducking.
 
-## Priority Fix List (2026-03-30)
-1. Replace pong speaker-test audio with full gameplay soundscape:
+## Priority Fix List (2026-04-01)
+1. Investigate and fix intermittent gameplay freeze (top blocker):
+   - latest observed freeze stage: `DBG:ANIM_TICK`,
+   - reproduced in both long-run and early-run states:
+     - `150+` combined attack/defense points,
+     - `0 attack / 5 defense`,
+   - action focus: isolate decision/drone-choice branch that triggers lockup.
+2. Replace pong speaker-test audio with full gameplay soundscape:
    - explosions, city ambience, firetrucks, ambulances, drone sounds, emergency escalation,
    - event-driven mapping and timing aligned with gameplay states.
-2. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
-3. Add settings file and help file with user-facing guidance and controls reference.
-4. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
-5. Add subtle city liveliness lighting:
+3. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
+4. Add settings file and help file with user-facing guidance and controls reference.
+5. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
+6. Add subtle city liveliness lighting:
    - tiny white/tungsten ground-level flickers across city footprint,
    - flicker sprite size target: `1px` to `3px` squares,
    - low-intensity, randomized timing/placement to avoid visual noise.
-6. Investigate and fix intermittent gameplay freeze:
-   - capture freeze stage using `DBG:*` banner and timestamped logs,
-   - isolate whether freeze is render-loop, audio mixer, or scheduling related,
-   - deliver a hardened no-freeze baseline plus soak-test checklist.
-   - status: freeze tracer now forced visible; latest pass hardened audio race paths (FIFO bounds + IRQ-safe queue + single-context mixer mutation).
 
 ## Plan For #1 (Audio Overhaul)
 1. Audio asset inventory pass:

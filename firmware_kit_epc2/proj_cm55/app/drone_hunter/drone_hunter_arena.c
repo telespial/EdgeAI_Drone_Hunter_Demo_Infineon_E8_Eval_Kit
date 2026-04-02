@@ -75,7 +75,7 @@
 #define DECK_H                    (100)
 #define ARENA_MARGIN_X            (24)
 #define ATTACK_SPRITE_STABLE_ONLY (0)
-#define HUD_REFRESH_SEC           (0.10f)
+#define HUD_REFRESH_SEC           (0.25f)
 #define H_LOCK_PERSIST_ALGO_SEC   (0.62f)
 #define H_LOCK_PERSIST_EDGE_SEC   (0.42f)
 #define H_SWITCH_COOLDOWN_ALGO    (0.54f)
@@ -88,6 +88,9 @@
 #define LOCK_BOX_SEG_COUNT        (8)
 #define LOCK_BOX_THICK_PX         (2)
 #define LOCK_BOX_PAD_PX           (6)
+#define EFFECTS_TRACER_RENDER_CAP (24)
+#define RENDER_CIWS_TRACERS       (0)
+#define RENDER_CITY_FIRE_EFFECTS  (0)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_RED    (1)
@@ -310,6 +313,10 @@ typedef struct
     lv_obj_t *hud_defend_mode_text;
     lv_obj_t *hud_diag_stage;
     char hud_diag_text[40];
+    int hud_cached_attacker_points;
+    int hud_cached_hunter_points;
+    int hud_cached_attacker_mode_sel;
+    int hud_cached_defender_mode_sel;
 
     lv_obj_t *deck_bar;
     lv_obj_t *deck_icon[HUNTER_TYPE_COUNT];
@@ -605,6 +612,9 @@ static uint32_t runtime_entropy32(void)
 
 static void set_diag_stage(drone_hunter_scene_t *s, const char *stage)
 {
+    static uint32_t last_ui_update_tick = 0u;
+    uint32_t now;
+
     if ((s == NULL) || (s->hud_diag_stage == NULL) || (stage == NULL))
     {
         return;
@@ -614,6 +624,13 @@ static void set_diag_stage(drone_hunter_scene_t *s, const char *stage)
         return;
     }
     (void)snprintf(s->hud_diag_text, sizeof(s->hud_diag_text), "%s", stage);
+    now = lv_tick_get();
+    if ((uint32_t)(now - last_ui_update_tick) < 250u)
+    {
+        return;
+    }
+    last_ui_update_tick = now;
+
     lv_label_set_text(s->hud_diag_stage, s->hud_diag_text);
 }
 
@@ -720,6 +737,27 @@ static void sound_emit(drone_hunter_scene_t *s, dh_sound_event_t ev, float coold
     drone_hunter_audio_play_event((uint32_t)ev, sound_asset_name(ev), sound_gain(ev), sound_is_loop(ev));
 }
 
+static void sanitize_city_fire_state(drone_hunter_scene_t *s)
+{
+    if (s == NULL)
+    {
+        return;
+    }
+    if (s->city_fire_count < 0)
+    {
+        s->city_fire_count = 0;
+    }
+    else if (s->city_fire_count > CITY_FIRE_MAX)
+    {
+        s->city_fire_count = CITY_FIRE_MAX;
+    }
+
+    if ((s->city_fire_head < 0) || (s->city_fire_head >= CITY_FIRE_MAX))
+    {
+        s->city_fire_head = 0;
+    }
+}
+
 static void sound_schedule_ambulance(drone_hunter_scene_t *s)
 {
     float delay_sec;
@@ -748,6 +786,7 @@ static void sound_tick(drone_hunter_scene_t *s)
     {
         return;
     }
+    sanitize_city_fire_state(s);
     for (i = 0; i < DH_SOUND_COUNT; ++i)
     {
         s->sound_cd[i] = clampf(s->sound_cd[i] - DT_SEC, 0.0f, 120.0f);
@@ -1021,6 +1060,7 @@ static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensi
     float spacing2 = spacing * spacing;
     int attempt;
 
+    sanitize_city_fire_state(s);
     x = clampf(x, min_x, max_x);
     y = clampf(y, min_y, max_y);
     best_x = x;
@@ -1069,6 +1109,12 @@ static void add_city_fire(drone_hunter_scene_t *s, float x, float y, int intensi
         idx = s->city_fire_head;
         s->city_fire_head = (s->city_fire_head + 1) % CITY_FIRE_MAX;
     }
+    if ((idx < 0) || (idx >= CITY_FIRE_MAX))
+    {
+        s->city_fire_count = 0;
+        s->city_fire_head = 0;
+        return;
+    }
 
     s->city_fire_x[idx] = x;
     s->city_fire_y[idx] = y;
@@ -1111,6 +1157,7 @@ static float goal_nearest_existing_d2(const drone_hunter_scene_t *s, int self_k,
 {
     int i;
     float best = 1.0e30f;
+    int fire_n = s->city_fire_count;
     for (i = 0; i < KILLER_COUNT; ++i)
     {
         if ((i == self_k) || !s->killer_active[i] || s->k_dying[i])
@@ -1125,7 +1172,15 @@ static float goal_nearest_existing_d2(const drone_hunter_scene_t *s, int self_k,
             }
         }
     }
-    for (i = 0; i < s->city_fire_count; ++i)
+    if (fire_n < 0)
+    {
+        fire_n = 0;
+    }
+    else if (fire_n > CITY_FIRE_MAX)
+    {
+        fire_n = CITY_FIRE_MAX;
+    }
+    for (i = 0; i < fire_n; ++i)
     {
         float d2 = dist2(gx, gy, s->city_fire_x[i], s->city_fire_y[i]);
         if (d2 < best)
@@ -1533,6 +1588,10 @@ static void set_obj_center(lv_obj_t *obj, float x, float y)
     int32_t px;
     int32_t py;
 
+    if (obj == NULL)
+    {
+        return;
+    }
     if (isnan(x) || isnan(y))
     {
         return;
@@ -1578,6 +1637,19 @@ static void get_obj_visual_center_in_parent(lv_obj_t *obj, lv_obj_t *parent, flo
     lv_area_t parent_area;
     float cx;
     float cy;
+
+    if ((obj == NULL) || (parent == NULL))
+    {
+        if (out_x != NULL)
+        {
+            *out_x = 0.0f;
+        }
+        if (out_y != NULL)
+        {
+            *out_y = 0.0f;
+        }
+        return;
+    }
 
     lv_obj_get_coords(obj, &obj_area);
     lv_obj_get_coords(parent, &parent_area);
@@ -4895,7 +4967,9 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
             s->fx_intercept_x[k] = s->k_goal_x[k];
             s->fx_intercept_y[k] = s->k_goal_y[k];
+            set_diag_stage(s, "DBG:CITY_FIRE_ADD");
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
+            set_diag_stage(s, "DBG:CITY_FIRE_DONE");
             sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
             sound_schedule_ambulance(s);
             set_diag_stage(s, "DBG:ATTACKER_RESPAWN");
@@ -5416,7 +5490,9 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
                         s->attacker_points++;
                         s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
                         s->iff_recovery_ttl = 4.0f;
+                        set_diag_stage(s, "DBG:CITY_FIRE_ADD");
                         add_city_fire(s, hx, hy, CITY_FIRE_INTENSITY_SMALL);
+                        set_diag_stage(s, "DBG:CITY_FIRE_DONE");
                         sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
                         sound_schedule_ambulance(s);
                         note_failure(s, "IFF failure: blue-on-blue event, recovery in progress", NULL);
@@ -5592,10 +5668,13 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
     int k;
     (void)core_x;
     (void)core_y;
-
+    if ((s == NULL) || (s->arena == NULL))
+    {
+        return;
+    }
     for (k = 0; k < KILLER_COUNT; ++k)
     {
-        if (s->fx_intercept_t[k] > 0.0f)
+        if (s->fx_intercept[k] != NULL && s->fx_intercept_t[k] > 0.0f)
         {
             int blast_style = s->fx_blast_style[k];
             float life = clampf(s->fx_intercept_t[k] / FX_INTERCEPT_SEC, 0.0f, 1.0f);
@@ -5648,9 +5727,12 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         else
         {
-            lv_obj_add_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
+            if (s->fx_intercept[k] != NULL)
+            {
+                lv_obj_add_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
+            }
         }
-        if (s->fx_spawn_t[k] > 0.0f)
+        if (s->fx_spawn[k] != NULL && s->fx_spawn_t[k] > 0.0f)
         {
             float life = clampf(s->fx_spawn_t[k] / FX_SPAWN_SEC, 0.0f, 1.0f);
             float grow = 1.0f - life;
@@ -5669,9 +5751,12 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         else
         {
-            lv_obj_add_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
+            if (s->fx_spawn[k] != NULL)
+            {
+                lv_obj_add_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
+            }
         }
-        if (s->fx_kill_t[k] > 0.0f)
+        if (s->fx_kill[k] != NULL && s->fx_kill_t[k] > 0.0f)
         {
             int blast_style = s->fx_blast_style[k];
             float life = clampf(s->fx_kill_t[k] / FX_KILL_SEC, 0.0f, 1.0f);
@@ -5724,13 +5809,28 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         else
         {
-            lv_obj_add_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
+            if (s->fx_kill[k] != NULL)
+            {
+                lv_obj_add_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 
-    lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
+    if (s->core != NULL)
+    {
+        lv_obj_add_flag(s->core, LV_OBJ_FLAG_HIDDEN);
+    }
 
     {
+#if !RENDER_CITY_FIRE_EFFECTS
+        for (k = 0; k < CITY_FIRE_MAX; ++k)
+        {
+            if (s->city_fire[k] != NULL)
+            {
+                lv_obj_add_flag(s->city_fire[k], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+#else
 #if RENDER_STABILITY_SAFE_MODE
         int visible_fire = s->attacker_goal_detonations;
         if (visible_fire > CITY_FIRE_RENDER_MAX)
@@ -5743,6 +5843,10 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
         }
         for (k = 0; k < CITY_FIRE_MAX; ++k)
         {
+            if (s->city_fire[k] == NULL)
+            {
+                continue;
+            }
             if (k < visible_fire)
             {
                 /* Safe-mode fallback: static, low-cost persistent fires, one representative per successful strike. */
@@ -6118,34 +6222,53 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             }
         }
 #endif
+#endif
     }
 
     for (k = 0; k < CIWS_TRACER_COUNT; ++k)
     {
-        if (s->ciws_tracer_t[k] > 0.0f)
+        int idx = (k + (int)(s->ciws_tracer_head % CIWS_TRACER_COUNT)) % CIWS_TRACER_COUNT;
+#if !RENDER_CIWS_TRACERS
+        if (s->ciws_tracer[idx] != NULL)
         {
-            if (s->ciws_tracer_delay[k] > 0.0f)
+            lv_obj_add_flag(s->ciws_tracer[idx], LV_OBJ_FLAG_HIDDEN);
+        }
+        continue;
+#else
+        static int render_budget = EFFECTS_TRACER_RENDER_CAP;
+        if (k == 0)
+        {
+            render_budget = EFFECTS_TRACER_RENDER_CAP;
+        }
+        if (s->ciws_tracer[idx] == NULL)
+        {
+            continue;
+        }
+        if (s->ciws_tracer_t[idx] > 0.0f && render_budget > 0)
+        {
+            if (s->ciws_tracer_delay[idx] > 0.0f)
             {
-                lv_obj_add_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(s->ciws_tracer[idx], LV_OBJ_FLAG_HIDDEN);
                 continue;
             }
-            float life_ratio = clampf(s->ciws_tracer_t[k] / CIWS_TRACER_LIFE_SEC, 0.0f, 1.0f);
-            float depth = clampf(depth_zoom_factor_for_y(s, s->ciws_tracer_y0[k]), 0.58f, 1.34f);
-            float stream_scale = clampf((s->ciws_tracer_scale[k] * 0.55f) + (depth * 0.45f), 0.52f, 1.35f);
+            float life_ratio = clampf(s->ciws_tracer_t[idx] / CIWS_TRACER_LIFE_SEC, 0.0f, 1.0f);
+            float depth = clampf(depth_zoom_factor_for_y(s, s->ciws_tracer_y0[idx]), 0.58f, 1.34f);
+            float stream_scale = clampf((s->ciws_tracer_scale[idx] * 0.55f) + (depth * 0.45f), 0.52f, 1.35f);
             lv_opa_t opa = (lv_opa_t)clampf((40.0f + (life_ratio * 205.0f)) * stream_scale, 30.0f, 255.0f);
             int32_t base_dot = (life_ratio > 0.74f) ? 10 : ((life_ratio > 0.38f) ? 8 : 6);
             int32_t dot = (int32_t)clampf((float)base_dot * stream_scale, 3.0f, 14.0f);
 
-            lv_obj_clear_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_size(s->ciws_tracer[k], dot, dot);
-            lv_obj_set_style_bg_color(s->ciws_tracer[k], lv_color_hex(0xFDBA74), 0);
-            lv_obj_set_style_bg_opa(s->ciws_tracer[k], opa, 0);
-            set_obj_center(s->ciws_tracer[k], s->ciws_tracer_x0[k], s->ciws_tracer_y0[k]);
+            lv_obj_clear_flag(s->ciws_tracer[idx], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_size(s->ciws_tracer[idx], dot, dot);
+            lv_obj_set_style_bg_opa(s->ciws_tracer[idx], opa, 0);
+            set_obj_center(s->ciws_tracer[idx], s->ciws_tracer_x0[idx], s->ciws_tracer_y0[idx]);
+            render_budget--;
         }
         else
         {
-            lv_obj_add_flag(s->ciws_tracer[k], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(s->ciws_tracer[idx], LV_OBJ_FLAG_HIDDEN);
         }
+#endif
     }
 }
 
@@ -6424,38 +6547,54 @@ static void update_hud(drone_hunter_scene_t *s)
 
     if (s->hud_attack_digits != NULL)
     {
-        lv_label_set_text_fmt(s->hud_attack_digits, "%04d", s->attacker_points);
+        if (s->hud_cached_attacker_points != s->attacker_points)
+        {
+            lv_label_set_text_fmt(s->hud_attack_digits, "%04d", s->attacker_points);
+            s->hud_cached_attacker_points = s->attacker_points;
+        }
     }
     if (s->hud_defend_digits != NULL)
     {
-        lv_label_set_text_fmt(s->hud_defend_digits, "%04d", s->hunter_points);
+        if (s->hud_cached_hunter_points != s->hunter_points)
+        {
+            lv_label_set_text_fmt(s->hud_defend_digits, "%04d", s->hunter_points);
+            s->hud_cached_hunter_points = s->hunter_points;
+        }
     }
     if (s->hud_attack_mode_text != NULL)
     {
-        lv_label_set_text_fmt(s->hud_attack_mode_text, "%s", attacker_mode_text);
-        if (s->attacker_mode_sel == CTRL_EDGEAI)
+        if (s->hud_cached_attacker_mode_sel != (int)s->attacker_mode_sel)
         {
-            lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
-        }
-        else
-        {
-            lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+            lv_label_set_text(s->hud_attack_mode_text, attacker_mode_text);
+            if (s->attacker_mode_sel == CTRL_EDGEAI)
+            {
+                lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
+            }
+            else
+            {
+                lv_obj_set_style_text_color(s->hud_attack_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+            }
+            s->hud_cached_attacker_mode_sel = (int)s->attacker_mode_sel;
         }
     }
     if (s->hud_defend_mode_text != NULL)
     {
-        lv_label_set_text_fmt(s->hud_defend_mode_text, "%s", defender_mode_text);
-        if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
+        if (s->hud_cached_defender_mode_sel != (int)s->defender_mode_sel)
         {
-            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xFCD34D), 0); /* HUMAN */
-        }
-        else if (s->defender_mode_sel == DEFENDER_MODE_EDGEAI)
-        {
-            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
-        }
-        else
-        {
-            lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+            lv_label_set_text(s->hud_defend_mode_text, defender_mode_text);
+            if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
+            {
+                lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xFCD34D), 0); /* HUMAN */
+            }
+            else if (s->defender_mode_sel == DEFENDER_MODE_EDGEAI)
+            {
+                lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x86EFAC), 0); /* EDGEAI */
+            }
+            else
+            {
+                lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0x7DD3FC), 0); /* ALGO */
+            }
+            s->hud_cached_defender_mode_sel = (int)s->defender_mode_sel;
         }
     }
 
@@ -6967,6 +7106,10 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     /* Freeze tracer: always-visible stage label for field debugging. */
     s->hud_diag_stage = lv_label_create(s->arena);
     s->hud_diag_text[0] = '\0';
+    s->hud_cached_attacker_points = -2147483647;
+    s->hud_cached_hunter_points = -2147483647;
+    s->hud_cached_attacker_mode_sel = -1;
+    s->hud_cached_defender_mode_sel = -1;
     lv_label_set_text(s->hud_diag_stage, "DBG:BOOT");
     lv_obj_set_style_text_font(s->hud_diag_stage, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(s->hud_diag_stage, lv_color_hex(0xFDE68A), 0);

@@ -10,27 +10,40 @@
 - Planned next: `16`
 
 ## Current Priority Queue (2026-04-01)
-1. Replace speaker-test (`pong`) audio behavior with gameplay event soundscape:
+1. Investigate and fix intermittent gameplay freeze (highest priority blocker):
+   - latest observed freeze stage: `DBG:ANIM_TICK`,
+   - reproduced in distinct score states:
+     - run A: freeze after `150+` combined attack/defense points,
+     - run B: freeze early at `0` attack / `5` defense,
+   - current hypothesis: freeze is not score-threshold bound and is likely tied to specific decision/drone-selection path.
+2. Replace speaker-test (`pong`) audio behavior with gameplay event soundscape:
    - explosions, city ambience, drone sounds, sirens, firetruck, ambulance,
    - event-timed layering and escalation rules.
-2. Improve attacker + defender `ALGO` strategy depth and fun factor.
-3. Add settings/help documentation files and wire them into workflow.
-4. Schedule flame redraw phase (detailed redraw scope pending kickoff).
-5. Investigate intermittent gameplay freeze and deliver hardened no-freeze baseline.
+3. Improve attacker + defender `ALGO` strategy depth and fun factor.
+4. Add settings/help documentation files and wire them into workflow.
+5. Schedule flame redraw phase (detailed redraw scope pending kickoff).
 
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3923968 bytes`, `verified 3920440 bytes`
+- `wrote 3919872 bytes`, `verified 3917440 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
+- Priority issue (blocking):
+  - freeze still reproducible at `DBG:ANIM_TICK` across both long and early runs,
+  - reproduction is now detached from accumulated score and appears tied to runtime decision/path combination.
 - Freeze investigation hardening (latest):
   - audio FIFO fill loop now has bounded writes and no-progress escape guards,
   - audio heartbeat no longer mutates mixer state outside ISR context,
   - queued event push is IRQ-safe to avoid ISR/main-context queue races,
   - city loop event handling is applied in single audio context (sample path),
   - `DBG:*` tracer is now always visible on arena for freeze-stage capture.
+  - city-fire/state hardening pass added:
+    - centralized `city_fire_count`/`city_fire_head` sanitization helper,
+    - bounds-checked insert index in `add_city_fire()` with fail-safe reset,
+    - bounded fire-scan loop in `goal_nearest_existing_d2()`,
+    - explicit stage markers around fire insertion (`DBG:CITY_FIRE_ADD`, `DBG:CITY_FIRE_DONE`).
 - Opening attacker sequences now use strategic stochastic composition (not fixed replay):
   - splash start reseeds and resets the round,
   - doctrine biases are preserved while release order varies run-to-run.

@@ -605,6 +605,7 @@ void drone_hunter_audio_heartbeat(void)
 static int16_t dh_audio_next_sample(void)
 {
     int32_t mix = 0;
+    uint32_t dispatch_budget = 4u;
 
     if (s_audio_all_muted)
     {
@@ -613,13 +614,15 @@ static int16_t dh_audio_next_sample(void)
 
     /* Explosions-only profile: no autonomous background bed playback. */
 
-    while (!s_audio.voice[DH_VOICE_SFX_A].active || !s_audio.voice[DH_VOICE_SFX_B].active)
+    while (dispatch_budget > 0u &&
+           (!s_audio.voice[DH_VOICE_SFX_A].active || !s_audio.voice[DH_VOICE_SFX_B].active))
     {
         uint8_t ev;
         uint16_t g;
         dh_voice_t *slot;
         dh_audio_clip_t clip;
         uint32_t max_samples = 0u;
+        dispatch_budget--;
 
         if (!dh_audio_queue_pop(&ev, &g))
         {
@@ -688,7 +691,7 @@ static void dh_audio_fill_tx_fifo(void)
     uint32_t writes = 0u;
     uint32_t no_progress = 0u;
     const uint32_t target_level = 120u;
-    const uint32_t max_writes = 256u;
+    const uint32_t max_writes = 128u;
 
     while ((level < target_level) && (writes < max_writes))
     {

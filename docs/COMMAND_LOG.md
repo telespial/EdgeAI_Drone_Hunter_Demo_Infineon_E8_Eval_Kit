@@ -1,5 +1,26 @@
 # COMMAND_LOG
 
+- 2026-04-01 | Freeze investigation reprioritized from user runtime observations:
+  - user reproduced freeze at `DBG:ANIM_TICK` in two distinct runs:
+    - run A froze after `150+` combined attack/defense points,
+    - run B froze early at `0` attack / `5` defense.
+  - conclusion recorded: freeze is not score-threshold bound; likely decision/drone-path dependent.
+- 2026-04-01 | City-fire insertion hardening pass in `drone_hunter_arena.c`:
+  - added `sanitize_city_fire_state()` and invoked it in fire/audio path,
+  - added `add_city_fire()` insert-index bounds fail-safe with state reset on invalid index,
+  - clamped fire-loop bound in `goal_nearest_existing_d2()` to `CITY_FIRE_MAX`,
+  - added stage markers around city-fire insertion:
+    - `DBG:CITY_FIRE_ADD`,
+    - `DBG:CITY_FIRE_DONE`.
+- 2026-04-01 | Build + flash validation after city-fire hardening:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from latest ELF via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded:
+    - `wrote 32768 bytes` / `verified 30456 bytes`
+    - `wrote 12288 bytes` / `verified 8732 bytes`
+    - `wrote 3919872 bytes` / `verified 3917440 bytes`
+    - `** Resetting Target **`
+
 - 2026-04-01 | Freeze hardening pass (audio/runtime race + tracer):
   - `drone_hunter_audio_hal.c`:
     - bounded `dh_audio_fill_tx_fifo()` loop with write cap + no-progress break,

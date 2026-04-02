@@ -50,6 +50,11 @@
     - added explicit launch-target bounds guard in `update_hunter()` to prevent invalid target-slot access,
     - clamped city-fire loop cardinality/head state each tick (`city_fire_count`/`city_fire_head`) to prevent array overrun if state drifts,
     - clamped nearest-fire scan loop bound to `CITY_FIRE_MAX`.
+  - freeze investigation update (city-fire insertion isolation):
+    - added centralized city-fire state sanitizer and insert-index fail-safe in `add_city_fire()`,
+    - added explicit debug markers around city-fire insertion path:
+      - `DBG:CITY_FIRE_ADD`,
+      - `DBG:CITY_FIRE_DONE`.
   - freeze investigation update (audio/runtime race focus):
     - bounded audio FIFO fill with no-progress break conditions,
     - removed non-ISR heartbeat mixer mutation,
@@ -57,7 +62,10 @@
     - moved looped city event application into single audio context path,
     - enabled always-visible arena `DBG:*` tracer label for freeze-stage capture.
   - known active issue:
-    - freeze severity reduced with safe-mode + launch/state guards; extended soak still required to confirm full resolution.
+    - freeze remains unresolved and is now the top blocker:
+      - latest user observation: freeze at `DBG:ANIM_TICK`,
+      - reproduced in two divergent score profiles (`150+` combined points and early `0 attack / 5 defense`),
+      - likely tied to decision/drone-selection path rather than simple score progression.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -81,9 +89,12 @@ Observed success signatures:
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Execution Focus
-1. Audio overhaul kickoff:
+1. Freeze root-cause isolation and fix (highest priority):
+   - target `DBG:ANIM_TICK` freeze reproduction with decision/drone-path instrumentation,
+   - validate whether freeze correlates with specific attacker archetype, hunter assignment, or launch/respawn branch.
+2. Audio overhaul kickoff:
    - replace speaker-test/pong audio with mapped gameplay soundscape (city/drone/explosion/emergency timing model).
-2. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
-3. Add project settings/help files and integrate with current workflow.
-4. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
-5. Run extended soak validation to confirm freeze resolution under current stability guard settings.
+3. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
+4. Add project settings/help files and integrate with current workflow.
+5. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
+6. Run extended soak validation to confirm freeze resolution under current stability guard settings.
