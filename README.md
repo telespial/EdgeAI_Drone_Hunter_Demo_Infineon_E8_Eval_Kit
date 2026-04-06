@@ -1,5 +1,7 @@
 # EdgeAI Drone Hunter Demo (Infineon E84 Eval Kit)
 
+Work In Progress!
+
 EdgeAI Drone Hunter is a real-time attacker-vs-defender simulation running on Infineon PSoC Edge E84 (`KIT_PSE84_EVAL_EPC2`).
 The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI`) with a hardware-validated recovery and flashing workflow.
 
