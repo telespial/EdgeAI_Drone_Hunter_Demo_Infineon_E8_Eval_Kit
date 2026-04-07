@@ -1,7 +1,7 @@
 # PROJECT_STATE
 
 - Project: EdgeAI_Drone_Hunter_Demo_Infineon_E8_Eval_Kit
-- Last Updated: 2026-04-01
+- Last Updated: 2026-04-07
 - Primary runtime file:
   - `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -9,6 +9,24 @@
 - Phases `1-14` are complete.
 - Phase `15` is active.
 - Current runtime includes:
+  - 2026-04-07 attack-only isolation mode:
+    - `ENABLE_RUNTIME_AUDIO=1`,
+    - `DISABLE_ATTACK_SUCCESS_FIREBALLS=0`,
+    - `DISABLE_HUNTER_DRONES=1`,
+    - `DISABLE_CIWS_GUNS=1`,
+    - round-end defender-exhaustion bypass when both defender layers are disabled,
+    - attackers leak to city uninterrupted for freeze-isolation testing.
+  - mixed attacker roster enabled:
+    - x-wing attack drones re-enabled (`DISABLE_XWING_ATTACK_DRONES=0`),
+    - fixed-wing attackers enabled,
+    - force-Shahed-only disabled (`FORCE_SHAHED_ONLY_DRONES=0`).
+  - attacker city-hit sequence update:
+    - impact now renders blast/fireball first,
+    - target then enters short dying window,
+    - respawn occurs after the visible blast window.
+  - ground-stall livelock guards:
+    - hunter near-floor stall timeout triggers horizon egress escape,
+    - attacker near-floor stall timeout triggers forced respawn.
   - strategic stochastic attacker release composition (doctrine-weighted, run-varying spawn order),
   - splash-start entropy reseed + reset to prevent boot-time replay patterns,
   - top-center foreground debug stage banner (`DBG:*`) for freeze tracing,
@@ -62,10 +80,9 @@
     - moved looped city event application into single audio context path,
     - enabled always-visible arena `DBG:*` tracer label for freeze-stage capture.
   - known active issue:
-    - freeze remains unresolved and is now the top blocker:
-      - latest user observation: freeze at `DBG:ANIM_TICK`,
-      - reproduced in two divergent score profiles (`150+` combined points and early `0 attack / 5 defense`),
-      - likely tied to decision/drone-selection path rather than simple score progression.
+    - freeze remains unresolved and is still the top blocker:
+      - latest user observations indicate runtime can still lock during gameplay after 30-180s windows,
+      - working hypothesis remains decision/path/state-dependent livelock.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -80,20 +97,17 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3923968 bytes` / `verified 3920440 bytes`
+- `wrote 3903488 bytes` / `verified 3901616 bytes`
 - `** Resetting Target **`
-- 2026-04-01 flash note:
-  - direct flash retry blocked by probe detection (`unable to find a matching CMSIS-DAP device`).
 
 ## Active Runbook Script
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh`
 
 ## Next Execution Focus
 1. Freeze root-cause isolation and fix (highest priority):
-   - target `DBG:ANIM_TICK` freeze reproduction with decision/drone-path instrumentation,
-   - validate whether freeze correlates with specific attacker archetype, hunter assignment, or launch/respawn branch.
-2. Audio overhaul kickoff:
-   - replace speaker-test/pong audio with mapped gameplay soundscape (city/drone/explosion/emergency timing model).
+   - continue using attack-only mode to isolate attacker/effects paths without defender interactions,
+   - validate if freeze persists when only city-impact/fireball paths are active.
+2. Re-enable defenders in staged order (hunters first, then CIWS) once freeze path is characterized.
 3. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
 4. Add project settings/help files and integrate with current workflow.
 5. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).

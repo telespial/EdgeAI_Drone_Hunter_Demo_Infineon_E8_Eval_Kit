@@ -1,6 +1,6 @@
 # STATUS
 
-- Date: 2026-04-01
+- Date: 2026-04-07
 - Branch: `main`
 - Runtime baseline: full clean rebuild and full 3-image flash validated on hardware.
 
@@ -9,27 +9,42 @@
 - In progress: `15`
 - Planned next: `16`
 
-## Current Priority Queue (2026-04-01)
+## Current Priority Queue (2026-04-07)
 1. Investigate and fix intermittent gameplay freeze (highest priority blocker):
-   - latest observed freeze stage: `DBG:ANIM_TICK`,
-   - reproduced in distinct score states:
-     - run A: freeze after `150+` combined attack/defense points,
-     - run B: freeze early at `0` attack / `5` defense,
-   - current hypothesis: freeze is not score-threshold bound and is likely tied to specific decision/drone-selection path.
-2. Replace speaker-test (`pong`) audio behavior with gameplay event soundscape:
-   - explosions, city ambience, drone sounds, sirens, firetruck, ambulance,
-   - event-timed layering and escalation rules.
-3. Improve attacker + defender `ALGO` strategy depth and fun factor.
-4. Add settings/help documentation files and wire them into workflow.
+   - user-observed freeze can still occur in gameplay despite multiple guards,
+   - current working hypothesis remains state/path-specific runtime livelock near engagement/effects transitions.
+2. Complete attack-only diagnostic validation pass:
+   - defenders (`hunter` + `CIWS`) are intentionally disabled for isolation,
+   - attackers are mixed (`x-wing` + fixed-wing) and allowed to leak/impact city,
+   - confirm impact sequence is now fireball-first then target despawn/respawn.
+3. Resume full combat loop after freeze isolation:
+   - re-enable hunters + CIWS,
+   - preserve validated fireball/audio behavior,
+   - retest long-run stability.
+4. Improve attacker + defender `ALGO` strategy depth and fun factor.
 5. Schedule flame redraw phase (detailed redraw scope pending kickoff).
 
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3919872 bytes`, `verified 3917440 bytes`
+- `wrote 3903488 bytes`, `verified 3901616 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
+- 2026-04-07 attack-only isolation mode is active:
+  - audio runtime is enabled,
+  - attacker city-hit fireball path is enabled,
+  - hunter drones are disabled by compile-time gate,
+  - CIWS guns are disabled by compile-time gate,
+  - immediate defender-exhaustion round-end is bypassed in this mode.
+- Attack roster is mixed again:
+  - `x-wing` attackers re-enabled,
+  - fixed-wing attackers remain enabled,
+  - force-Shahed-only override is disabled.
+- City-hit visual sequencing is now:
+  - fireball FX first at impact point,
+  - then attacker enters short dying window,
+  - then respawn occurs.
 - Priority issue (blocking):
   - freeze still reproducible at `DBG:ANIM_TICK` across both long and early runs,
   - reproduction is now detached from accumulated score and appears tied to runtime decision/path combination.
@@ -112,14 +127,13 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,919,672 bytes`
+- CM55 verified image size (external SMIF): `3,901,616 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
 - Golden: latest validated milestone baseline.
 - Failsafe: latest validated direct-recovery baseline.
 
-## Restore Snapshot (2026-04-01)
-- Golden label: `golden-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
-- Failsafe label: `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
-- Current flash availability note: direct flash on 2026-04-01 was blocked by probe detection (`unable to find a matching CMSIS-DAP device`).
+## Restore Snapshot (2026-04-07)
+- Golden label: `golden-20260407-phase15-attack-only-mixed-attackers-fireball-seq-20260407_105450`
+- Failsafe label (unchanged): `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`

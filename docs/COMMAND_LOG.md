@@ -1,5 +1,34 @@
 # COMMAND_LOG
 
+- 2026-04-07 | Attack-only freeze-isolation mode + mixed-attacker runtime pass:
+  - enabled runtime audio and attacker city-hit fireball path,
+  - disabled hunter drones and CIWS guns via compile-time gates,
+  - initially observed immediate round end at `0/0` due to defender exhaustion check in isolation mode.
+- 2026-04-07 | Attack-only round-end logic fix:
+  - updated `maybe_end_round()` to bypass defender-exhausted auto-loss when both hunter and CIWS layers are intentionally disabled.
+- 2026-04-07 | City-impact destruction sequencing fix:
+  - attacker goal-hit path now emits impact fireball first (`fx_intercept` + `fx_kill`),
+  - target then enters short dying window before respawn (`k_dying`), improving visible explosion/destroy order.
+- 2026-04-07 | Attacker roster update:
+  - re-enabled mixed attacker visuals/types:
+    - `x-wing` enabled (`DISABLE_XWING_ATTACK_DRONES=0`),
+    - fixed-wing enabled,
+    - force-Shahed-only disabled (`FORCE_SHAHED_ONLY_DRONES=0`).
+- 2026-04-07 | Build + flash validation for current baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded:
+    - `wrote 32768 bytes` / `verified 30456 bytes`,
+    - `wrote 12288 bytes` / `verified 8732 bytes`,
+    - `wrote 3903488 bytes` / `verified 3901616 bytes`,
+    - `** Resetting Target **`.
+- 2026-04-07 | Golden restore-point promotion refresh:
+  - created golden restore folder:
+    - `golden-20260407-phase15-attack-only-mixed-attackers-fireball-seq-20260407_105450`,
+  - copied artifacts (`proj_cm33_s_signed.hex`, `proj_cm33_ns_shifted.hex`, `proj_cm55.hex`, `proj_cm55.bin`, `proj_cm55.elf`, `proj_cm55.map`),
+  - generated manifest with SHA256 and flash signature metadata,
+  - moved `current_golden` symlink to this new baseline.
+
 - 2026-04-01 | Freeze investigation reprioritized from user runtime observations:
   - user reproduced freeze at `DBG:ANIM_TICK` in two distinct runs:
     - run A froze after `150+` combined attack/defense points,

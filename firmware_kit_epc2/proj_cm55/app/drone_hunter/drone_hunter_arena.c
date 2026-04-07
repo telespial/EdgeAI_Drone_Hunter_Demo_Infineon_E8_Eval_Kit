@@ -69,6 +69,14 @@
 #define FREEZE_DIAG_EFFECTS_BYPASS (0)
 #define FREEZE_DIAG_LOGIC_BYPASS   (0)
 #define FREEZE_DIAG_MINIMAL_LOOP   (0)
+#define ENABLE_RUNTIME_AUDIO       (1)
+#define DISABLE_SHAHED_DRONES      (0)
+#define DISABLE_XWING_ATTACK_DRONES (0)
+#define DISABLE_ALL_ATTACK_DRONES  (0)
+#define DISABLE_HUNTER_DRONES      (1)
+#define DISABLE_CIWS_GUNS          (1)
+#define SHOW_DEBUG_STAGE_LABEL     (0)
+#define FORCE_SHAHED_ONLY_DRONES   (0)
 #define LANE_SITE_COUNT           (16)
 #define LAUNCH_SECTOR_COUNT       (8)
 #define HUD_H                     (72)
@@ -82,6 +90,9 @@
 #define H_SWITCH_COOLDOWN_EDGE    (0.34f)
 #define H_TERMINAL_MAX_ATTEMPTS   (3)
 #define ATTACK_EVADE_RADIUS_FRAC  (0.23f)
+#define HUNTER_GROUND_STALL_FRAMES (54)
+#define ATTACK_GROUND_STALL_FRAMES (90)
+#define GROUND_STALL_BAND_PX      (4.0f)
 #define SETTINGS_ROW_COUNT        (5)
 #define BOOT_FLAME_GALLERY_MODE   (0)
 #define BOOT_FLAME_PROFILE_SEC    (5.0f)
@@ -91,6 +102,8 @@
 #define EFFECTS_TRACER_RENDER_CAP (24)
 #define RENDER_CIWS_TRACERS       (0)
 #define RENDER_CITY_FIRE_EFFECTS  (0)
+/* Freeze isolation switch: disable visual fireball/fire insertion on attacker city-hit success path. */
+#define DISABLE_ATTACK_SUCCESS_FIREBALLS (0)
 
 #define BLAST_STYLE_SMALL_WHITE   (0)
 #define BLAST_STYLE_MEDIUM_RED    (1)
@@ -376,6 +389,7 @@ typedef struct
     float h_lock_persist_t[HUNTER_COUNT];
     float h_switch_cooldown_t[HUNTER_COUNT];
     int h_terminal_attempts[HUNTER_COUNT];
+    int h_ground_stall_frames[HUNTER_COUNT];
 
     float kx[KILLER_COUNT];
     float ky[KILLER_COUNT];
@@ -426,6 +440,7 @@ typedef struct
     int killer_active[KILLER_COUNT];
     int k_missed_by_hunter[KILLER_COUNT];
     int k_dying[KILLER_COUNT];
+    int k_ground_stall_frames[KILLER_COUNT];
     int k_serial[KILLER_COUNT];
     float k_goal_x[KILLER_COUNT];
     float k_goal_y[KILLER_COUNT];
@@ -1385,6 +1400,15 @@ static attack_strategy_t attack_strategy_late_shift_for_archetype(wave_archetype
 
 static threat_faction_t threat_faction_for_archetype(wave_archetype_t archetype, int wave_idx)
 {
+#if FORCE_SHAHED_ONLY_DRONES
+    (void)archetype;
+    (void)wave_idx;
+    return THREAT_FACTION_RUSSIA;
+#elif DISABLE_SHAHED_DRONES
+    (void)archetype;
+    (void)wave_idx;
+    return THREAT_FACTION_USA;
+#else
     switch (archetype)
     {
         case WAVE_ARCHETYPE_SHAHED_HEAVY:
@@ -1396,6 +1420,7 @@ static threat_faction_t threat_faction_for_archetype(wave_archetype_t archetype,
         default:
             return (wave_idx & 1) ? THREAT_FACTION_RUSSIA : THREAT_FACTION_USA;
     }
+#endif
 }
 
 static int nearest_center_lane(int lane)
@@ -3532,6 +3557,11 @@ static int attack_variant_idx(const drone_hunter_scene_t *s, int k)
 
 static int target_use_red_fixed_visual(const drone_hunter_scene_t *s, int k)
 {
+#if FORCE_SHAHED_ONLY_DRONES
+    (void)s;
+    (void)k;
+    return 0;
+#else
     if (s->ktype[k] != TARGET_FIXED_WING)
     {
         return 0;
@@ -3542,6 +3572,7 @@ static int target_use_red_fixed_visual(const drone_hunter_scene_t *s, int k)
     }
     /* In Russia-themed waves, keep a mixed visual roster so red fixed-wing remains present. */
     return (((s->k_serial[k] + (k * 3)) & 0x1) != 0);
+#endif
 }
 
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k)
@@ -3868,6 +3899,7 @@ static void update_hunter_deck_ui(drone_hunter_scene_t *s)
 static void set_killer_hidden(drone_hunter_scene_t *s, int k)
 {
     s->killer_active[k] = 0;
+    s->k_ground_stall_frames[k] = 0;
     lv_obj_add_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s->fx_spawn[k], LV_OBJ_FLAG_HIDDEN);
@@ -3876,6 +3908,7 @@ static void set_killer_hidden(drone_hunter_scene_t *s, int k)
 static void set_killer_visible(drone_hunter_scene_t *s, int k)
 {
     s->killer_active[k] = 1;
+    s->k_ground_stall_frames[k] = 0;
     s->k_dying[k] = 0;
     s->k_dying_t[k] = 0.0f;
     lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
@@ -3921,6 +3954,34 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
     wave_progress = (float)spawned_so_far / clampf((float)s->wave_target_total, 1.0f, 20000.0f);
 
     {
+#if FORCE_SHAHED_ONLY_DRONES
+        /* Hard force attack roster to Shahed-only for focused gameplay runs. */
+        float tier2_bias = (wave_progress < 0.45f) ? 0.22f : 0.30f;
+        float tier1_bias = 0.50f;
+        float tier_roll = (float)scene_rng_range(s, 1000) / 1000.0f;
+        s->ktype[k] = TARGET_FIXED_WING;
+
+        if (s->wave_idx <= 2)
+        {
+            tier2_bias -= 0.06f;
+            tier1_bias += 0.04f;
+        }
+        tier2_bias = clampf(tier2_bias, 0.08f, 0.62f);
+        tier1_bias = clampf(tier1_bias, 0.20f, 0.74f);
+
+        if (tier_roll < tier2_bias)
+        {
+            s->k_tier[k] = 2;
+        }
+        else if (tier_roll < (tier2_bias + tier1_bias))
+        {
+            s->k_tier[k] = 1;
+        }
+        else
+        {
+            s->k_tier[k] = 0;
+        }
+#else
         /* Strategic stochastic composition: doctrine shapes probabilities, RNG decides exact sequence. */
         float fixed_bias = 0.50f;
         float tier2_bias = 0.22f;
@@ -3987,6 +4048,12 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
         tier1_bias = clampf(tier1_bias, 0.20f, 0.74f);
 
         s->ktype[k] = (type_roll < fixed_bias) ? TARGET_FIXED_WING : TARGET_FPV;
+#if DISABLE_XWING_ATTACK_DRONES
+        if (s->ktype[k] == TARGET_FPV)
+        {
+            s->ktype[k] = TARGET_FIXED_WING;
+        }
+#endif
 
         if (tier_roll < tier2_bias)
         {
@@ -4000,6 +4067,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
         {
             s->k_tier[k] = 0;
         }
+#endif
     }
 
     if (phase == 0 && s->ktype[k] == TARGET_FIXED_WING)
@@ -4116,6 +4184,14 @@ static void start_wave(drone_hunter_scene_t *s, int wave_idx)
         s->attack_strategy_live = s->attack_strategy_select;
     }
 
+#if DISABLE_ALL_ATTACK_DRONES
+    s->wave_target_total = 0;
+    s->attack_remaining_to_spawn = 0;
+    set_killer_hidden(s, 0);
+    set_killer_hidden(s, 1);
+    return;
+#endif
+
     respawn_killer(s, 0, -1);
     respawn_killer(s, 1, -1);
 }
@@ -4147,6 +4223,7 @@ static void reset_hunters(drone_hunter_scene_t *s)
         s->h_lock_persist_t[i] = 0.0f;
         s->h_switch_cooldown_t[i] = 0.0f;
         s->h_terminal_attempts[i] = 0;
+        s->h_ground_stall_frames[i] = 0;
         apply_hunter_profile(s, i);
     }
 }
@@ -4358,7 +4435,7 @@ static void reset_round(drone_hunter_scene_t *s)
     s->round_start_tick_ms = lv_tick_get();
     s->hud_refresh_t = HUD_REFRESH_SEC;
     s->t = 0.0f;
-    s->sound_enabled = 1;
+    s->sound_enabled = ENABLE_RUNTIME_AUDIO ? 1 : 0;
     s->sound_next_traffic_t = 0.20f;
     s->sound_next_siren_t = 6.0f;
     s->sound_next_fire_t = 4.0f;
@@ -4406,8 +4483,8 @@ static void reset_round(drone_hunter_scene_t *s)
     s->defense_misses = 0;
     s->hunter_points = 0;
     s->attacker_points = 0;
-    s->ciws_ammo_right = CIWS_AMMO_PER_GUN;
-    s->ciws_ammo_left = CIWS_AMMO_PER_GUN;
+    s->ciws_ammo_right = DISABLE_CIWS_GUNS ? 0 : CIWS_AMMO_PER_GUN;
+    s->ciws_ammo_left = DISABLE_CIWS_GUNS ? 0 : CIWS_AMMO_PER_GUN;
     s->ciws_shots = 0;
     s->ciws_kills = 0;
     s->commit_attempts = 0;
@@ -4445,7 +4522,7 @@ static void reset_round(drone_hunter_scene_t *s)
     }
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
-        s->hunter_stock[i] = HUNTER_STOCK_PER_TYPE;
+        s->hunter_stock[i] = DISABLE_HUNTER_DRONES ? 0 : HUNTER_STOCK_PER_TYPE;
     }
     init_launch_sectors(s);
 
@@ -4474,6 +4551,7 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_tier[i] = 0;
         s->k_missed_by_hunter[i] = 0;
         s->k_serial[i] = 0;
+        s->k_ground_stall_frames[i] = 0;
         s->k_goal_x[i] = 0.0f;
         s->k_goal_y[i] = 0.0f;
         s->k_detect_conf[i] = 0.0f;
@@ -4712,16 +4790,19 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
     {
         if (!s->killer_active[k])
         {
+            s->k_ground_stall_frames[k] = 0;
             continue;
         }
         if (!isfinite(s->kx[k]) || !isfinite(s->ky[k]) || !isfinite(s->kvx[k]) || !isfinite(s->kvy[k]) || !isfinite(s->k_heading[k]))
         {
+            s->k_ground_stall_frames[k] = 0;
             set_killer_hidden(s, k);
             respawn_killer(s, k, -1);
             continue;
         }
         if (s->k_dying[k])
         {
+            s->k_ground_stall_frames[k] = 0;
             s->k_dying_t[k] = clampf(s->k_dying_t[k] - DT_SEC, 0.0f, FX_SHAHED_DEATH_SEC);
             if (s->k_dying_t[k] <= 0.0f)
             {
@@ -4898,6 +4979,21 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 
         s->kx[k] = clampf(s->kx[k], 6.0f, (float)lv_obj_get_width(s->screen) - 6.0f);
         s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, floor_y);
+        if ((s->ky[k] >= (floor_y - GROUND_STALL_BAND_PX)) &&
+            (dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k]) > 484.0f))
+        {
+            s->k_ground_stall_frames[k]++;
+            if (s->k_ground_stall_frames[k] > ATTACK_GROUND_STALL_FRAMES)
+            {
+                set_diag_stage(s, "DBG:ATTACK_GROUND_STALL");
+                respawn_killer(s, k, -1);
+                continue;
+            }
+        }
+        else
+        {
+            s->k_ground_stall_frames[k] = 0;
+        }
 
         {
             /* Detect -> classify -> commit confidence model feeding threat score. */
@@ -4919,6 +5015,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
                                    ((s->ktype[k] == TARGET_FIXED_WING) ? 1.15f : 1.00f);
         }
 
+        #if !DISABLE_CIWS_GUNS
         if ((s->ciws_ammo_right > 0) &&
             (s->ciws_cooldown_sec <= 0.0f) &&
             (s->ky[k] >= ciws_block_top_y) &&
@@ -4955,25 +5052,47 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             s->ciws_heat_left = clampf(s->ciws_heat_left + (0.010f + ((1.0f - lock_q) * 0.020f)), 0.0f, 1.0f);
             s->ciws_cooldown_left_sec = clampf(s->ciws_cooldown_left_sec + (s->ciws_heat_left * 0.040f), 0.0f, 2.0f);
         }
+        #endif
 
         if (dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k]) < 324.0f)
         {
+            int blast_style = target_blast_style_for_visual(s, k);
             set_diag_stage(s, "DBG:ATTACKER_GOAL_HIT");
             s->attack_leaked++;
             s->attacker_points++;
             s->attacker_goal_detonations++;
             s->core_hp = (s->core_hp > 0) ? (s->core_hp - 1) : 0;
+            s->fx_blast_style[k] = blast_style;
+#if !DISABLE_ATTACK_SUCCESS_FIREBALLS
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
             s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
             s->fx_intercept_x[k] = s->k_goal_x[k];
             s->fx_intercept_y[k] = s->k_goal_y[k];
+            s->fx_kill_t[k] = FX_KILL_SEC;
+            s->fx_kill_x[k] = s->k_goal_x[k];
+            s->fx_kill_y[k] = s->k_goal_y[k];
             set_diag_stage(s, "DBG:CITY_FIRE_ADD");
             add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
             set_diag_stage(s, "DBG:CITY_FIRE_DONE");
+#else
+            set_diag_stage(s, "DBG:CITY_FIRE_DISABLED");
+#endif
             sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
             sound_schedule_ambulance(s);
-            set_diag_stage(s, "DBG:ATTACKER_RESPAWN");
-            respawn_killer(s, k, -1);
+            /* Hold target briefly so the impact fireball is visible before despawn/respawn. */
+            s->kx[k] = s->k_goal_x[k];
+            s->ky[k] = s->k_goal_y[k];
+            s->k_dying[k] = 1;
+            s->k_dying_t[k] = FX_SHAHED_DEATH_SEC;
+            s->k_threat_score[k] = 0.0f;
+            s->k_commit_ok[k] = 0;
+            s->k_detect_ok[k] = 0;
+            s->k_class_ok[k] = 0;
+            s->k_corridor_ok[k] = 0;
+            s->k_los_ok[k] = 0;
+            s->kvx[k] = 0.0f;
+            s->kvy[k] = 0.0f;
+            set_diag_stage(s, "DBG:ATTACKER_GOAL_BLAST");
         }
     }
 
@@ -5020,6 +5139,23 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     const hunter_profile_t *p;
     float prev_hx = s->hx[h];
     float prev_hy = s->hy[h];
+
+#if DISABLE_HUNTER_DRONES
+    (void)core_x;
+    (void)core_y;
+    s->hunter_loaded[h] = 0;
+    s->h_falling[h] = 0;
+    s->h_target_idx[h] = -1;
+    s->h_target_serial[h] = 0;
+    s->h_reselect_sec[h] = 0.0f;
+    s->h_last_target_d2[h] = 0.0f;
+    s->h_lock_persist_t[h] = 0.0f;
+    s->h_switch_cooldown_t[h] = 0.0f;
+    s->h_terminal_attempts[h] = 0;
+    s->h_ground_stall_frames[h] = 0;
+    lv_obj_add_flag(s->hunters[h], LV_OBJ_FLAG_HIDDEN);
+    return;
+#endif
 
     if (!isfinite(s->hx[h]) || !isfinite(s->hy[h]) || !isfinite(s->hvx[h]) || !isfinite(s->hvy[h]) || !isfinite(s->h_heading[h]))
     {
@@ -5389,6 +5525,36 @@ static void update_hunter(drone_hunter_scene_t *s, int h, float core_x, float co
     else
     {
         s->hy[h] = clampf(s->hy[h], (float)s->arena_y + 6.0f, ground_y);
+    }
+    if (!s->hunter_loaded[h] || (s->h_falling[h] != 0))
+    {
+        s->h_ground_stall_frames[h] = 0;
+    }
+    else if ((s->hy[h] >= (ground_y - GROUND_STALL_BAND_PX)) &&
+             (dist2(s->hx[h], s->hy[h], s->kx[target], s->ky[target]) > (p->kill_radius * p->kill_radius * 1.15f)))
+    {
+        s->h_ground_stall_frames[h]++;
+        if (s->h_ground_stall_frames[h] > HUNTER_GROUND_STALL_FRAMES)
+        {
+            /* Break out of rare deck-edge oscillation loops instead of stalling gameplay. */
+            note_failure(s, "Hunter ground-stall escape triggered", NULL);
+            s->h_falling[h] = 2;
+            s->h_target_idx[h] = -1;
+            s->h_target_serial[h] = 0;
+            s->h_reselect_sec[h] = 0.0f;
+            s->h_last_target_d2[h] = 0.0f;
+            s->h_lock_persist_t[h] = 0.0f;
+            s->h_switch_cooldown_t[h] = 0.0f;
+            s->h_terminal_attempts[h] = 0;
+            s->h_overshoot_cooldown[h] = 0.0f;
+            s->h_ground_stall_frames[h] = 0;
+            s->hvx[h] *= 0.24f;
+            s->hvy[h] = -1.45f;
+        }
+    }
+    else
+    {
+        s->h_ground_stall_frames[h] = 0;
     }
     if (s->h_reselect_sec[h] > 0.0f)
     {
@@ -6712,7 +6878,12 @@ static void maybe_end_round(drone_hunter_scene_t *s)
     {
         total_stock += s->hunter_stock[k];
     }
+    #if DISABLE_HUNTER_DRONES && DISABLE_CIWS_GUNS
+    /* Attack-only test mode: do not auto-end as defender-exhausted at round start. */
+    defender_exhausted = 0;
+    #else
     defender_exhausted = !defense_layer_remaining(s);
+    #endif
     attacker_exhausted = (s->wave_idx >= WIN_WAVE_TARGET) &&
                          (s->attack_remaining_to_spawn <= 0) &&
                          !s->killer_active[0] &&
@@ -6768,8 +6939,10 @@ static void anim_cb(lv_timer_t *timer)
         s->city_fire_head = 0;
     }
     set_diag_stage(s, "DBG:ANIM_TICK");
+#if ENABLE_RUNTIME_AUDIO
     drone_hunter_audio_heartbeat();
     sound_tick(s);
+#endif
 
     if (!s->round_over)
     {
@@ -6846,6 +7019,7 @@ static void anim_cb(lv_timer_t *timer)
 
         if ((s->attack_remaining_to_spawn <= 0) && !s->killer_active[0] && !s->killer_active[1])
         {
+#if !DISABLE_ALL_ATTACK_DRONES
             if (s->wave_idx < WIN_WAVE_TARGET)
             {
                 start_wave(s, s->wave_idx + 1);
@@ -6854,6 +7028,7 @@ static void anim_cb(lv_timer_t *timer)
                     s->h_reselect_sec[h] = 0.0f;
                 }
             }
+#endif
         }
 
         s->fx_core_hit_t = clampf(s->fx_core_hit_t - DT_SEC, 0.0f, FX_CORE_HIT_SEC);
@@ -7103,13 +7278,14 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_set_style_text_color(s->hud_defend_mode_text, lv_color_hex(0xD1ECFF), 0);
     lv_obj_align(s->hud_defend_mode_text, LV_ALIGN_BOTTOM_MID, 0, -4);
 
-    /* Freeze tracer: always-visible stage label for field debugging. */
-    s->hud_diag_stage = lv_label_create(s->arena);
     s->hud_diag_text[0] = '\0';
     s->hud_cached_attacker_points = -2147483647;
     s->hud_cached_hunter_points = -2147483647;
     s->hud_cached_attacker_mode_sel = -1;
     s->hud_cached_defender_mode_sel = -1;
+#if SHOW_DEBUG_STAGE_LABEL
+    /* Freeze tracer: always-visible stage label for field debugging. */
+    s->hud_diag_stage = lv_label_create(s->arena);
     lv_label_set_text(s->hud_diag_stage, "DBG:BOOT");
     lv_obj_set_style_text_font(s->hud_diag_stage, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(s->hud_diag_stage, lv_color_hex(0xFDE68A), 0);
@@ -7124,6 +7300,9 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_align(s->hud_diag_stage, LV_ALIGN_TOP_MID, 0, 2);
     lv_obj_clear_flag(s->hud_diag_stage, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(s->hud_diag_stage);
+#else
+    s->hud_diag_stage = NULL;
+#endif
 
     s->mode_btn = NULL;
     s->mode_btn_label = NULL;

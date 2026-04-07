@@ -4,9 +4,9 @@
 - Golden rolling label: `golden-e8-drone-hunter`
 - Failsafe rolling label: `failsafe-e8-drone-hunter`
 
-## Latest Dated Restore Folders (2026-04-01)
-- Golden folder: `golden-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
-- Failsafe folder: `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
+## Latest Dated Restore Folders (2026-04-07)
+- Golden folder: `golden-20260407-phase15-attack-only-mixed-attackers-fireball-seq-20260407_105450`
+- Failsafe folder (unchanged): `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
 
 ## Restore Artifacts Location
 - `/home/user/Documents/DroneHunter_Golden_2026-03-28/restore_points/`
@@ -28,8 +28,7 @@ Each restore point contains:
 ## Latest Flash Signatures
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3923968 bytes` / `verified 3920440 bytes`
-- 2026-04-01 probe note: direct flash retry blocked (`unable to find a matching CMSIS-DAP device`).
+- `wrote 3903488 bytes` / `verified 3901616 bytes`
 
 ## Recovery Command
 ```bash

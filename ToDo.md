@@ -1,6 +1,6 @@
 # EdgeAI Drone Hunter - Roadmap and Phase Tracker
 
-Date: 2026-04-01
+Date: 2026-04-07
 Canonical rules source: `rules.md`
 Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -43,13 +43,11 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 - Explosion and CIWS burst audio cues.
 - Mix priority/ducking.
 
-## Priority Fix List (2026-04-01)
+## Priority Fix List (2026-04-07)
 1. Investigate and fix intermittent gameplay freeze (top blocker):
-   - latest observed freeze stage: `DBG:ANIM_TICK`,
-   - reproduced in both long-run and early-run states:
-     - `150+` combined attack/defense points,
-     - `0 attack / 5 defense`,
-   - action focus: isolate decision/drone-choice branch that triggers lockup.
+   - freeze remains reproducible during gameplay despite prior hardening passes,
+   - latest isolation mode disables hunters + CIWS so only attacker/leak/effects paths run,
+   - action focus: isolate state/path transition that still produces lockup.
 2. Replace pong speaker-test audio with full gameplay soundscape:
    - explosions, city ambience, firetrucks, ambulances, drone sounds, emergency escalation,
    - event-driven mapping and timing aligned with gameplay states.
@@ -60,6 +58,10 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
    - tiny white/tungsten ground-level flickers across city footprint,
    - flicker sprite size target: `1px` to `3px` squares,
    - low-intensity, randomized timing/placement to avoid visual noise.
+7. Exit attack-only isolation mode after freeze root-cause is confirmed:
+   - re-enable hunter drones and CIWS in staged steps,
+   - preserve validated impact-fireball-before-destroy behavior,
+   - run long soak stability pass with mixed attacker roster (`x-wing` + fixed-wing).
 
 ## Plan For #1 (Audio Overhaul)
 1. Audio asset inventory pass:

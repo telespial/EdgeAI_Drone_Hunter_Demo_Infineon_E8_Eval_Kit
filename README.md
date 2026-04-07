@@ -23,12 +23,16 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - `rules.md`: canonical rules/spec intent.
 - `ToDo.md`: roadmap and phase tracker.
 
-## Program Status (2026-03-29)
+## Program Status (2026-04-07)
 - Completed phases: `1` through `14`.
 - In progress: `Phase 15`.
 - Planned next: `Phase 16` (soundscape/audio layer).
 
 ## Current Gameplay Baseline
+- Attack-only freeze-isolation mode is currently active:
+  - hunters + CIWS are compile-time disabled,
+  - attackers are mixed (`x-wing` + fixed-wing),
+  - city-hit path now renders fireball first, then target is destroyed/respawned.
 - Startup sequencing no longer replays deterministic openings:
   - round reseeds/resets at splash start,
   - attacker composition uses strategic stochastic weighting (doctrine-driven probabilities + RNG per spawn).
@@ -76,11 +80,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 2633728 bytes` / `verified 2628796 bytes`
+- `wrote 3903488 bytes` / `verified 3901616 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `2,628,796 bytes`.
+- CM55 image verified (external SMIF): `3,901,616 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance
