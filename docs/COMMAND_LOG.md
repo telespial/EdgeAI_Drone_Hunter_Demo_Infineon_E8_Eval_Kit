@@ -1,5 +1,29 @@
 # COMMAND_LOG
 
+- 2026-04-07 | CIWS visual/runtime re-enable pass:
+  - re-enabled CIWS guns (`DISABLE_CIWS_GUNS=0`),
+  - re-enabled CIWS tracer stream rendering (`RENDER_CIWS_TRACERS=1`),
+  - validated machine-gun sound + visible tracer stream behavior on hardware.
+- 2026-04-07 | Deck icon + fireball/city-fire stabilization pass:
+  - rewrote `update_hunter_deck_ui()` to force deterministic per-refresh icon/name/count styling and deck foreground pinning,
+  - re-enabled city-fire rendering (`RENDER_CITY_FIRE_EFFECTS=1`),
+  - moved active fireball FX objects to foreground during render,
+  - upgraded stability-safe city-fire path from static frame to low-cost animated frame stepping.
+- 2026-04-07 | Build + full flash validation for CIWS/icon/fire baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded:
+    - `wrote 32768 bytes` / `verified 30456 bytes`,
+    - `wrote 12288 bytes` / `verified 8732 bytes`,
+    - `wrote 3911680 bytes` / `verified 3908008 bytes`,
+    - `** Resetting Target **`.
+- 2026-04-07 | Docs refresh + restore-point promotion:
+  - updated `README.md`, `ToDo.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, and `docs/RESTORE_POINTS.md` for current runtime state,
+  - promoted paired restore points:
+    - `golden-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`,
+    - `failsafe-e8-drone-hunter-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`,
+  - moved `current_golden` and `current_failsafe` symlinks to this baseline.
+
 - 2026-04-07 | Shahed terminal dive + impact-centered explosion alignment:
   - reinforced attacker dive geometry using spawn-distance-normalized dive progress,
   - applied stronger Shahed terminal acceleration and smaller near-ground scale,

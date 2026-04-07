@@ -74,7 +74,7 @@
 #define DISABLE_XWING_ATTACK_DRONES (0)
 #define DISABLE_ALL_ATTACK_DRONES  (0)
 #define DISABLE_HUNTER_DRONES      (1)
-#define DISABLE_CIWS_GUNS          (1)
+#define DISABLE_CIWS_GUNS          (0)
 #define SHOW_DEBUG_STAGE_LABEL     (0)
 #define FORCE_SHAHED_ONLY_DRONES   (0)
 #define LANE_SITE_COUNT           (16)
@@ -100,8 +100,8 @@
 #define LOCK_BOX_THICK_PX         (2)
 #define LOCK_BOX_PAD_PX           (6)
 #define EFFECTS_TRACER_RENDER_CAP (24)
-#define RENDER_CIWS_TRACERS       (0)
-#define RENDER_CITY_FIRE_EFFECTS  (0)
+#define RENDER_CIWS_TRACERS       (1)
+#define RENDER_CITY_FIRE_EFFECTS  (1)
 /* Freeze isolation switch: disable visual fireball/fire insertion on attacker city-hit success path. */
 #define DISABLE_ATTACK_SUCCESS_FIREBALLS (0)
 
@@ -3812,106 +3812,59 @@ static void maybe_apply_mid_wave_shift(drone_hunter_scene_t *s)
 static void update_hunter_deck_ui(drone_hunter_scene_t *s)
 {
     int i;
-    static int cache_ready = 0;
-    static int prev_stock[HUNTER_TYPE_COUNT];
-    static int prev_name_live[HUNTER_TYPE_COUNT];
-    static int prev_count_live[HUNTER_TYPE_COUNT];
-    static int prev_icon_live[HUNTER_TYPE_COUNT];
-    static int prev_in_use[HUNTER_TYPE_COUNT];
-    static int prev_selected[HUNTER_TYPE_COUNT];
-    static int prev_ciws_left = -1;
-    static int prev_ciws_right = -1;
-    static int prev_ciws_live = -1;
-    static uint32_t last_ciws_label_tick = 0U;
-
-    if (!cache_ready)
+    if ((s == NULL) || (s->deck_bar == NULL))
     {
-        for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
-        {
-            prev_stock[i] = -1;
-            prev_name_live[i] = -1;
-            prev_count_live[i] = -1;
-            prev_icon_live[i] = -1;
-            prev_in_use[i] = -1;
-            prev_selected[i] = -1;
-        }
-        cache_ready = 1;
+        return;
     }
+
+    /* Keep deck icons above high-churn arena FX layers to prevent apparent blink/dropout. */
+    lv_obj_move_foreground(s->deck_bar);
 
     for (i = 0; i < HUNTER_TYPE_COUNT; ++i)
     {
         int in_use = (s->h_type[0] == (hunter_type_t)i) || (s->h_type[1] == (hunter_type_t)i);
         int selected = (s->manual_selected_hunter == i);
         int stock_live = (s->hunter_stock[i] > 0) ? 1 : 0;
-        /* Keep deck icons pinned visible each refresh to avoid random hide/show glitches. */
-        lv_obj_clear_flag(s->deck_icon[i], LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_style_opa(s->deck_icon[i], LV_OPA_COVER, 0);
-        lv_obj_set_style_image_opa(s->deck_icon[i], LV_OPA_COVER, 0);
-        if (prev_icon_live[i] != stock_live)
+
+        if (s->deck_icon[i] != NULL)
         {
-            /* Keep deck icons visually stable; avoid periodic opacity flicker. */
-            lv_obj_set_style_opa(s->deck_icon[i], LV_OPA_COVER, 0);
-            prev_icon_live[i] = stock_live;
-        }
-        if (prev_in_use[i] != in_use)
-        {
+            lv_opa_t icon_opa = stock_live ? LV_OPA_COVER : LV_OPA_70;
+            lv_obj_clear_flag(s->deck_icon[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_opa(s->deck_icon[i], icon_opa, 0);
+            lv_obj_set_style_image_opa(s->deck_icon[i], icon_opa, 0);
             lv_obj_set_style_border_width(s->deck_icon[i], in_use ? 2 : 0, 0);
             lv_obj_set_style_border_color(s->deck_icon[i], lv_color_hex(0x22D3EE), 0);
             lv_obj_set_style_radius(s->deck_icon[i], 3, 0);
-            prev_in_use[i] = in_use;
-        }
-        if (prev_selected[i] != selected)
-        {
             lv_obj_set_style_outline_width(s->deck_icon[i], selected ? 2 : 0, 0);
             lv_obj_set_style_outline_color(s->deck_icon[i], lv_color_hex(0xFBBF24), 0);
-            prev_selected[i] = selected;
         }
-        if (prev_stock[i] != s->hunter_stock[i])
-        {
-            lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
-            prev_stock[i] = s->hunter_stock[i];
-        }
-        if (prev_count_live[i] != stock_live)
-        {
-            lv_obj_set_style_text_color(s->deck_count[i],
-                                        stock_live ? lv_color_hex(0xFDE68A) : lv_color_hex(0x6B7280),
-                                        0);
-            prev_count_live[i] = stock_live;
-        }
-        if (prev_name_live[i] != stock_live)
+        if (s->deck_name[i] != NULL)
         {
             lv_obj_set_style_text_color(s->deck_name[i],
                                         stock_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
                                         0);
-            prev_name_live[i] = stock_live;
+        }
+        if (s->deck_count[i] != NULL)
+        {
+            lv_label_set_text_fmt(s->deck_count[i], "x%d", s->hunter_stock[i]);
+            lv_obj_set_style_text_color(s->deck_count[i],
+                                        stock_live ? lv_color_hex(0xFDE68A) : lv_color_hex(0x6B7280),
+                                        0);
         }
     }
 
-    if (s->deck_ciws_count != NULL)
+    if ((s->deck_ciws_icon != NULL) && (s->deck_ciws_count != NULL) && (s->deck_ciws_name != NULL))
     {
         int total_ammo = s->ciws_ammo_left + s->ciws_ammo_right;
         int ciws_live = (total_ammo > 0) ? 1 : 0;
-        uint32_t now_tick = lv_tick_get();
-        int ciws_changed = (prev_ciws_left != s->ciws_ammo_left) || (prev_ciws_right != s->ciws_ammo_right);
-        int label_due = ((uint32_t)(now_tick - last_ciws_label_tick) >= 180U) || (total_ammo <= 0);
-        if (ciws_changed && label_due)
-        {
-            lv_label_set_text_fmt(s->deck_ciws_count, "L%d/R%d", s->ciws_ammo_left, s->ciws_ammo_right);
-            prev_ciws_left = s->ciws_ammo_left;
-            prev_ciws_right = s->ciws_ammo_right;
-            last_ciws_label_tick = now_tick;
-        }
-        if (prev_ciws_live != ciws_live)
-        {
-            lv_obj_set_style_text_color(s->deck_ciws_count,
-                                        ciws_live ? lv_color_hex(0x93C5FD) : lv_color_hex(0x6B7280),
-                                        0);
-            lv_obj_set_style_text_color(s->deck_ciws_name,
-                                        ciws_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
-                                        0);
-            lv_obj_set_style_opa(s->deck_ciws_icon, ciws_live ? LV_OPA_COVER : LV_OPA_70, 0);
-            prev_ciws_live = ciws_live;
-        }
+        lv_label_set_text_fmt(s->deck_ciws_count, "L%d/R%d", s->ciws_ammo_left, s->ciws_ammo_right);
+        lv_obj_set_style_text_color(s->deck_ciws_count,
+                                    ciws_live ? lv_color_hex(0x93C5FD) : lv_color_hex(0x6B7280),
+                                    0);
+        lv_obj_set_style_text_color(s->deck_ciws_name,
+                                    ciws_live ? lv_color_hex(0xE5E7EB) : lv_color_hex(0x6B7280),
+                                    0);
+        lv_obj_set_style_opa(s->deck_ciws_icon, ciws_live ? LV_OPA_COVER : LV_OPA_70, 0);
     }
 }
 
@@ -5972,6 +5925,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             }
 
             lv_obj_clear_flag(s->fx_intercept[k], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(s->fx_intercept[k]);
             lv_obj_set_size(s->fx_intercept[k], size, size);
             lv_obj_set_style_radius(s->fx_intercept[k], LV_RADIUS_CIRCLE, 0);
             lv_obj_set_style_bg_color(s->fx_intercept[k], fill_color, 0);
@@ -6054,6 +6008,7 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             }
 
             lv_obj_clear_flag(s->fx_kill[k], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(s->fx_kill[k]);
             lv_obj_set_size(s->fx_kill[k], size, size);
             lv_obj_set_style_radius(s->fx_kill[k], LV_RADIUS_CIRCLE, 0);
             lv_obj_set_style_bg_color(s->fx_kill[k], fill_color, 0);
@@ -6089,6 +6044,9 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
 #else
 #if RENDER_STABILITY_SAFE_MODE
         int visible_fire = s->attacker_goal_detonations;
+        uint32_t now_tick = lv_tick_get();
+        uint32_t anim_phase_tick = now_tick / 120U;
+        int anim_span = (FLAME_SPRITE_FRAME_COUNT > 1) ? (FLAME_SPRITE_FRAME_COUNT - 1) : 1;
         if (visible_fire > CITY_FIRE_RENDER_MAX)
         {
             visible_fire = CITY_FIRE_RENDER_MAX;
@@ -6105,9 +6063,9 @@ static void update_effects(drone_hunter_scene_t *s, float core_x, float core_y)
             }
             if (k < visible_fire)
             {
-                /* Safe-mode fallback: static, low-cost persistent fires, one representative per successful strike. */
+                /* Safe-mode fallback: low-cost persistent fires with lightweight frame animation. */
                 int src_idx = (k * 4);
-                int frame_idx = (k % (FLAME_SPRITE_FRAME_COUNT - 1)) + 1;
+                int frame_idx = (int)((anim_phase_tick + (uint32_t)(k * 3U)) % (uint32_t)anim_span) + 1;
                 float fx;
                 float fy;
                 int32_t zoom;
@@ -6804,6 +6762,9 @@ static void update_hud(drone_hunter_scene_t *s)
     {
         return;
     }
+
+    /* Keep deck icon visuals synchronized with runtime stock/usage each HUD refresh. */
+    update_hunter_deck_ui(s);
 
     if (s->defender_mode_sel == DEFENDER_MODE_HUMAN)
     {

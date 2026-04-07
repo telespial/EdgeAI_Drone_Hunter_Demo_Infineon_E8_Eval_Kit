@@ -13,12 +13,12 @@
 1. Investigate and fix intermittent gameplay freeze (highest priority blocker):
    - user-observed freeze can still occur in gameplay despite multiple guards,
    - current working hypothesis remains state/path-specific runtime livelock near engagement/effects transitions.
-2. Fix hunter icon blink regression:
-   - `Pelican`, `TYTAN`, and `Merops` icons intermittently blink on/off,
-   - expected behavior is stable icon visibility during active gameplay.
-3. Re-add and stabilize fireball rendering:
-   - fireballs must render consistently and at correct impact points,
-   - ensure fireball path is robust under mixed-attacker and long-run play.
+2. Soak-validate hunter icon stability patch:
+   - `Pelican`, `TYTAN`, and `Merops` deck icons now run forced per-refresh style sync + deck foreground pinning,
+   - verify no icon blink/dropout across long mixed gameplay runs.
+3. Soak-validate fireball/city-fire rendering patch:
+   - fireballs are re-enabled and rendered in foreground at impact,
+   - city-fire rendering is enabled with lightweight animation in stability-safe mode.
 4. Complete attack-only diagnostic validation pass:
    - defenders (`hunter` + `CIWS`) are intentionally disabled for isolation,
    - attackers are mixed (`x-wing` + fixed-wing) and allowed to leak/impact city,
@@ -33,7 +33,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3907584 bytes`, `verified 3903408 bytes`
+- `wrote 3911680 bytes`, `verified 3908008 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -41,7 +41,9 @@
   - audio runtime is enabled,
   - attacker city-hit fireball path is enabled,
   - hunter drones are disabled by compile-time gate,
-  - CIWS guns are disabled by compile-time gate,
+  - CIWS guns are enabled by compile-time gate,
+  - CIWS tracer streams are enabled by compile-time gate,
+  - city-fire rendering is enabled by compile-time gate.
   - immediate defender-exhaustion round-end is bypassed in this mode.
 - Runtime rollback baseline restored to pre-regression gameplay logic, while keeping only the reduced terminal impact-scale render tweak.
 - Attack roster is mixed again:
@@ -124,9 +126,10 @@
   - attacker terminal dive progression now uses spawn-distance normalized descent tracking,
   - Shahed terminal phase receives stronger dive acceleration and smaller impact-scale rendering,
   - city-hit impact FX/fire placement is centered from attacker visual center at impact.
-- Newly observed open issues:
-  - hunter icons (`Pelican`, `TYTAN`, `Merops`) can still blink on/off,
-  - fireballs need additional stabilization to render correctly in all impact paths.
+- Fire/icon stabilization updates (latest):
+  - deck icons now use full per-refresh style reconciliation and deck foreground pinning to prevent blink,
+  - fireballs are explicitly moved foreground during active FX render window,
+  - stability-safe city-fire path now animates frames with low-cost timed stepping.
 - Fire profile mapping is now centralized with weighted selection:
   - 75% bright bucket, 25% dark bucket.
 - Hunter icon anti-flicker stabilization pass:
@@ -143,7 +146,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,903,408 bytes`
+- CM55 verified image size (external SMIF): `3,908,008 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
@@ -151,5 +154,5 @@
 - Failsafe: latest validated direct-recovery baseline.
 
 ## Restore Snapshot (2026-04-07)
-- Golden label: `golden-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`
-- Failsafe label: `failsafe-e8-drone-hunter-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`
+- Golden label: `golden-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`
+- Failsafe label: `failsafe-e8-drone-hunter-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`

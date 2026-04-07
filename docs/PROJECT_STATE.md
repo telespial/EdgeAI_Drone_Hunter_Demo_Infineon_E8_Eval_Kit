@@ -13,7 +13,9 @@
     - `ENABLE_RUNTIME_AUDIO=1`,
     - `DISABLE_ATTACK_SUCCESS_FIREBALLS=0`,
     - `DISABLE_HUNTER_DRONES=1`,
-    - `DISABLE_CIWS_GUNS=1`,
+    - `DISABLE_CIWS_GUNS=0`,
+    - `RENDER_CIWS_TRACERS=1`,
+    - `RENDER_CITY_FIRE_EFFECTS=1`,
     - round-end defender-exhaustion bypass when both defender layers are disabled,
     - attackers leak to city uninterrupted for freeze-isolation testing.
   - mixed attacker roster enabled:
@@ -85,9 +87,10 @@
     - freeze remains unresolved and is still the top blocker:
       - latest user observations indicate runtime can still lock during gameplay after 30-180s windows,
       - working hypothesis remains decision/path/state-dependent livelock.
-  - additional open issues (newly prioritized):
-    - `Pelican`, `TYTAN`, and `Merops` icon visibility can still blink on/off intermittently,
-    - fireballs need additional rendering stabilization for consistent visual behavior.
+  - recent rendering/UI stabilization patches:
+    - deck hunter icons now use per-refresh style reconciliation and deck foreground pinning to prevent blink/dropout,
+    - fireballs are moved foreground in active FX render path for consistent visibility,
+    - stability-safe city-fire path now animates frames with low-cost timed stepping.
   - latest attack-impact pass:
     - Shahed dive behavior now applies stronger terminal acceleration and deeper near-ground scale reduction,
     - city-hit explosions/fire use attacker visual center to keep impact effects aligned to landing point.
@@ -105,7 +108,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3907584 bytes` / `verified 3903408 bytes`
+- `wrote 3911680 bytes` / `verified 3908008 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
@@ -115,8 +118,8 @@ Observed success signatures:
 1. Freeze root-cause isolation and fix (highest priority):
    - continue using attack-only mode to isolate attacker/effects paths without defender interactions,
    - validate if freeze persists when only city-impact/fireball paths are active.
-2. Fix hunter icon blink issue (`Pelican`, `TYTAN`, `Merops`) and validate stable icon visibility.
-3. Re-add/stabilize fireball rendering and verify impact-centered visual correctness across drone classes.
+2. Soak-validate hunter icon stability (`Pelican`, `TYTAN`, `Merops`) after latest deck UI hardening.
+3. Soak-validate fireball/city-fire rendering (including animated safe-mode flames) under long gameplay.
 4. Re-enable defenders in staged order (hunters first, then CIWS) once freeze path is characterized.
 5. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
 6. Add project settings/help files and integrate with current workflow.

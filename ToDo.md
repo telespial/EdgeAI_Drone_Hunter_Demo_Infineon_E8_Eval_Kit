@@ -48,12 +48,12 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
    - freeze remains reproducible during gameplay despite prior hardening passes,
    - latest isolation mode disables hunters + CIWS so only attacker/leak/effects paths run,
    - action focus: isolate state/path transition that still produces lockup.
-2. Fix hunter icon visibility blinking:
-   - `Pelican`, `TYTAN`, and `Merops` icons still blink on/off intermittently,
-   - keep icon visibility stable throughout gameplay and deck/UI updates.
-3. Re-add and stabilize fireball rendering:
-   - fireballs need to be consistently spawned and rendered correctly at impact,
-   - ensure fireballs remain visually centered on true attack impact location.
+2. Soak-validate hunter icon stability (recently patched):
+   - `Pelican`, `TYTAN`, and `Merops` deck icons now use forced per-refresh foreground + style synchronization,
+   - run extended gameplay to confirm no further icon blink/regression.
+3. Soak-validate fireball + city-fire rendering (recently patched):
+   - fireballs are re-enabled and forced foreground at impact,
+   - city-fire rendering is re-enabled with lightweight animated frames in safe-mode path.
 4. Replace pong speaker-test audio with full gameplay soundscape:
    - explosions, city ambience, firetrucks, ambulances, drone sounds, emergency escalation,
    - event-driven mapping and timing aligned with gameplay states.
