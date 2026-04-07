@@ -1,5 +1,27 @@
 # COMMAND_LOG
 
+- 2026-04-07 | Shahed terminal dive + impact-centered explosion alignment:
+  - reinforced attacker dive geometry using spawn-distance-normalized dive progress,
+  - applied stronger Shahed terminal acceleration and smaller near-ground scale,
+  - centered impact FX/fire on attacker visual center at city-hit time to align blast with landing point.
+- 2026-04-07 | Build + full flash validation for current runtime baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (`no work to do`),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from latest ELF via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded:
+    - `wrote 32768 bytes` / `verified 30456 bytes`,
+    - `wrote 12288 bytes` / `verified 8732 bytes`,
+    - `wrote 3907584 bytes` / `verified 3903408 bytes`,
+    - `** Resetting Target **`.
+- 2026-04-07 | Docs refresh + TODO reprioritization + restore-point promotion:
+  - updated `README.md`, `ToDo.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, and `docs/RESTORE_POINTS.md`,
+  - added new top TODO issues:
+    - `Pelican`/`TYTAN`/`Merops` icon blink on/off regression,
+    - fireballs must be added/rendered correctly and centered consistently.
+  - promoted new paired restore points:
+    - `golden-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`,
+    - `failsafe-e8-drone-hunter-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`.
+  - moved `current_golden` and `current_failsafe` symlinks to this baseline.
+
 - 2026-04-07 | Runtime rollback + terminal impact-scale retention:
   - restored gameplay logic to the previous stable baseline after freeze regression report,
   - retained only the reduced terminal impact-size render behavior for attack drones near ground.

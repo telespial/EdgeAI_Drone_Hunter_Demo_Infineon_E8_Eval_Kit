@@ -85,6 +85,12 @@
     - freeze remains unresolved and is still the top blocker:
       - latest user observations indicate runtime can still lock during gameplay after 30-180s windows,
       - working hypothesis remains decision/path/state-dependent livelock.
+  - additional open issues (newly prioritized):
+    - `Pelican`, `TYTAN`, and `Merops` icon visibility can still blink on/off intermittently,
+    - fireballs need additional rendering stabilization for consistent visual behavior.
+  - latest attack-impact pass:
+    - Shahed dive behavior now applies stronger terminal acceleration and deeper near-ground scale reduction,
+    - city-hit explosions/fire use attacker visual center to keep impact effects aligned to landing point.
 
 ## Verified Hardware
 - Kit: `KIT_PSE84_EVAL`
@@ -99,7 +105,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3907584 bytes` / `verified 3902696 bytes`
+- `wrote 3907584 bytes` / `verified 3903408 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script
@@ -109,8 +115,10 @@ Observed success signatures:
 1. Freeze root-cause isolation and fix (highest priority):
    - continue using attack-only mode to isolate attacker/effects paths without defender interactions,
    - validate if freeze persists when only city-impact/fireball paths are active.
-2. Re-enable defenders in staged order (hunters first, then CIWS) once freeze path is characterized.
-3. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
-4. Add project settings/help files and integrate with current workflow.
-5. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
-6. Run extended soak validation to confirm freeze resolution under current stability guard settings.
+2. Fix hunter icon blink issue (`Pelican`, `TYTAN`, `Merops`) and validate stable icon visibility.
+3. Re-add/stabilize fireball rendering and verify impact-centered visual correctness across drone classes.
+4. Re-enable defenders in staged order (hunters first, then CIWS) once freeze path is characterized.
+5. Improve attacker/defender `ALGO` strategic behavior for more engaging play.
+6. Add project settings/help files and integrate with current workflow.
+7. Prepare flame redraw work package (detailed visual scope to be defined at start of that step).
+8. Run extended soak validation to confirm freeze resolution under current stability guard settings.

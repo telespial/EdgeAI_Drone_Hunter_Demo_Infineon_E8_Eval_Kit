@@ -33,6 +33,9 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
   - hunters + CIWS are compile-time disabled,
   - attackers are mixed (`x-wing` + fixed-wing),
   - city-hit path now renders fireball first, then target is destroyed/respawned.
+- Latest attacker dive + impact alignment pass is active:
+  - Shahed terminal dive now accelerates and scales down as altitude closes,
+  - city-hit explosion/fx/fire placement is centered on attacker visual impact point.
 - Top-center liquid-glass HUD now includes a touch `AUDIO ON/OFF` mute toggle.
 - Attack-drone terminal impact-size rendering is reduced further (smaller near-ground visual scale).
 - Startup sequencing no longer replays deterministic openings:
@@ -58,6 +61,9 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
   - bright orange,
   - bright red,
   - bright red/orange.
+- Current open runtime issues:
+  - `Pelican` / `TYTAN` / `Merops` icon visibility can still blink on/off intermittently,
+  - fireball rendering still needs additional stabilization pass.
 
 ## Build
 ```bash
@@ -82,11 +88,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3907584 bytes` / `verified 3902696 bytes`
+- `wrote 3907584 bytes` / `verified 3903408 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `3,902,696 bytes`.
+- CM55 image verified (external SMIF): `3,903,408 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

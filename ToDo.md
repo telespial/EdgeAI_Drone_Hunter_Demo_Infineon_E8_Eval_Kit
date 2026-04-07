@@ -48,17 +48,23 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
    - freeze remains reproducible during gameplay despite prior hardening passes,
    - latest isolation mode disables hunters + CIWS so only attacker/leak/effects paths run,
    - action focus: isolate state/path transition that still produces lockup.
-2. Replace pong speaker-test audio with full gameplay soundscape:
+2. Fix hunter icon visibility blinking:
+   - `Pelican`, `TYTAN`, and `Merops` icons still blink on/off intermittently,
+   - keep icon visibility stable throughout gameplay and deck/UI updates.
+3. Re-add and stabilize fireball rendering:
+   - fireballs need to be consistently spawned and rendered correctly at impact,
+   - ensure fireballs remain visually centered on true attack impact location.
+4. Replace pong speaker-test audio with full gameplay soundscape:
    - explosions, city ambience, firetrucks, ambulances, drone sounds, emergency escalation,
    - event-driven mapping and timing aligned with gameplay states.
-3. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
-4. Add settings file and help file with user-facing guidance and controls reference.
-5. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
-6. Add subtle city liveliness lighting:
+5. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
+6. Add settings file and help file with user-facing guidance and controls reference.
+7. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
+8. Add subtle city liveliness lighting:
    - tiny white/tungsten ground-level flickers across city footprint,
    - flicker sprite size target: `1px` to `3px` squares,
    - low-intensity, randomized timing/placement to avoid visual noise.
-7. Exit attack-only isolation mode after freeze root-cause is confirmed:
+9. Exit attack-only isolation mode after freeze root-cause is confirmed:
    - re-enable hunter drones and CIWS in staged steps,
    - preserve validated impact-fireball-before-destroy behavior,
    - run long soak stability pass with mixed attacker roster (`x-wing` + fixed-wing).

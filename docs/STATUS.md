@@ -13,21 +13,27 @@
 1. Investigate and fix intermittent gameplay freeze (highest priority blocker):
    - user-observed freeze can still occur in gameplay despite multiple guards,
    - current working hypothesis remains state/path-specific runtime livelock near engagement/effects transitions.
-2. Complete attack-only diagnostic validation pass:
+2. Fix hunter icon blink regression:
+   - `Pelican`, `TYTAN`, and `Merops` icons intermittently blink on/off,
+   - expected behavior is stable icon visibility during active gameplay.
+3. Re-add and stabilize fireball rendering:
+   - fireballs must render consistently and at correct impact points,
+   - ensure fireball path is robust under mixed-attacker and long-run play.
+4. Complete attack-only diagnostic validation pass:
    - defenders (`hunter` + `CIWS`) are intentionally disabled for isolation,
    - attackers are mixed (`x-wing` + fixed-wing) and allowed to leak/impact city,
    - confirm impact sequence is now fireball-first then target despawn/respawn.
-3. Resume full combat loop after freeze isolation:
+5. Resume full combat loop after freeze isolation:
    - re-enable hunters + CIWS,
    - preserve validated fireball/audio behavior,
    - retest long-run stability.
-4. Improve attacker + defender `ALGO` strategy depth and fun factor.
-5. Schedule flame redraw phase (detailed redraw scope pending kickoff).
+6. Improve attacker + defender `ALGO` strategy depth and fun factor.
+7. Schedule flame redraw phase (detailed redraw scope pending kickoff).
 
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3907584 bytes`, `verified 3902696 bytes`
+- `wrote 3907584 bytes`, `verified 3903408 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -114,6 +120,13 @@
   - hunters now persist in terminal intercept and retry close-range attacks before disengage,
   - long-range commit gate loosened so distant uncovered threats are engaged earlier,
   - lock boxes now use arena-local coordinates and correctly surround x-wing/small attack drones.
+- Latest dive/impact visuals update:
+  - attacker terminal dive progression now uses spawn-distance normalized descent tracking,
+  - Shahed terminal phase receives stronger dive acceleration and smaller impact-scale rendering,
+  - city-hit impact FX/fire placement is centered from attacker visual center at impact.
+- Newly observed open issues:
+  - hunter icons (`Pelican`, `TYTAN`, `Merops`) can still blink on/off,
+  - fireballs need additional stabilization to render correctly in all impact paths.
 - Fire profile mapping is now centralized with weighted selection:
   - 75% bright bucket, 25% dark bucket.
 - Hunter icon anti-flicker stabilization pass:
@@ -130,7 +143,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,902,696 bytes`
+- CM55 verified image size (external SMIF): `3,903,408 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
@@ -138,5 +151,5 @@
 - Failsafe: latest validated direct-recovery baseline.
 
 ## Restore Snapshot (2026-04-07)
-- Golden label: `golden-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`
-- Failsafe label: `failsafe-e8-drone-hunter-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`
+- Golden label: `golden-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`
+- Failsafe label: `failsafe-e8-drone-hunter-20260407-phase15-shahed-dive-impact-center-status-refresh-20260407_150504`

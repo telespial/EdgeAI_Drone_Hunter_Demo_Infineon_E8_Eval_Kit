@@ -447,6 +447,7 @@ typedef struct
     int k_serial[KILLER_COUNT];
     float k_goal_x[KILLER_COUNT];
     float k_goal_y[KILLER_COUNT];
+    float k_spawn_dist[KILLER_COUNT];
     float k_detect_conf[KILLER_COUNT];
     float k_class_conf[KILLER_COUNT];
     float k_commit_conf[KILLER_COUNT];
@@ -3614,6 +3615,19 @@ static float attack_zoom_scale(const drone_hunter_scene_t *s, int k)
     return 0.5f;      /* X-wing DJI: small */
 }
 
+static float attack_dive_progress(const drone_hunter_scene_t *s, int k)
+{
+    float total = s->k_spawn_dist[k];
+    float remain;
+
+    if (total <= 1.0f)
+    {
+        total = 360.0f;
+    }
+    remain = sqrtf(dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k]));
+    return clampf(1.0f - (remain / total), 0.0f, 1.0f);
+}
+
 static const lv_image_dsc_t *attack_image_src(const drone_hunter_scene_t *s, int k)
 {
 #if ATTACK_SPRITE_STABLE_ONLY
@@ -4143,6 +4157,7 @@ static void respawn_killer(drone_hunter_scene_t *s, int k, int side)
 
     s->kx[k] = pos_x;
     s->ky[k] = pos_y;
+    s->k_spawn_dist[k] = clampf(sqrtf(dist2(pos_x, pos_y, s->k_goal_x[k], s->k_goal_y[k])), 40.0f, 4000.0f);
     s->kvx[k] = 0.0f;
     s->kvy[k] = 0.0f;
     s->k_heading[k] = atan2f(s->k_goal_y[k] - s->ky[k], s->k_goal_x[k] - s->kx[k]);
@@ -4615,6 +4630,7 @@ static void reset_round(drone_hunter_scene_t *s)
         s->k_ground_stall_frames[i] = 0;
         s->k_goal_x[i] = 0.0f;
         s->k_goal_y[i] = 0.0f;
+        s->k_spawn_dist[i] = 0.0f;
         s->k_detect_conf[i] = 0.0f;
         s->k_class_conf[i] = 0.0f;
         s->k_threat_score[i] = 0.0f;
@@ -4992,6 +5008,7 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
+            float dive_p = attack_dive_progress(s, k);
             float desired = atan2f(move_y, move_x) + (noise_y * 0.35f);
             float delta;
             float turn_limit = (phase == 2) ? 0.038f : 0.030f;
@@ -5002,6 +5019,13 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             float vy;
             float progress;
             float min_progress = speed * 0.16f;
+
+            if (target_is_shahed_visual(s, k))
+            {
+                /* Shahed terminal dive acceleration for clearer dive-bomb behavior. */
+                speed *= (1.0f + (dive_p * dive_p * 0.42f));
+                min_progress *= (1.0f + (dive_p * 0.28f));
+            }
 
             delta = wrap_angle_pi(desired - s->k_heading[k]);
 
@@ -5118,6 +5142,11 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
         if (dist2(s->kx[k], s->ky[k], s->k_goal_x[k], s->k_goal_y[k]) < 324.0f)
         {
             int blast_style = target_blast_style_for_visual(s, k);
+            float impact_x = s->kx[k];
+            float impact_y = s->ky[k];
+            get_obj_visual_center_in_parent(s->killers[k], s->arena, &impact_x, &impact_y);
+            impact_x = clampf(impact_x, (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
+            impact_y = clampf(impact_y, (float)s->arena_y + 6.0f, floor_y);
             set_diag_stage(s, "DBG:ATTACKER_GOAL_HIT");
             s->attack_leaked++;
             s->attacker_points++;
@@ -5127,13 +5156,13 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
 #if !DISABLE_ATTACK_SUCCESS_FIREBALLS
             s->fx_core_hit_t = FX_CORE_HIT_SEC;
             s->fx_intercept_t[k] = FX_INTERCEPT_SEC;
-            s->fx_intercept_x[k] = s->k_goal_x[k];
-            s->fx_intercept_y[k] = s->k_goal_y[k];
+            s->fx_intercept_x[k] = impact_x;
+            s->fx_intercept_y[k] = impact_y;
             s->fx_kill_t[k] = FX_KILL_SEC;
-            s->fx_kill_x[k] = s->k_goal_x[k];
-            s->fx_kill_y[k] = s->k_goal_y[k];
+            s->fx_kill_x[k] = impact_x;
+            s->fx_kill_y[k] = impact_y;
             set_diag_stage(s, "DBG:CITY_FIRE_ADD");
-            add_city_fire(s, s->k_goal_x[k], s->k_goal_y[k], CITY_FIRE_INTENSITY_BIG);
+            add_city_fire(s, impact_x, impact_y, CITY_FIRE_INTENSITY_BIG);
             set_diag_stage(s, "DBG:CITY_FIRE_DONE");
 #else
             set_diag_stage(s, "DBG:CITY_FIRE_DISABLED");
@@ -5141,8 +5170,8 @@ static void update_killers(drone_hunter_scene_t *s, float core_x, float core_y)
             sound_emit(s, DH_SOUND_ATTACK_SUCCESS_LOUD, 0.20f);
             sound_schedule_ambulance(s);
             /* Hold target briefly so the impact fireball is visible before despawn/respawn. */
-            s->kx[k] = s->k_goal_x[k];
-            s->ky[k] = s->k_goal_y[k];
+            s->kx[k] = impact_x;
+            s->ky[k] = impact_y;
             s->k_dying[k] = 1;
             s->k_dying_t[k] = FX_SHAHED_DEATH_SEC;
             s->k_threat_score[k] = 0.0f;
@@ -6580,6 +6609,7 @@ static void update_positions(drone_hunter_scene_t *s)
     {
         const lv_image_dsc_t *src = attack_image_src(s, k);
         int lock_on = 0;
+        float render_y = 0.0f;
 
         if (!s->killer_active[k])
         {
@@ -6594,6 +6624,7 @@ static void update_positions(drone_hunter_scene_t *s)
             continue;
         }
         lv_image_set_src(s->killers[k], src);
+        render_y = s->ky[k];
         if (s->ktype[k] == TARGET_FIXED_WING)
         {
             update_fixed_wing_orientation(s, k);
@@ -6604,20 +6635,49 @@ static void update_positions(drone_hunter_scene_t *s)
             lv_obj_set_style_transform_angle(s->killers[k], k_angle_tenth, 0);
         }
         {
-            float depth = depth_zoom_factor_for_y(s, s->ky[k]);
-            float terminal_t = clampf((s->ky[k] - ((float)s->arena_y + ((float)s->arena_h * 0.68f))) /
-                                          clampf((float)s->arena_h * 0.32f, 1.0f, 4000.0f),
-                                      0.0f, 1.0f);
-            float dive_scale = (s->ktype[k] == TARGET_FIXED_WING) ?
-                                   (1.00f - (terminal_t * 0.56f)) :
-                                   (0.96f - (terminal_t * 0.52f));
+            float dive_p = attack_dive_progress(s, k);
+            int shahed_visual = target_is_shahed_visual(s, k);
+            float alt_px = 0.0f;
+            float depth;
+            float dive_scale;
             uint16_t base_zoom = (uint16_t)clampf((float)s->k_base_zoom[k], 80.0f, 900.0f);
             uint16_t zoom;
             lv_opa_t killer_opa = LV_OPA_COVER;
             int32_t kw = lv_obj_get_width(s->killers[k]);
             int32_t kh = lv_obj_get_height(s->killers[k]);
 
-            dive_scale = clampf(dive_scale, 0.44f, 1.02f);
+            if (s->ktype[k] == TARGET_FIXED_WING)
+            {
+                /* Synthesize vertical descent from route progress so side-lane approaches still look like dive-bombs. */
+                float start_alt = shahed_visual ? 136.0f : 98.0f;
+                float fall = 1.0f - dive_p;
+                alt_px = start_alt * (fall * fall);
+                render_y = clampf(s->ky[k] - alt_px, (float)s->arena_y + 6.0f, floor_y);
+            }
+            depth = depth_zoom_factor_for_y(s, render_y);
+
+            if (s->ktype[k] == TARGET_FIXED_WING)
+            {
+                if (shahed_visual)
+                {
+                    dive_scale = 1.04f - (dive_p * 0.84f);
+                    dive_scale = clampf(dive_scale, 0.20f, 1.04f);
+                }
+                else
+                {
+                    dive_scale = 1.00f - (dive_p * 0.64f);
+                    dive_scale = clampf(dive_scale, 0.32f, 1.02f);
+                }
+            }
+            else
+            {
+                float terminal_t = clampf((s->ky[k] - ((float)s->arena_y + ((float)s->arena_h * 0.68f))) /
+                                              clampf((float)s->arena_h * 0.32f, 1.0f, 4000.0f),
+                                          0.0f, 1.0f);
+                dive_scale = 0.96f - (terminal_t * 0.52f);
+                dive_scale = clampf(dive_scale, 0.44f, 1.02f);
+            }
+
             zoom = (uint16_t)clampf((float)base_zoom * depth * dive_scale, 70.0f, 920.0f);
             if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
             {
@@ -6642,7 +6702,8 @@ static void update_positions(drone_hunter_scene_t *s)
         s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, floor_y);
         s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
         lv_obj_clear_flag(s->killers[k], LV_OBJ_FLAG_HIDDEN);
-        set_obj_center(s->killers[k], s->kx[k], s->ky[k]);
+        render_y = clampf(render_y, (float)s->arena_y + 6.0f, floor_y);
+        set_obj_center(s->killers[k], s->kx[k], render_y);
 
         /* Red corner-only lock box while any hunter has this target locked. */
         lock_on = target_has_assigned_hunter(s, k) && !s->k_dying[k];
