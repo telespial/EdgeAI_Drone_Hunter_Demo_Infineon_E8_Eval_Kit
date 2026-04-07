@@ -341,6 +341,9 @@ typedef struct
 
     lv_obj_t *mode_btn;
     lv_obj_t *mode_btn_label;
+    lv_obj_t *hud_audio_btn;
+    lv_obj_t *hud_audio_btn_label;
+    int hud_audio_muted;
     lv_obj_t *quick_menu;
     lv_obj_t *quick_menu_title;
     lv_obj_t *quick_menu_body;
@@ -609,6 +612,8 @@ static void quick_menu_body_cb(lv_event_t *e);
 static void show_quick_menu(drone_hunter_scene_t *s, const char *title, const char *body);
 static void hud_attack_card_cb(lv_event_t *e);
 static void hud_defend_card_cb(lv_event_t *e);
+static void hud_audio_btn_cb(lv_event_t *e);
+static void update_audio_toggle_ui(drone_hunter_scene_t *s);
 static void update_hud(drone_hunter_scene_t *s);
 static int target_is_shahed_visual(const drone_hunter_scene_t *s, int k);
 static int target_blast_style_for_visual(const drone_hunter_scene_t *s, int k);
@@ -4411,6 +4416,56 @@ static void hud_defend_card_cb(lv_event_t *e)
     update_hud(s);
 }
 
+static void update_audio_toggle_ui(drone_hunter_scene_t *s)
+{
+    if ((s == NULL) || (s->hud_audio_btn == NULL) || (s->hud_audio_btn_label == NULL))
+    {
+        return;
+    }
+
+    if (s->hud_audio_muted)
+    {
+        lv_label_set_text(s->hud_audio_btn_label, "AUDIO OFF");
+        lv_obj_set_style_text_color(s->hud_audio_btn_label, lv_color_hex(0xFCA5A5), 0);
+        lv_obj_set_style_bg_opa(s->hud_audio_btn, (lv_opa_t)36, 0);
+        lv_obj_set_style_border_opa(s->hud_audio_btn, (lv_opa_t)88, 0);
+        lv_obj_set_style_shadow_opa(s->hud_audio_btn, (lv_opa_t)42, 0);
+    }
+    else
+    {
+        lv_label_set_text(s->hud_audio_btn_label, "AUDIO ON");
+        lv_obj_set_style_text_color(s->hud_audio_btn_label, lv_color_hex(0xCFF2FF), 0);
+        lv_obj_set_style_bg_opa(s->hud_audio_btn, (lv_opa_t)26, 0);
+        lv_obj_set_style_border_opa(s->hud_audio_btn, (lv_opa_t)68, 0);
+        lv_obj_set_style_shadow_opa(s->hud_audio_btn, (lv_opa_t)34, 0);
+    }
+}
+
+static void hud_audio_btn_cb(lv_event_t *e)
+{
+    drone_hunter_scene_t *s = (drone_hunter_scene_t *)lv_event_get_user_data(e);
+    if ((s == NULL) || (lv_event_get_code(e) != LV_EVENT_CLICKED))
+    {
+        return;
+    }
+    if (!ENABLE_RUNTIME_AUDIO)
+    {
+        s->hud_audio_muted = 1;
+        drone_hunter_audio_set_muted(1u);
+        update_audio_toggle_ui(s);
+        return;
+    }
+
+    s->hud_audio_muted = s->hud_audio_muted ? 0 : 1;
+    drone_hunter_audio_set_muted((uint8_t)s->hud_audio_muted);
+    if (!s->hud_audio_muted)
+    {
+        /* Restart ambient bed cleanly after unmuting. */
+        s->sound_city_loop_active = 0u;
+    }
+    update_audio_toggle_ui(s);
+}
+
 static void reset_round(drone_hunter_scene_t *s)
 {
     int i;
@@ -4436,6 +4491,12 @@ static void reset_round(drone_hunter_scene_t *s)
     s->hud_refresh_t = HUD_REFRESH_SEC;
     s->t = 0.0f;
     s->sound_enabled = ENABLE_RUNTIME_AUDIO ? 1 : 0;
+    if (!s->sound_enabled)
+    {
+        s->hud_audio_muted = 1;
+    }
+    drone_hunter_audio_set_muted((uint8_t)(s->hud_audio_muted ? 1u : 0u));
+    update_audio_toggle_ui(s);
     s->sound_next_traffic_t = 0.20f;
     s->sound_next_siren_t = 6.0f;
     s->sound_next_fire_t = 4.0f;
@@ -6544,11 +6605,20 @@ static void update_positions(drone_hunter_scene_t *s)
         }
         {
             float depth = depth_zoom_factor_for_y(s, s->ky[k]);
+            float terminal_t = clampf((s->ky[k] - ((float)s->arena_y + ((float)s->arena_h * 0.68f))) /
+                                          clampf((float)s->arena_h * 0.32f, 1.0f, 4000.0f),
+                                      0.0f, 1.0f);
+            float dive_scale = (s->ktype[k] == TARGET_FIXED_WING) ?
+                                   (1.00f - (terminal_t * 0.56f)) :
+                                   (0.96f - (terminal_t * 0.52f));
             uint16_t base_zoom = (uint16_t)clampf((float)s->k_base_zoom[k], 80.0f, 900.0f);
-            uint16_t zoom = (uint16_t)clampf((float)base_zoom * depth, 70.0f, 920.0f);
+            uint16_t zoom;
             lv_opa_t killer_opa = LV_OPA_COVER;
             int32_t kw = lv_obj_get_width(s->killers[k]);
             int32_t kh = lv_obj_get_height(s->killers[k]);
+
+            dive_scale = clampf(dive_scale, 0.44f, 1.02f);
+            zoom = (uint16_t)clampf((float)base_zoom * depth * dive_scale, 70.0f, 920.0f);
             if ((kw <= 0) || (kh <= 0) || (kw > 240) || (kh > 240))
             {
                 if (s->k_last_src[k] != src)
@@ -6557,7 +6627,7 @@ static void update_positions(drone_hunter_scene_t *s)
                     s->k_last_src[k] = src;
                 }
                 s->k_base_zoom[k] = (uint16_t)clampf(176.0f * attack_zoom_scale(s, k), 80.0f, 900.0f);
-                zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth, 70.0f, 920.0f);
+                zoom = (uint16_t)clampf((float)s->k_base_zoom[k] * depth * dive_scale, 70.0f, 920.0f);
             }
             if (s->k_dying[k])
             {
@@ -7238,6 +7308,30 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     lv_obj_add_flag(s->hud_defend_panel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(s->hud_defend_panel, hud_defend_card_cb, LV_EVENT_CLICKED, s);
 
+    s->hud_audio_btn = lv_obj_create(s->arena);
+    lv_obj_remove_style_all(s->hud_audio_btn);
+    lv_obj_set_size(s->hud_audio_btn, 116, 34);
+    lv_obj_align(s->hud_audio_btn, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_set_style_bg_color(s->hud_audio_btn, lv_color_hex(0x8FD3FF), 0);
+    lv_obj_set_style_bg_opa(s->hud_audio_btn, (lv_opa_t)26, 0);
+    lv_obj_set_style_border_color(s->hud_audio_btn, lv_color_hex(0xE6F4FF), 0);
+    lv_obj_set_style_border_opa(s->hud_audio_btn, (lv_opa_t)68, 0);
+    lv_obj_set_style_border_width(s->hud_audio_btn, 1, 0);
+    lv_obj_set_style_radius(s->hud_audio_btn, 14, 0);
+    lv_obj_set_style_shadow_color(s->hud_audio_btn, lv_color_hex(0x6BBEFF), 0);
+    lv_obj_set_style_shadow_opa(s->hud_audio_btn, (lv_opa_t)34, 0);
+    lv_obj_set_style_shadow_width(s->hud_audio_btn, 12, 0);
+    lv_obj_add_flag(s->hud_audio_btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s->hud_audio_btn, hud_audio_btn_cb, LV_EVENT_CLICKED, s);
+
+    s->hud_audio_btn_label = lv_label_create(s->hud_audio_btn);
+    lv_label_set_text(s->hud_audio_btn_label, "AUDIO ON");
+    lv_obj_set_style_text_font(s->hud_audio_btn_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_letter_space(s->hud_audio_btn_label, 1, 0);
+    lv_obj_set_style_text_color(s->hud_audio_btn_label, lv_color_hex(0xCFF2FF), 0);
+    lv_obj_center(s->hud_audio_btn_label);
+    update_audio_toggle_ui(s);
+
     s->hud_attack_label = lv_label_create(s->hud_attack_panel);
     lv_label_set_text(s->hud_attack_label, "ATTACK");
     lv_obj_set_style_text_font(s->hud_attack_label, &lv_font_montserrat_12, 0);
@@ -7745,6 +7839,7 @@ void drone_hunter_arena_start(lv_obj_t *screen)
     s->difficulty_sel = DIFFICULTY_MEDIUM;
     s->npu_enabled = 1;
     s->speed_pp_idx = 0;
+    s->hud_audio_muted = ENABLE_RUNTIME_AUDIO ? 0 : 1;
     assign_mode(s, MODE_ALGO_VS_EDGEAI);
 
     /* Keep bottom deck UI above arena action without per-frame z-order changes. */

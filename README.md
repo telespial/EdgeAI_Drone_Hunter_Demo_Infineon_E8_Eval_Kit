@@ -33,10 +33,12 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
   - hunters + CIWS are compile-time disabled,
   - attackers are mixed (`x-wing` + fixed-wing),
   - city-hit path now renders fireball first, then target is destroyed/respawned.
+- Top-center liquid-glass HUD now includes a touch `AUDIO ON/OFF` mute toggle.
+- Attack-drone terminal impact-size rendering is reduced further (smaller near-ground visual scale).
 - Startup sequencing no longer replays deterministic openings:
   - round reseeds/resets at splash start,
   - attacker composition uses strategic stochastic weighting (doctrine-driven probabilities + RNG per spawn).
-- Runtime debug stage banner is active and foregrounded at top center (`DBG:*`) for freeze localization.
+- Runtime debug-stage tracer hooks (`DBG:*`) are retained in code and can be compile-time enabled for freeze localization.
 - Phase 14 movement doctrine is integrated (attacker evasion + hunter intercept behavior).
 - Skyfall guidance no longer uses hybrid endgame blending (plane steering applied to remove wiggle).
 - Stinger guidance now uses plane steering for smoother non-wiggling pursuit.
@@ -80,11 +82,11 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3903488 bytes` / `verified 3901616 bytes`
+- `wrote 3907584 bytes` / `verified 3902696 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
-- CM55 image verified (external SMIF): `3,901,616 bytes`.
+- CM55 image verified (external SMIF): `3,902,696 bytes`.
 - External SMIF capacity: `134,217,728 bytes`.
 
 ## Restore Governance

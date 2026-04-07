@@ -27,7 +27,7 @@
 ## Latest Validated Flash Results
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 3903488 bytes`, `verified 3901616 bytes`
+- `wrote 3907584 bytes`, `verified 3902696 bytes`
 - `** Resetting Target **`
 
 ## Current Runtime Baseline
@@ -37,10 +37,14 @@
   - hunter drones are disabled by compile-time gate,
   - CIWS guns are disabled by compile-time gate,
   - immediate defender-exhaustion round-end is bypassed in this mode.
+- Runtime rollback baseline restored to pre-regression gameplay logic, while keeping only the reduced terminal impact-scale render tweak.
 - Attack roster is mixed again:
   - `x-wing` attackers re-enabled,
   - fixed-wing attackers remain enabled,
   - force-Shahed-only override is disabled.
+- Top-center liquid-glass HUD now includes a touch mute control:
+  - `AUDIO ON` / `AUDIO OFF`,
+  - toggles runtime global audio mute immediately.
 - City-hit visual sequencing is now:
   - fireball FX first at impact point,
   - then attacker enters short dying window,
@@ -53,7 +57,7 @@
   - audio heartbeat no longer mutates mixer state outside ISR context,
   - queued event push is IRQ-safe to avoid ISR/main-context queue races,
   - city loop event handling is applied in single audio context (sample path),
-  - `DBG:*` tracer is now always visible on arena for freeze-stage capture.
+  - `DBG:*` tracer hooks remain available in code for freeze-stage capture (currently disabled by compile-time flag).
   - city-fire/state hardening pass added:
     - centralized `city_fire_count`/`city_fire_head` sanitization helper,
     - bounds-checked insert index in `add_city_fire()` with fail-safe reset,
@@ -62,7 +66,6 @@
 - Opening attacker sequences now use strategic stochastic composition (not fixed replay):
   - splash start reseeds and resets the round,
   - doctrine biases are preserved while release order varies run-to-run.
-- Top-center `DBG:*` stage banner is foregrounded for freeze localization.
 - Settings popup controls are integrated and active:
   - attacker mode, defender mode, NPU toggle, difficulty, speed++.
 - City + drone sound scheduling is active:
@@ -127,7 +130,7 @@
 - Restore script path remains stable and validated.
 
 ## Memory Snapshot
-- CM55 verified image size (external SMIF): `3,901,616 bytes`
+- CM55 verified image size (external SMIF): `3,902,696 bytes`
 - External SMIF capacity: `134,217,728 bytes`
 
 ## Restore Policy
@@ -135,5 +138,5 @@
 - Failsafe: latest validated direct-recovery baseline.
 
 ## Restore Snapshot (2026-04-07)
-- Golden label: `golden-20260407-phase15-attack-only-mixed-attackers-fireball-seq-20260407_105450`
-- Failsafe label (unchanged): `failsafe-e8-drone-hunter-20260401-phase15-freeze-audio-race-tracer-20260401_104044`
+- Golden label: `golden-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`
+- Failsafe label: `failsafe-e8-drone-hunter-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`

@@ -82,7 +82,7 @@ typedef struct
 } dh_audio_state_t;
 
 static dh_audio_state_t s_audio;
-static const bool s_audio_all_muted = false;
+static volatile bool s_audio_all_muted = false;
 
 static int16_t dh_audio_next_sample(void);
 static void dh_audio_fill_tx_fifo(void);
@@ -118,6 +118,26 @@ static uint32_t dh_audio_pick_city_segment_samples(void)
     uint32_t span = (DH_CITY_SEGMENT_MAX_S - DH_CITY_SEGMENT_MIN_S) + 1u;
     uint32_t sec = DH_CITY_SEGMENT_MIN_S + (dh_rand_next() % span);
     return sec * DH_AUDIO_SAMPLE_RATE_HZ;
+}
+
+void drone_hunter_audio_set_muted(uint8_t muted)
+{
+    uint32_t primask = dh_irq_lock();
+    int i;
+    s_audio_all_muted = (muted != 0u);
+    if (s_audio_all_muted)
+    {
+        s_audio.q_head = 0u;
+        s_audio.q_tail = 0u;
+        for (i = 0; i < (int)DH_VOICE_COUNT; ++i)
+        {
+            s_audio.voice[i].active = false;
+        }
+        s_audio.city_segment_elapsed_samples = 0u;
+        s_audio.city_segment_target_samples = 0u;
+        s_audio.city_segment_retarget_pending = false;
+    }
+    dh_irq_unlock(primask);
 }
 
 static uint16_t dh_gain_from_float(float gain)

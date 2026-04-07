@@ -24,12 +24,14 @@
     - impact now renders blast/fireball first,
     - target then enters short dying window,
     - respawn occurs after the visible blast window.
+  - rollback baseline restored to last stable gameplay logic branch, while keeping only the smaller terminal impact-size render tweak.
+  - top-center liquid-glass HUD now includes touch audio mute toggle (`AUDIO ON` / `AUDIO OFF`).
   - ground-stall livelock guards:
     - hunter near-floor stall timeout triggers horizon egress escape,
     - attacker near-floor stall timeout triggers forced respawn.
   - strategic stochastic attacker release composition (doctrine-weighted, run-varying spawn order),
   - splash-start entropy reseed + reset to prevent boot-time replay patterns,
-  - top-center foreground debug stage banner (`DBG:*`) for freeze tracing,
+  - top-center debug stage banner (`DBG:*`) is available for freeze tracing when compile-time enabled,
   - phase-14 movement doctrine,
   - phase-15 settings controls,
   - CIWS stationary-structure + dynamic stream behavior,
@@ -78,7 +80,7 @@
     - removed non-ISR heartbeat mixer mutation,
     - made audio event queue push IRQ-safe,
     - moved looped city event application into single audio context path,
-    - enabled always-visible arena `DBG:*` tracer label for freeze-stage capture.
+    - retained arena `DBG:*` tracer instrumentation in code path (compile-time visibility currently off).
   - known active issue:
     - freeze remains unresolved and is still the top blocker:
       - latest user observations indicate runtime can still lock during gameplay after 30-180s windows,
@@ -97,7 +99,7 @@
 Observed success signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3903488 bytes` / `verified 3901616 bytes`
+- `wrote 3907584 bytes` / `verified 3902696 bytes`
 - `** Resetting Target **`
 
 ## Active Runbook Script

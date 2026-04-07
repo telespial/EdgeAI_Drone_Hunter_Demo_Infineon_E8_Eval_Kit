@@ -1,5 +1,27 @@
 # COMMAND_LOG
 
+- 2026-04-07 | Runtime rollback + terminal impact-scale retention:
+  - restored gameplay logic to the previous stable baseline after freeze regression report,
+  - retained only the reduced terminal impact-size render behavior for attack drones near ground.
+- 2026-04-07 | Top-center liquid-glass audio mute control:
+  - added `AUDIO ON/OFF` touch HUD button at top-center,
+  - wired runtime toggle to HAL-level global mute (`drone_hunter_audio_set_muted()`),
+  - mute now clears queued events and active voices for immediate silence.
+- 2026-04-07 | Build + flash validation for audio-mute/impact-scale baseline:
+  - build: `ninja -f build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.ninja -v` (success),
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from latest ELF via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded:
+    - `wrote 32768 bytes` / `verified 30456 bytes`,
+    - `wrote 12288 bytes` / `verified 8732 bytes`,
+    - `wrote 3907584 bytes` / `verified 3902696 bytes`,
+    - `** Resetting Target **`.
+- 2026-04-07 | Docs + restore governance refresh:
+  - updated status/state/readme/restore docs for current audio-mute + impact-scale baseline,
+  - promoted new paired restore points for golden + failsafe:
+    - `golden-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`,
+    - `failsafe-e8-drone-hunter-20260407-phase15-audio-mute-glass-toggle-impactscale-20260407_141232`.
+  - moved `current_golden` and `current_failsafe` symlinks to this baseline.
+
 - 2026-04-07 | Attack-only freeze-isolation mode + mixed-attacker runtime pass:
   - enabled runtime audio and attacker city-hit fireball path,
   - disabled hunter drones and CIWS guns via compile-time gates,
