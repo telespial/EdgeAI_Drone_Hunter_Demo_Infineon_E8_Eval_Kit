@@ -23,55 +23,24 @@ The demo combines deterministic doctrine (`ALGO`) and adaptive behavior (`EDGEAI
 - `rules.md`: canonical rules/spec intent.
 - `ToDo.md`: roadmap and phase tracker.
 
-## Program Status (2026-04-07)
+## Program Status (2026-04-08)
 - Completed phases: `1` through `14`.
 - In progress: `Phase 15`.
 - Planned next: `Phase 16` (soundscape/audio layer).
 
 ## Current Gameplay Baseline
-- Attack-only freeze-isolation mode is currently active:
-  - hunter drones are compile-time disabled,
-  - CIWS guns are compile-time enabled,
-  - attackers are mixed (`x-wing` + fixed-wing),
-  - city-hit path now renders fireball first, then target is destroyed/respawned.
-- Latest attacker dive + impact alignment pass is active:
-  - Shahed terminal dive now accelerates and scales down as altitude closes,
-  - city-hit explosion/fx/fire placement is centered on attacker visual impact point.
-- Latest CIWS + effects visual pass is active:
-  - CIWS tracer streams are enabled and visible again,
-  - city fire rendering is enabled in runtime,
-  - safe-mode city fires now animate using lightweight frame stepping.
-- Latest deck icon stability pass is active:
-  - deck bar is forced foreground each refresh,
-  - icon/name/count styling is synchronized every HUD update to prevent blink/dropout.
-- Top-center liquid-glass HUD now includes a touch `AUDIO ON/OFF` mute toggle.
-- Attack-drone terminal impact-size rendering is reduced further (smaller near-ground visual scale).
-- Startup sequencing no longer replays deterministic openings:
-  - round reseeds/resets at splash start,
-  - attacker composition uses strategic stochastic weighting (doctrine-driven probabilities + RNG per spawn).
-- Runtime debug-stage tracer hooks (`DBG:*`) are retained in code and can be compile-time enabled for freeze localization.
-- Phase 14 movement doctrine is integrated (attacker evasion + hunter intercept behavior).
-- Skyfall guidance no longer uses hybrid endgame blending (plane steering applied to remove wiggle).
-- Stinger guidance now uses plane steering for smoother non-wiggling pursuit.
-- Hunter labels updated: `Stinger`, `Pelican`, `TYTAN`.
-- Phase 15 settings are integrated in popup:
-  - `ATTACKER`: `ALGO/EDGEAI`
-  - `DEFENDER`: `ALGO/EDGEAI/HUMAN`
-  - `NPU`: `ON/OFF`
-  - `DIFFICULTY`: `EASY/MED/HARD`
-  - `SPEED++`: `NORMAL/FAST+/FAST++`
-- CIWS structures are stationary while streams target dynamically.
-- Match doctrine uses inventory exhaustion end mode.
-- Freeze hardening pass is active: reduced city-fire render concurrency and throttled flame sprite updates.
-- Low-load city-fire rendering fallback remains active, now with lightweight animation (not static).
-- Bottom deck liquid-glass bar opacity was increased by ~20% for readability.
-- Fire palette now includes explicit bright-visible profiles with even bright-color selection:
-  - bright orange,
-  - bright red,
-  - bright red/orange.
-- Current verification focus:
-  - run soak validation to confirm icon blink regression remains resolved,
-  - run soak validation to confirm fireball/city-fire rendering remains stable under long play.
+- Current compile-time runtime toggles:
+  - `DISABLE_HUNTER_DRONES=0`,
+  - `DISABLE_CIWS_GUNS=0`,
+  - `HIDE_ATTACK_DRONE_SPRITES=0`.
+- Tracking boxes are intentionally disabled by request:
+  - `RENDER_TARGET_LOCK_BOXES=0`,
+  - `lock_on` is forced off in render path.
+- Mixed attacker visuals remain enabled (`x-wing` + fixed-wing/Shahed logic).
+- Full flash workflow requirement:
+  - always regenerate `proj_cm55.hex` and `proj_cm55.bin` from latest ELF before flashing,
+  - this prevents stale CM55 artifact flashes when only ELF is rebuilt.
+- Freeze investigation remains the top gameplay blocker.
 
 ## Build
 ```bash
@@ -96,7 +65,7 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 Latest validated flash signatures:
 - `wrote 32768 bytes` / `verified 30456 bytes`
 - `wrote 12288 bytes` / `verified 8732 bytes`
-- `wrote 3911680 bytes` / `verified 3908008 bytes`
+- `wrote 3923968 bytes` / `verified 3920192 bytes`
 - `** Resetting Target **`
 
 ## Memory Snapshot
@@ -106,6 +75,10 @@ Latest validated flash signatures:
 ## Restore Governance
 - `Golden`: milestone-quality validated restore baseline.
 - `Failsafe`: latest direct-recovery fallback baseline.
+- Latest golden label:
+  - `golden-20260408-phase15-trackbox-off-artifact-refresh-20260408_141411`
+- Failsafe remains unchanged:
+  - `failsafe-e8-drone-hunter-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`
 - See: `docs/RESTORE_POINTS.md`.
 
 ## Documentation Index

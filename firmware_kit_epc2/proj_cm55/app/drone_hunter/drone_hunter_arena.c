@@ -73,8 +73,9 @@
 #define DISABLE_SHAHED_DRONES      (0)
 #define DISABLE_XWING_ATTACK_DRONES (0)
 #define DISABLE_ALL_ATTACK_DRONES  (0)
-#define DISABLE_HUNTER_DRONES      (1)
+#define DISABLE_HUNTER_DRONES      (0)
 #define DISABLE_CIWS_GUNS          (0)
+#define HIDE_ATTACK_DRONE_SPRITES  (0)
 #define SHOW_DEBUG_STAGE_LABEL     (0)
 #define FORCE_SHAHED_ONLY_DRONES   (0)
 #define LANE_SITE_COUNT           (16)
@@ -99,6 +100,7 @@
 #define LOCK_BOX_SEG_COUNT        (8)
 #define LOCK_BOX_THICK_PX         (2)
 #define LOCK_BOX_PAD_PX           (6)
+#define RENDER_TARGET_LOCK_BOXES  (0)
 #define EFFECTS_TRACER_RENDER_CAP (24)
 #define RENDER_CIWS_TRACERS       (1)
 #define RENDER_CITY_FIRE_EFFECTS  (1)
@@ -1697,15 +1699,93 @@ static void get_obj_visual_center_in_parent(lv_obj_t *obj, lv_obj_t *parent, flo
     }
 }
 
-static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
+static void set_attack_transform_pivot_center(drone_hunter_scene_t *s, int k)
 {
-    int16_t angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
     int32_t w = lv_obj_get_width(s->killers[k]);
     int32_t h = lv_obj_get_height(s->killers[k]);
 
-    lv_obj_set_style_transform_pivot_x(s->killers[k], (int32_t)(w / 2), 0);
-    lv_obj_set_style_transform_pivot_y(s->killers[k], (int32_t)(h / 2), 0);
+    if ((w < 1) || (w > 512))
+    {
+        w = 64;
+    }
+    if ((h < 1) || (h > 512))
+    {
+        h = 64;
+    }
+    lv_obj_set_style_transform_pivot_x(s->killers[k], w / 2, 0);
+    lv_obj_set_style_transform_pivot_y(s->killers[k], h / 2, 0);
+}
+
+static void update_fixed_wing_orientation(drone_hunter_scene_t *s, int k)
+{
+    int16_t angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
+    set_attack_transform_pivot_center(s, k);
     lv_obj_set_style_transform_angle(s->killers[k], angle_tenth, 0);
+}
+
+static void projected_target_lock_bounds(const drone_hunter_scene_t *s,
+                                         int k,
+                                         float center_x,
+                                         float center_y,
+                                         uint16_t zoom,
+                                         float *out_left,
+                                         float *out_top,
+                                         float *out_right,
+                                         float *out_bottom)
+{
+    int32_t raw_w = lv_obj_get_width(s->killers[k]);
+    int32_t raw_h = lv_obj_get_height(s->killers[k]);
+    float zoom_q = clampf((float)zoom / 256.0f, 0.26f, 4.00f);
+    float w;
+    float h;
+    float ang = s->k_heading[k] + ((float)SPRITE_NOSE_FWD_TENTH * (PI_F / 1800.0f));
+    float ca;
+    float sa;
+    float box_w;
+    float box_h;
+    float pad;
+
+    if ((raw_w < 1) || (raw_w > 512))
+    {
+        raw_w = 64;
+    }
+    if ((raw_h < 1) || (raw_h > 512))
+    {
+        raw_h = 64;
+    }
+
+    w = (float)raw_w * zoom_q;
+    h = (float)raw_h * zoom_q;
+    ca = fabsf(cosf(ang));
+    sa = fabsf(sinf(ang));
+    box_w = (w * ca) + (h * sa);
+    box_h = (w * sa) + (h * ca);
+    if (!isfinite(box_w) || !isfinite(box_h))
+    {
+        box_w = w;
+        box_h = h;
+    }
+
+    box_w = clampf(box_w, 14.0f, 300.0f);
+    box_h = clampf(box_h, 14.0f, 300.0f);
+    pad = (float)LOCK_BOX_PAD_PX * clampf(0.72f + (zoom_q * 0.42f), 0.65f, 1.85f);
+
+    if (out_left != NULL)
+    {
+        *out_left = center_x - (box_w * 0.5f) - pad;
+    }
+    if (out_top != NULL)
+    {
+        *out_top = center_y - (box_h * 0.5f) - pad;
+    }
+    if (out_right != NULL)
+    {
+        *out_right = center_x + (box_w * 0.5f) + pad;
+    }
+    if (out_bottom != NULL)
+    {
+        *out_bottom = center_y + (box_h * 0.5f) + pad;
+    }
 }
 
 static float wrap_angle_pi(float a)
@@ -3681,8 +3761,8 @@ static void style_target(drone_hunter_scene_t *s, int k)
     s->k_base_zoom[k] = zoom;
     s->k_base_zoom[k] = (uint16_t)clampf((float)s->k_base_zoom[k] * zscale, 80.0f, 900.0f);
     lv_obj_set_style_transform_zoom(s->killers[k], s->k_base_zoom[k], 0);
-    lv_obj_set_style_opa(s->killers[k], LV_OPA_COVER, 0);
-    lv_obj_set_style_image_opa(s->killers[k], LV_OPA_COVER, 0);
+    lv_obj_set_style_opa(s->killers[k], HIDE_ATTACK_DRONE_SPRITES ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
+    lv_obj_set_style_image_opa(s->killers[k], HIDE_ATTACK_DRONE_SPRITES ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
     lv_obj_set_style_image_recolor_opa(s->killers[k], LV_OPA_TRANSP, 0);
     lv_obj_set_style_bg_opa(s->killers[k], LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(s->killers[k], 0, 0);
@@ -3698,6 +3778,7 @@ static void style_target(drone_hunter_scene_t *s, int k)
     lv_obj_add_flag(s->killer_body[k], LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s->killer_nose[k], LV_OBJ_FLAG_HIDDEN);
 
+    set_attack_transform_pivot_center(s, k);
     if (s->ktype[k] == TARGET_FIXED_WING)
     {
         update_fixed_wing_orientation(s, k);
@@ -6568,6 +6649,7 @@ static void update_positions(drone_hunter_scene_t *s)
         const lv_image_dsc_t *src = attack_image_src(s, k);
         int lock_on = 0;
         float render_y = 0.0f;
+        uint16_t lock_zoom = 176U;
 
         if (!s->killer_active[k])
         {
@@ -6590,6 +6672,7 @@ static void update_positions(drone_hunter_scene_t *s)
         else
         {
             int16_t k_angle_tenth = (int16_t)(s->k_heading[k] * (1800.0f / PI_F)) + SPRITE_NOSE_FWD_TENTH;
+            set_attack_transform_pivot_center(s, k);
             lv_obj_set_style_transform_angle(s->killers[k], k_angle_tenth, 0);
         }
         {
@@ -6653,9 +6736,18 @@ static void update_positions(drone_hunter_scene_t *s)
                 zoom = (uint16_t)clampf((float)zoom * (1.0f + ((1.0f - life) * 0.22f)), 70.0f, 980.0f);
                 killer_opa = (lv_opa_t)(80 + (int32_t)(life * 175.0f));
             }
+            lock_zoom = zoom;
             lv_obj_set_style_transform_zoom(s->killers[k], zoom, 0);
-            lv_obj_set_style_opa(s->killers[k], killer_opa, 0);
-            lv_obj_set_style_image_opa(s->killers[k], killer_opa, 0);
+            if (HIDE_ATTACK_DRONE_SPRITES)
+            {
+                lv_obj_set_style_opa(s->killers[k], LV_OPA_TRANSP, 0);
+                lv_obj_set_style_image_opa(s->killers[k], LV_OPA_TRANSP, 0);
+            }
+            else
+            {
+                lv_obj_set_style_opa(s->killers[k], killer_opa, 0);
+                lv_obj_set_style_image_opa(s->killers[k], killer_opa, 0);
+            }
         }
         s->ky[k] = clampf(s->ky[k], (float)s->arena_y + 6.0f, floor_y);
         s->kx[k] = clampf(s->kx[k], (float)s->arena_x + 6.0f, (float)(s->arena_x + s->arena_w - 6));
@@ -6663,12 +6755,13 @@ static void update_positions(drone_hunter_scene_t *s)
         render_y = clampf(render_y, (float)s->arena_y + 6.0f, floor_y);
         set_obj_center(s->killers[k], s->kx[k], render_y);
 
-        /* Red corner-only lock box while any hunter has this target locked. */
-        lock_on = target_has_assigned_hunter(s, k) && !s->k_dying[k];
+        /* Tracking boxes disabled by request. */
+        lock_on = 0;
         if (lock_on)
         {
-            lv_area_t ka;
             lv_area_t aa;
+            float center_local_x;
+            float center_local_y;
             float left;
             float top;
             float right;
@@ -6678,12 +6771,10 @@ static void update_positions(drone_hunter_scene_t *s)
             int32_t t = LOCK_BOX_THICK_PX;
             int32_t seg;
 
-            lv_obj_get_coords(s->killers[k], &ka);
             lv_obj_get_coords(s->arena, &aa);
-            left = (float)(ka.x1 - aa.x1) - (float)LOCK_BOX_PAD_PX;
-            top = (float)(ka.y1 - aa.y1) - (float)LOCK_BOX_PAD_PX;
-            right = (float)(ka.x2 - aa.x1) + 1.0f + (float)LOCK_BOX_PAD_PX;
-            bottom = (float)(ka.y2 - aa.y1) + 1.0f + (float)LOCK_BOX_PAD_PX;
+            center_local_x = s->kx[k] - (float)aa.x1;
+            center_local_y = render_y - (float)aa.y1;
+            projected_target_lock_bounds(s, k, center_local_x, center_local_y, lock_zoom, &left, &top, &right, &bottom);
             bw = clampf(right - left, 18.0f, 260.0f);
             bh = clampf(bottom - top, 18.0f, 260.0f);
             right = left + bw;

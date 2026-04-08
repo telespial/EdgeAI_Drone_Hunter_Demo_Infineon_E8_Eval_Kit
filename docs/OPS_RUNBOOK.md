@@ -19,6 +19,7 @@ ELF=firmware_kit_epc2/proj_cm55/build/APP_KIT_PSE84_EVAL_EPC2/Debug/proj_cm55.el
 $OBJCOPY -O ihex "$ELF" firmware_kit_epc2/build/project_hex/proj_cm55.hex
 $OBJCOPY -O binary "$ELF" firmware_kit_epc2/build/project_hex/proj_cm55.bin
 ```
+Always run this step before `flash_golden.sh`. Flashing stale `proj_cm55.hex` can replay older runtime behavior.
 
 ## Full Recovery Flash
 ```bash
@@ -28,7 +29,7 @@ bash /home/user/Documents/DroneHunter_Golden_2026-03-28/scripts/flash_golden.sh
 ## Expected Success Signatures
 - `wrote 32768 bytes`, `verified 30456 bytes`
 - `wrote 12288 bytes`, `verified 8732 bytes`
-- `wrote 2859008 bytes`, `verified 2857092 bytes`
+- `wrote 3923968 bytes`, `verified 3920192 bytes`
 - `** Resetting Target **`
 
 ## Post-Flash Smoke Check

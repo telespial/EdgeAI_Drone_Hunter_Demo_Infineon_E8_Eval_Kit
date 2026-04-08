@@ -1,5 +1,25 @@
 # COMMAND_LOG
 
+- 2026-04-08 | Tracking-box visibility + sprite visibility control pass:
+  - restored attack-drone sprite rendering (`HIDE_ATTACK_DRONE_SPRITES=0`),
+  - disabled target lock-box rendering by hard-gating render path (`lock_on = 0`),
+  - kept hunter/CIWS runtime enabled (`DISABLE_HUNTER_DRONES=0`, `DISABLE_CIWS_GUNS=0`).
+- 2026-04-08 | Flash artifact freshness root-cause + validation:
+  - diagnosed stale CM55 flash behavior: build updated ELF while flashed `proj_cm55.hex` remained older,
+  - regenerated `proj_cm55.hex` + `proj_cm55.bin` from latest ELF via `arm-none-eabi-objcopy`,
+  - full recovery flash succeeded with refreshed CM55 verification size:
+    - `wrote 32768 bytes` / `verified 30456 bytes`,
+    - `wrote 12288 bytes` / `verified 8732 bytes`,
+    - `wrote 3923968 bytes` / `verified 3920192 bytes`,
+    - `** Resetting Target **`.
+- 2026-04-08 | Docs refresh + golden-only restore promotion:
+  - updated `README.md`, `ToDo.md`, `docs/STATUS.md`, `docs/PROJECT_STATE.md`, `docs/RESTORE_POINTS.md`, and `docs/OPS_RUNBOOK.md`,
+  - recorded artifact-refresh-before-flash as required operational safety step,
+  - promoted golden restore point only:
+    - `golden-20260408-phase15-trackbox-off-artifact-refresh-20260408_141411`,
+  - left failsafe label unchanged:
+    - `failsafe-e8-drone-hunter-20260407-phase15-ciws-tracer-icon-fire-anim-20260407_160138`.
+
 - 2026-04-07 | CIWS visual/runtime re-enable pass:
   - re-enabled CIWS guns (`DISABLE_CIWS_GUNS=0`),
   - re-enabled CIWS tracer stream rendering (`RENDER_CIWS_TRACERS=1`),

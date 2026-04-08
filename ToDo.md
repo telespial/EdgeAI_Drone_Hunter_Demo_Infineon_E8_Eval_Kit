@@ -1,6 +1,6 @@
 # EdgeAI Drone Hunter - Roadmap and Phase Tracker
 
-Date: 2026-04-07
+Date: 2026-04-08
 Canonical rules source: `rules.md`
 Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunter_arena.c`
 
@@ -43,31 +43,32 @@ Primary runtime target: `firmware_kit_epc2/proj_cm55/app/drone_hunter/drone_hunt
 - Explosion and CIWS burst audio cues.
 - Mix priority/ducking.
 
-## Priority Fix List (2026-04-07)
+## Priority Fix List (2026-04-08)
 1. Investigate and fix intermittent gameplay freeze (top blocker):
    - freeze remains reproducible during gameplay despite prior hardening passes,
-   - latest isolation mode disables hunters + CIWS so only attacker/leak/effects paths run,
    - action focus: isolate state/path transition that still produces lockup.
-2. Soak-validate hunter icon stability (recently patched):
+2. Keep tracking boxes disabled until re-enabled by explicit request:
+   - lock-box render path is now hard-disabled (`lock_on=0`),
+   - attacker sprites remain visible.
+3. Enforce flash artifact freshness every cycle:
+   - always regenerate `proj_cm55.hex`/`proj_cm55.bin` from latest ELF before flashing,
+   - stale CM55 hex can otherwise replay older runtime behavior on hardware.
+4. Soak-validate hunter icon stability (recently patched):
    - `Pelican`, `TYTAN`, and `Merops` deck icons now use forced per-refresh foreground + style synchronization,
    - run extended gameplay to confirm no further icon blink/regression.
-3. Soak-validate fireball + city-fire rendering (recently patched):
+5. Soak-validate fireball + city-fire rendering (recently patched):
    - fireballs are re-enabled and forced foreground at impact,
    - city-fire rendering is re-enabled with lightweight animated frames in safe-mode path.
-4. Replace pong speaker-test audio with full gameplay soundscape:
+6. Replace pong speaker-test audio with full gameplay soundscape:
    - explosions, city ambience, firetrucks, ambulances, drone sounds, emergency escalation,
    - event-driven mapping and timing aligned with gameplay states.
-5. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
-6. Add settings file and help file with user-facing guidance and controls reference.
-7. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
-8. Add subtle city liveliness lighting:
+7. Improve `ALGO` gameplay logic on attacker and defender for stronger strategy and more fun.
+8. Add settings file and help file with user-facing guidance and controls reference.
+9. Redraw flame visuals (detailed redraw scope to be defined when this step starts).
+10. Add subtle city liveliness lighting:
    - tiny white/tungsten ground-level flickers across city footprint,
    - flicker sprite size target: `1px` to `3px` squares,
    - low-intensity, randomized timing/placement to avoid visual noise.
-9. Exit attack-only isolation mode after freeze root-cause is confirmed:
-   - re-enable hunter drones and CIWS in staged steps,
-   - preserve validated impact-fireball-before-destroy behavior,
-   - run long soak stability pass with mixed attacker roster (`x-wing` + fixed-wing).
 
 ## Plan For #1 (Audio Overhaul)
 1. Audio asset inventory pass:
