@@ -90,3 +90,7 @@ Latest validated flash signatures:
 - `docs/COMMAND_LOG.md`
 - `ToDo.md`
 - `rules.md`
+
+## License
+
+See [LICENSE](./LICENSE).
